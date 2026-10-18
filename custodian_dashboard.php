@@ -37,9 +37,15 @@ if ($conn && $user_id) {
     }
 }
 
-// Ayusin ang path ng larawan para sigurado na ma-load ng browser
-if (empty($user_photo)) {
-    $user_photo_url = "uploads/default.png";
+// Siguraduhing may uploads folder para maiwasan ang 404 error
+if (!file_exists('uploads')) {
+    mkdir('uploads', 0777, true);
+}
+
+// Ayusin ang path ng larawan
+if (empty($user_photo) || $user_photo == 'default.png' || !file_exists($user_photo)) {
+    // Gamitin ang malinis na SVG data URI bilang placeholder kung walang file para walang 404 error
+    $user_photo_url = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%231a365d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path><circle cx='12' cy='7' r='4'></circle></svg>";
 } else {
     $user_photo_url = (strpos($user_photo, 'uploads/') === false) ? "uploads/" . $user_photo : $user_photo;
 }
@@ -83,9 +89,9 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 
         .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; width: 100%; }
 
-        /* Custodian Profile Overview Card */
+        /* Property Custodian Profile Overview Card */
         .profile-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; border-left: 5px solid #1a365d; }
-        .profile-avatar { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #0d6efd; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+        .profile-avatar { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #0d6efd; box-shadow: 0 2px 6px rgba(0,0,0,0.15); background-color: #e2e8f0; }
         .profile-details h2 { font-size: 18px; color: #1a365d; font-weight: 700; margin-bottom: 4px; }
         .profile-badge { background-color: #e2e8f0; color: #2d3748; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: monospace; display: inline-block; margin-top: 4px; }
         .profile-role { font-size: 13px; color: #4a5568; margin-top: 2px; font-weight: 500; }
@@ -131,13 +137,13 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 </div>
 
 <div class="container">
-    <!-- Property Custodian Profile Overview (No Course & Year) -->
+    <!-- Property Custodian Profile Overview (Updated to Role: Property Custodian) -->
     <div class="profile-card">
-        <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar" onerror="this.src='uploads/default.png';">
+        <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar">
         <div class="profile-details">
             <h2><?php echo htmlspecialchars($fullname_custodian); ?></h2>
-            <div class="profile-role">Department: <strong>Property & Equipment Management Office</strong></div>
-            <span class="profile-badge">Custodian ID: <?php echo htmlspecialchars($user_student_id); ?></span>
+            <div class="profile-role">Role: <strong>Property Custodian</strong></div>
+            <span class="profile-badge">ID: <?php echo htmlspecialchars($user_student_id); ?></span>
         </div>
     </div>
 

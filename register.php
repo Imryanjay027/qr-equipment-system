@@ -80,13 +80,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Mary The Queen College of Quezon City</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Account Registration - QR-BASED EQUIPMENT MONITORING SYSTEM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 </head>
 <body class="bg-light py-5">
     <div class="container" style="max-width: 600px;">
         <div class="card shadow border-0 p-4">
-            <h3 class="text-center text-primary mb-3">System Registration</h3>
+            <!-- Logo at Pamagat -->
+            <div class="text-center mb-4">
+                <!-- Palitan ang src kung iba ang path ng logo mo -->
+                <img src="logo.png" alt="Logo" style="max-height: 80px;" class="mb-2 onerror-hide">
+                <h6 class="text-success fw-bold">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h6>
+                <p class="text-muted small mb-0">Account Registration</p>
+            </div>
             
             <?php if (!empty($error)) { ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error); ?></div>
@@ -97,36 +103,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <form method="POST" enctype="multipart/form-data">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Register as:</label>
+                    <label class="form-label fw-bold">Account Role</label>
                     <select name="role" id="role" class="form-select" onchange="toggleRoleFields()" required>
                         <option value="Student">Student</option>
                         <option value="Custodian">Custodian</option>
                     </select>
                 </div>
 
+                <div class="mb-3 student-field">
+                    <label class="form-label fw-bold">ID Number / Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="Enter ID Number">
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-bold">Full Name</label>
-                    <input type="text" name="fullname" class="form-control" required>
+                    <input type="text" name="fullname" class="form-control" placeholder="Enter your Full name" required>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">Email Address</label>
-                    <input type="email" name="email" class="form-control" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Username</label>
-                    <input type="text" name="username" class="form-control">
+                    <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
                 </div>
 
                 <div class="mb-3 student-field">
                     <label class="form-label fw-bold">Student ID</label>
-                    <input type="text" name="student_id" class="form-control">
+                    <input type="text" name="student_id" class="form-control" placeholder="Enter Student ID">
                 </div>
 
                 <div class="mb-3 student-field">
                     <label class="form-label fw-bold">Course & Year</label>
-                    <input type="text" name="course_year" class="form-control">
+                    <input type="text" name="course_year" class="form-control" placeholder="Enter Course & Year">
                 </div>
 
                 <!-- Student Webcam Capture Section -->
@@ -144,10 +150,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="file" name="photo" class="form-control" accept="image/*">
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Register Account</button>
+                <button type="submit" class="btn btn-success w-100 py-2 fw-bold text-white">Submit</button>
             </form>
             <div class="text-center mt-3">
-                <p class="small text-muted">Already have an account? <a href="login.php">Login</a></p>
+                <p class="small text-muted">Already have an account? <a href="login.php">Login here</a></p>
             </div>
         </div>
     </div>

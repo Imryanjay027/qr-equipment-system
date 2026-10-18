@@ -1,18 +1,16 @@
 <?php
-// Kunin ang mga detalye mula sa Environment Variables na sinet natin sa Coolify
-$host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
-$user = getenv('DB_USER') ?: 'mariadb';
-$pass = getenv('DB_PASSWORD') ?: ''; // Kukuha sa DB_PASSWORD na ginawa natin
-$dbname = getenv('DB_NAME') ?: 'qrcode';
+// db_connection.php
 
-// Pagkonekta gamit ang MySQLi
-$conn = new mysqli($host, $user, $pass, $dbname);
+$host     = getenv('DB_HOST')     ?: 'wfbyfhr4404k2y9u2spiv101';
+$user     = getenv('DB_USER')     ?: 'mariadb';
+$password = getenv('DB_PASSWORD') ?: 'ryan072797';
+$database = getenv('DB_NAME')     ?: 'qrcode';
 
-// Suriin kung may error sa koneksyon
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+// Pagkonekta gamit ang mysqli gamit ang environment variables
+$conn = mysqli_connect($host, $user, $password, $database);
+
+// Pagsusuri kung may error sa koneksyon
+if (!$conn) {
+    die("Connection failed: " . mysqli_connect_error());
 }
-
-// I-set ang character set sa UTF-8
-$conn->set_charset("utf8");
 ?>

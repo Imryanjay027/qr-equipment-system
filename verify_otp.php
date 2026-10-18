@@ -63,15 +63,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['id'] ?? $_SESSION['user_id'] ?? 1;
             $_SESSION['username'] = $user['username'] ?? '';
             $_SESSION['fullname'] = $user['fullname'] ?? '';
-            $_SESSION['role'] = $user['role'] ?? 'custodian'; // Default role
+            $_SESSION['role'] = $user['role'] ?? 'custodian';
 
-            // Linisin ang OTP pagkatapos magamit
+            // Linisin ang OTP pagkatapos magamit (May try-catch para hindi mag-fatal error)
             unset($_SESSION['otp_code']);
             if ($user) {
-                $pdo->prepare("UPDATE tbl_users SET otp_code = NULL WHERE id = ?")->execute([$user['id']]);
+                try {
+                    $pdo->prepare("UPDATE tbl_users SET otp_code = NULL WHERE id = ?")->execute([$user['id']]);
+                } catch (\Throwable $e) {
+                    // Huwag pansinin ang exception para tuloy ang redirect sa dashboard
+                }
             }
 
-            // Direct Redirect sa Custodian Dashboard (o nababagay na pahina)
+            // Direct Redirect sa Custodian Dashboard o katumbas nito
             if (file_exists('custodian_dashboard.php')) {
                 header("Location: custodian_dashboard.php");
             } elseif (file_exists('dashboard.php')) {

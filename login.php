@@ -23,8 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_val = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($input_val)) {
-        // Pinalitan na patungong system_users table
-        $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id, fullname, role FROM qrcode.system_users WHERE username = ? OR email = ? LIMIT 1");
         $stmt->bind_param("ss", $input_val, $input_val);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -32,7 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
             $_SESSION['temp_user_id'] = $user['id'];
-            // Sunod na hakbang para sa OTP kung kinakailangan
+            // Ilagay dito ang sunod na hakbang para sa OTP
         } else {
             $error_msg = "Walang nahanap na account para sa Email o ID na ito.";
         }

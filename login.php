@@ -11,8 +11,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // Ibinook-mark pabalik sa tbl_users para mag-match sa database table name
-        $sql = "SELECT * FROM tbl_users WHERE email = ? OR Email = ?";
+        // Gumamit ng TRIM() at LOWER() para hindi magkaproblema sa spaces o capital letters
+        $sql = "SELECT * FROM tbl_users WHERE TRIM(LOWER(email)) = TRIM(LOWER(?)) OR TRIM(LOWER(username)) = TRIM(LOWER(?))";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("ss", $email, $email);
         $stmt->execute();
@@ -27,7 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['otp_expiry'] = time() + 300; // 5 minutes expiration
             $_SESSION['temp_user_id'] = $row['id'];
             $_SESSION['temp_user_role'] = $row['role'] ?? 'Student';
-            $_SESSION['temp_email'] = $email;
+            $_SESSION['temp_email'] = $row['email'];
 
             // PHPMailer Loading gamit ang Absolute Path (__DIR__)
             require_once __DIR__ . '/phpmailer/PHPMailer.php';
@@ -47,14 +47,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 // Recipients
                 $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC System');
-                $mail->addAddress($email);
+                $mail->addAddress($row['email']);
 
                 // I-embed ang logo.jpg para lumabas bilang school logo sa email body
                 if (file_exists('logo.jpg')) {
                     $mail->addEmbeddedImage('logo.jpg', 'school_logo');
                 }
 
-                // Content (HTML Template na may updated na buong title)
+                // Content (HTML Template)
                 $mail->isHTML(true);
                 $mail->Subject = 'Your Login OTP Code - MQCQC System';
                 $mail->Body    = '

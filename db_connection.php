@@ -1,22 +1,38 @@
 <?php
-// Kunin ang mga koneksyon mula sa Coolify environment variables o gamitin ang localhost/gateway IP
-$host = getenv('DB_HOST') ?: '127.0.0.1';
+// Kunin ang mga detalye mula sa Coolify environment variables
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASSWORD') ?: '';
 $dbname = getenv('DB_NAME') ?: 'qrcode';
 $port = (int)(getenv('DB_PORT') ?: 3306);
 
-// Kung ang DB_HOST ay nakalagay sa mahabang container name at nagka-error, i-fallback sa 127.0.0.1 o sa IP ng server
-if ($host === 'mariadb-database-wfbyfhr4404k2y9u2spiv101') {
-    $host = '127.0.0.1'; 
+// Awtomatikong hanapin ang Docker gateway IP kung saan naka-attach ang host database
+$gateway_ip = @exec("ip route | awk '/default/ {print $3}'") ?: '172.17.0.1';
+
+// Subukan ang gateway IP, pagkatapos ay i-fallback sa localhost kung sakali
+$hosts = [$gateway_ip, '172.17.0.1', '172.18.0.1', 'localhost'];
+
+$conn = null;
+$last_error = "";
+
+mysqli_report(MYSQLI_REPORT_OFF);
+
+foreach ($hosts as $host) {
+    try {
+        $mysqli = mysqli_init();
+        $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 2);
+        if (@$mysqli->real_connect($host, $user, $pass, $dbname, $port)) {
+            $conn = $mysqli;
+            break; // Tagumpay! Nakakonekta na.
+        }
+    } catch (\Throwable $e) {
+        $last_error = $e->getMessage();
+    }
 }
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-try {
-    $conn = new mysqli($host, $user, $pass, $dbname, $port);
-} catch (mysqli_sql_exception $e) {
-    die("Connection failed: " . $e->getMessage());
+if (!$conn) {
+    die("Connection failed on gateway IP ($gateway_ip). Error: " . $last_error);
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

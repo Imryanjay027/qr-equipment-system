@@ -1,10 +1,15 @@
 <?php
-// Database connection configuration
-$host = $_ENV['DB_HOST'] ?? 'localhost';
+// Database connection configuration para sa Coolify environment
+$host = $_ENV['DB_HOST'] ?? '127.0.0.1';
 $user = $_ENV['DB_USER'] ?? 'root';
 $pass = $_ENV['DB_PASSWORD'] ?? '';
 $dbname = $_ENV['DB_DATABASE'] ?? 'qrcode';
 $port = $_ENV['DB_PORT'] ?? 3306;
+
+// Gamitin ang 127.0.0.1 kung localhost ang ibinigay para maiwasan ang socket error
+if ($host === 'localhost') {
+    $host = '127.0.0.1';
+}
 
 // Create connection
 $conn = new mysqli($host, $user, $pass, $dbname, $port);

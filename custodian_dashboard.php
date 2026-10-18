@@ -37,14 +37,8 @@ if ($conn && $user_id) {
     }
 }
 
-// Siguraduhing may uploads folder para maiwasan ang 404 error
-if (!file_exists('uploads')) {
-    mkdir('uploads', 0777, true);
-}
-
-// Ayusin ang path ng larawan
-if (empty($user_photo) || $user_photo == 'default.png' || !file_exists($user_photo)) {
-    // Gamitin ang malinis na SVG data URI bilang placeholder kung walang file para walang 404 error
+// Ayusin ang path ng larawan gamit ang malinis na SVG placeholder kung walang file
+if (empty($user_photo) || $user_photo == 'default.png') {
     $user_photo_url = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%231a365d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path><circle cx='12' cy='7' r='4'></circle></svg>";
 } else {
     $user_photo_url = (strpos($user_photo, 'uploads/') === false) ? "uploads/" . $user_photo : $user_photo;
@@ -137,7 +131,7 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 </div>
 
 <div class="container">
-    <!-- Property Custodian Profile Overview (Updated to Role: Property Custodian) -->
+    <!-- Property Custodian Profile Overview -->
     <div class="profile-card">
         <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar">
         <div class="profile-details">

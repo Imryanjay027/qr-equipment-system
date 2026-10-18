@@ -22,6 +22,22 @@ if (isset($_SESSION['fullname'])) {
     $fullname_custodian = $_SESSION['fullname'];
 }
 
+// Kunin ang profile info ng kasalukuyang user mula sa session
+$user_id = $_SESSION['user_id'] ?? 0;
+$user_student_id = $_SESSION['student_id'] ?? 'CUST-001';
+$user_photo = $_SESSION['photo'] ?? 'uploads/default.png';
+
+// Subukang mag-query sa database para makuha ang pinakasariwang profile info
+if ($conn && $user_id) {
+    $user_query = mysqli_query($conn, "SELECT student_id, fullname, photo FROM tbl_users WHERE id = '$user_id'");
+    if ($user_query && mysqli_num_rows($user_query) > 0) {
+        $u_data = mysqli_fetch_assoc($user_query);
+        if (!empty($u_data['fullname'])) $fullname_custodian = $u_data['fullname'];
+        if (!empty($u_data['student_id'])) $user_student_id = $u_data['student_id'];
+        if (!empty($u_data['photo'])) $user_photo = $u_data['photo'];
+    }
+}
+
 if (isset($_POST['update_status']) && isset($_POST['record_id']) && isset($_POST['status'])) {
     $record_id = intval($_POST['record_id']);
     $new_status = mysqli_real_escape_string($conn, $_POST['status']);
@@ -59,29 +75,41 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
         .nav-links a { background-color: #2b4c7e; color: white; padding: 7px 14px; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 500; }
         .nav-links a.logout-btn { background-color: #d9534f; }
 
-        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; width: 100%; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; width: 100%; }
+
+        /* User Profile Overview Card */
+        .profile-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; border-left: 5px solid #1a365d; }
+        .profile-avatar { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #0d6efd; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+        .profile-details h2 { font-size: 18px; color: #1a365d; font-weight: 700; margin-bottom: 4px; }
+        .profile-badge { background-color: #e2e8f0; color: #2d3748; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: monospace; display: inline-block; margin-top: 4px; }
+        .profile-role { font-size: 13px; color: #4a5568; margin-top: 2px; }
 
         .module-box { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 25px; margin-bottom: 25px; overflow-x: auto; }
         .module-title { font-size: 16px; font-weight: 600; color: #1a365d; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; min-width: 750px; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
-        th { background-color: #1a365d; color: white; font-weight: 500; }
-        .no-data { text-align: center; color: #888; padding: 30px; font-style: italic; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; min-width: 800px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+        th { background-color: #1a365d; color: white; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        
+        .selfie-thumb { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #2b4c7e; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .student-badge { background-color: #f1f3f5; color: #343a40; padding: 3px 6px; border-radius: 4px; font-weight: 600; font-family: monospace; font-size: 12px; border: 1px solid #dee2e6; }
+        .no-data { text-align: center; color: #888; padding: 40px; font-style: italic; }
 
-        .btn-action { padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: none; cursor: pointer; color: white; text-decoration: none; display: inline-block; margin-right: 3px; margin-bottom: 3px; }
+        .btn-action { padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; border: none; cursor: pointer; color: white; text-decoration: none; display: inline-block; margin-right: 3px; margin-bottom: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .btn-good { background-color: #28a745; }
+        .btn-good:hover { background-color: #218838; }
         .btn-damaged { background-color: #dc3545; }
+        .btn-damaged:hover { background-color: #c82333; }
         .btn-replaced { background-color: #ffc107; color: #333; }
-
-        .selfie-thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ccc; }
+        .btn-replaced:hover { background-color: #e0a800; }
 
         /* Mobile Responsive Media Queries */
         @media (max-width: 768px) {
             .navbar { padding: 12px 15px; flex-direction: column; align-items: flex-start; }
             .nav-links { width: 100%; justify-content: space-between; }
             .container { margin: 15px auto; padding: 0 10px; }
+            .profile-card { flex-direction: column; text-align: center; padding: 15px; }
             .module-box { padding: 15px; border-radius: 0; box-shadow: none; }
         }
     </style>
@@ -97,6 +125,16 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 </div>
 
 <div class="container">
+    <!-- Active User/Custodian Profile Overview -->
+    <div class="profile-card">
+        <img src="<?php echo htmlspecialchars($user_photo); ?>" alt="Profile Picture" class="profile-avatar" onerror="this.src='uploads/default.png';">
+        <div class="profile-details">
+            <h2><?php echo htmlspecialchars($fullname_custodian); ?></h2>
+            <div class="profile-role">Account Role: <strong>Property Custodian</strong></div>
+            <span class="profile-badge">ID: <?php echo htmlspecialchars($user_student_id); ?></span>
+        </div>
+    </div>
+
     <div class="module-box">
         <div class="module-title">
             <span>Active Equipment Borrowing Requests & Monitoring</span>
@@ -106,7 +144,7 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
             <table>
                 <thead>
                     <tr>
-                        <th>Selfie</th>
+                        <th>Photo</th>
                         <th>Student ID</th>
                         <th>Full Name</th>
                         <th>Course & Year</th>
@@ -127,12 +165,12 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
                                     ?>
                                     <img src="<?php echo htmlspecialchars($photo_url); ?>" alt="Selfie" class="selfie-thumb" onerror="this.src='uploads/default.png';">
                                 </td>
-                                <td><?php echo htmlspecialchars($row['student_id'] ?? ''); ?></td>
-                                <td><?php echo htmlspecialchars($row['fullname'] ?? ''); ?></td>
-                                <td><?php echo htmlspecialchars($row['course_year'] ?? ''); ?></td>
-                                <td><?php echo htmlspecialchars($row['item_to_borrow'] ?? ''); ?></td>
+                                <td><span class="student-badge"><?php echo htmlspecialchars($row['student_id'] ?? 'N/A'); ?></span></td>
+                                <td><strong><?php echo htmlspecialchars($row['fullname'] ?? 'N/A'); ?></strong></td>
+                                <td><?php echo htmlspecialchars($row['course_year'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($row['item_to_borrow'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars(($row['return_date'] ?? '') . ' ' . ($row['return_time'] ?? '')); ?></td>
-                                <td><span style="color: #856404; background: #fff3cd; padding: 3px 6px; border-radius: 4px; font-weight: bold;"><?php echo htmlspecialchars(!empty($row['status']) ? $row['status'] : 'Pending'); ?></span></td>
+                                <td><span style="color: #856404; background: #fff3cd; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; border: 1px solid #ffeeba;"><?php echo htmlspecialchars(!empty($row['status']) ? $row['status'] : 'Pending'); ?></span></td>
                                 <td>
                                     <form method="POST" style="display:inline;">
                                         <input type="hidden" name="record_id" value="<?php echo $row['id']; ?>">

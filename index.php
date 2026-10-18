@@ -9,7 +9,7 @@ session_start();
 // Direktang Database Connection para sa Coolify
 $host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
-$password = "ryan072797";
+$password = "ILAGAY_MO_DITO_YUNG_ROOT_PASSWORD_MULA_SA_COOLIFY"; // Palitan ito ng Root Password mula sa Coolify panel kung nag-access denied ang ryan072797
 $database = "qrcode";
 
 $conn = new mysqli($host, $username, $password, $database);

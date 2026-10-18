@@ -1,13 +1,13 @@
 <?php
 // db_connection.php
 
-$host     = 'wfbyfhr4404k2y9u2spiv101';
-$user     = 'root';
-$password = 'ito_ang_root_password_mo_sa_coolify'; // Palitan ng Root Password mula sa Coolify config
-$database = 'qrcode';
-$port     = 3306;
+$host     = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
+$user     = getenv('DB_USER') ?: 'mariadb';
+$password = getenv('DB_PASSWORD') ?: 'ryan072797';
+$database = getenv('DB_NAME') ?: 'qrcode';
+$port     = getenv('DB_PORT') ?: 3306;
 
-// Pagkonekta gamit ang root user
+// Pagkonekta gamit ang environment variables
 $conn = mysqli_connect($host, $user, $password, $database, $port);
 
 // Pagsusuri kung may error sa koneksyon

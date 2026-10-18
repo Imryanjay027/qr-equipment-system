@@ -1,13 +1,14 @@
 <?php
 // db_connection.php
 
-$host     = '172.17.0.1';
+$host     = 'wfbyfhr4404k2y9u2spiv101';
 $user     = 'mariadb';
 $password = 'ryan072797';
 $database = 'qrcode';
+$port     = 3306;
 
-// Pagkonekta gamit ang mysqli
-$conn = mysqli_connect($host, $user, $password, $database);
+// Pagkonekta gamit ang mysqli at port
+$conn = mysqli_connect($host, $user, $password, $database, $port);
 
 // Pagsusuri kung may error sa koneksyon
 if (!$conn) {

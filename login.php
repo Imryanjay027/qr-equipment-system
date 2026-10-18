@@ -11,7 +11,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // Gumamit ng TRIM() at LOWER() para hindi magkaproblema sa spaces o capital letters
+        // DIAGNOSTIC CHECK: Tingnan muna natin kung ano ang laman ng database
+        $debug_query = $conn->query("SELECT email FROM tbl_users");
+        $db_emails = [];
+        while($d_row = $debug_query->fetch_assoc()) {
+            $db_emails[] = $d_row['email'];
+        }
+
+        // Subukan nating hanapin gamit ang exact match o trimmed/lower match
         $sql = "SELECT * FROM tbl_users WHERE TRIM(LOWER(email)) = TRIM(LOWER(?)) OR TRIM(LOWER(username)) = TRIM(LOWER(?))";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("ss", $email, $email);
@@ -81,7 +88,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $error = "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
             }
         } else {
-            $error = "Email address not found in our database.";
+            // Ipapakita natin ang error kasama ang listahan ng nabasang email sa DB para makita natin
+            $error = "Email address not found in DB. (Hinanap mo: '$email' | Mga nakasulat sa DB: " . json_encode($db_emails) . ")";
         }
     } else {
         $error = "Please enter your registered email.";
@@ -141,7 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <form method="POST" action="">
             <div class="mb-3 text-start">
                 <label for="email" class="form-label fw-semibold text-secondary small">Email Address</label>
-                <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required autofocus>
+                <input type="text" class="form-control" id="email" name="email" placeholder="name@example.com" required autofocus>
             </div>
             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Send OTP</button>
         </form>

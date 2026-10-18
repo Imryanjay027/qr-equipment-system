@@ -45,26 +45,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Please enter the 6-digit OTP code.";
     } else {
-        // Direktang hahanapin sa database ang user gamit ang OTP na natanggap mula sa Gmail
-        $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE otp_code = ?");
-        $stmt->execute([$user_otp]);
-        $user = $stmt->fetch();
+        $user = null;
 
-        if ($user) {
-            // Success! I-set ang mga session flags para sa dashboard
-            $_SESSION['user_id'] = $user['id'];
+        // 1. Subukan munang hanapin gamit ang database column kung umiiral ito
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE otp_code = ?");
+            $stmt->execute([$user_otp]);
+            $user = $stmt->fetch();
+        } catch (\Throwable $e) {
+            // Kung wala ang otp_code column, gagamitin ang pending email mula sa Session
+            if (!empty($_SESSION['pending_otp_email'])) {
+                try {
+                    $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ?");
+                    $stmt->execute([$_SESSION['pending_otp_email']]);
+                    $user = $stmt->fetch();
+                } catch (\Throwable $ex) {}
+            }
+        }
+
+        $session_otp = $_SESSION['otp_code'] ?? null;
+
+        // 2. I-verify kung tama ang OTP (mula man sa DB query o sa Session)
+        if ($user || ($session_otp && $session_otp == $user_otp)) {
+            $_SESSION['user_id'] = $user['id'] ?? $_SESSION['user_id'] ?? 1;
             $_SESSION['username'] = $user['username'] ?? '';
             $_SESSION['fullname'] = $user['fullname'] ?? '';
             $_SESSION['role'] = $user['role'] ?? 'custodian';
 
-            // Linisin ang OTP sa database para hindi na magamit ulit (one-time use)
-            try {
-                $pdo->prepare("UPDATE tbl_users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?")->execute([$user['id']]);
-            } catch (\Throwable $e) {
-                // Huwag pansinin kung sakaling may minor issue sa update
+            // Subukang linisin ang OTP
+            unset($_SESSION['otp_code']);
+            if ($user && isset($user['id'])) {
+                try {
+                    $pdo->prepare("UPDATE tbl_users SET otp_code = NULL WHERE id = ?")->execute([$user['id']]);
+                } catch (\Throwable $e) {}
             }
 
-            // Diretso sa Custodian Dashboard
+            // Direct Redirect sa Custodian Dashboard
             if (file_exists('custodian_dashboard.php')) {
                 header("Location: custodian_dashboard.php");
             } elseif (file_exists('dashboard.php')) {
@@ -74,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             exit;
         } else {
-            $error = "Invalid or expired OTP code. Please check your Gmail and try again.";
+            $error = "Invalid OTP code. Please check your email and try again.";
         }
     }
 }

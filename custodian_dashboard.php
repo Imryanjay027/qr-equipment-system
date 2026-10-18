@@ -83,12 +83,12 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 
         .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; width: 100%; }
 
-        /* User Profile Overview Card */
+        /* Custodian Profile Overview Card */
         .profile-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; border-left: 5px solid #1a365d; }
         .profile-avatar { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #0d6efd; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
         .profile-details h2 { font-size: 18px; color: #1a365d; font-weight: 700; margin-bottom: 4px; }
         .profile-badge { background-color: #e2e8f0; color: #2d3748; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; font-family: monospace; display: inline-block; margin-top: 4px; }
-        .profile-role { font-size: 13px; color: #4a5568; margin-top: 2px; }
+        .profile-role { font-size: 13px; color: #4a5568; margin-top: 2px; font-weight: 500; }
 
         .module-box { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 25px; margin-bottom: 25px; overflow-x: auto; }
         .module-title { font-size: 16px; font-weight: 600; color: #1a365d; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -131,13 +131,13 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 </div>
 
 <div class="container">
-    <!-- Active User/Custodian Profile Overview -->
+    <!-- Property Custodian Profile Overview (No Course & Year) -->
     <div class="profile-card">
         <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar" onerror="this.src='uploads/default.png';">
         <div class="profile-details">
             <h2><?php echo htmlspecialchars($fullname_custodian); ?></h2>
-            <div class="profile-role">Account Role: <strong>Property Custodian</strong></div>
-            <span class="profile-badge">ID: <?php echo htmlspecialchars($user_student_id); ?></span>
+            <div class="profile-role">Department: <strong>Property & Equipment Management Office</strong></div>
+            <span class="profile-badge">Custodian ID: <?php echo htmlspecialchars($user_student_id); ?></span>
         </div>
     </div>
 

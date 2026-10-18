@@ -1,17 +1,15 @@
 <?php
-// db_connection.php
-
 $host     = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
-$user     = 'root'; // Pinalitan na natin patungong root
+$user     = 'root';
 $password = getenv('DB_PASSWORD') ?: 'ryan072797';
-$database = getenv('DB_NAME') ?: 'qrcode';
 $port     = getenv('DB_PORT') ?: 3306;
 
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+// Kumonekta muna nang walang specific database para malikha ito
+$conn = mysqli_connect($host, $user, $password, "", $port);
 
-try {
-    $conn = mysqli_connect($host, $user, $password, $database, $port);
-} catch (mysqli_sql_exception $e) {
-    die("Database Connection Error: " . $e->getMessage());
-}
+// Likha ang database kung wala pa
+mysqli_query($conn, "CREATE DATABASE IF NOT EXISTS qrcode");
+
+// Pumili sa database na nilikha
+mysqli_select_db($conn, "qrcode");
 ?>

@@ -1,7 +1,7 @@
 <?php
 // db_connection.php
 
-$host     = 'mariadb-database-wfbyfhr4404k2y9u2';
+$host     = 'host.docker.internal';
 $user     = 'mariadb';
 $password = 'ryan072797';
 $database = 'qrcode';

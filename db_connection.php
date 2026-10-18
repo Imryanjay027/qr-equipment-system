@@ -1,15 +1,33 @@
 <?php
-$host     = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
-$user     = 'root';
-$password = getenv('DB_PASSWORD') ?: 'ryan072797';
-$port     = getenv('DB_PORT') ?: 3306;
+// Database connection configuration
+$host = $_ENV['DB_HOST'] ?? 'localhost';
+$user = $_ENV['DB_USER'] ?? 'root';
+$pass = $_ENV['DB_PASSWORD'] ?? '';
+$dbname = $_ENV['DB_DATABASE'] ?? 'qrcode';
+$port = $_ENV['DB_PORT'] ?? 3306;
 
-// Kumonekta muna nang walang specific database para malikha ito
-$conn = mysqli_connect($host, $user, $password, "", $port);
+// Create connection
+$conn = new mysqli($host, $user, $pass, $dbname, $port);
 
-// Likha ang database kung wala pa
-mysqli_query($conn, "CREATE DATABASE IF NOT EXISTS qrcode");
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
 
-// Pumili sa database na nilikha
-mysqli_select_db($conn, "qrcode");
+// Automatic creation ng tbl_users kung hindi pa ito umiiral sa remote database
+$createTableSql = "CREATE TABLE IF NOT EXISTS tbl_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role VARCHAR(50) NOT NULL DEFAULT 'Student',
+    username VARCHAR(100) NOT NULL,
+    password VARCHAR(255) DEFAULT NULL,
+    email VARCHAR(255) NOT NULL,
+    student_id VARCHAR(100) NOT NULL,
+    fullname VARCHAR(255) NOT NULL,
+    course_year VARCHAR(100) DEFAULT NULL,
+    photo VARCHAR(255) DEFAULT NULL,
+    selfie_image TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)";
+
+$conn->query($createTableSql);
 ?>

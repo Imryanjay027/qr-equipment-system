@@ -59,37 +59,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user) {
             $email = $user['email'];
-            $_SESSION['pending_otp_email'] = $email;
-            $_SESSION['user_id'] = $user['id'] ?? null;
-
-            // Mag-generate ng 6-digit OTP
+            
+            // Mag-generate ng 6-digit OTP at expiration (10 mins)
             $otp = rand(100000, 999999);
+            $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+
+            // Subukang i-update ang otp at otp_expiry sa tbl_users
+            try {
+                $update_stmt = $pdo->prepare("UPDATE tbl_users SET otp_code = ?, otp_expiry = ? WHERE id = ?");
+                $update_stmt->execute([$otp, $expiry, $user['id']]);
+            } catch (Exception $ex) {
+                // Kung wala pang columns na otp_code at otp_expiry, gagamit muna ng Session bilang fallback
+            }
+
+            $_SESSION['pending_otp_email'] = $email;
+            $_SESSION['user_id'] = $user['id'];
             $_SESSION['otp_code'] = $otp;
 
-            // Pagpapadala ng email gamit ang PHPMailer at Gmail SMTP (Port 465 SSL)
+            // Pagpapadala ng email gamit ang PHPMailer
             $mail = new PHPMailer(true);
             try {
-                // Server settings
                 $mail->isSMTP();
                 $mail->Host       = 'smtp.gmail.com';
                 $mail->SMTPAuth   = true;
                 $mail->Username   = 'ryanjayleoligao64@gmail.com';
-                $mail->Password   = 'joajicxaxmfmrdcm'; // Bagong App Password
+                $mail->Password   = 'joajicxaxmfmrdcm';
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
                 $mail->Port       = 465;
 
-                // Recipients
                 $mail->setFrom('ryanjayleoligao64@gmail.com', 'QR Equipment Monitoring System');
                 $mail->addAddress($email, $user['fullname']);
 
-                // Content
                 $mail->isHTML(true);
                 $mail->Subject = 'Your Login OTP Verification Code';
-                $mail->Body    = "Hello <b>{$user['fullname']}</b>,<br><br>Your OTP verification code is: <h1>{$otp}</h1><br>This code will expire shortly. Please do not share it with anyone.";
+                $mail->Body    = "Hello <b>{$user['fullname']}</b>,<br><br>Your OTP verification code is: <h1>{$otp}</h1><br>This code is valid for 10 minutes. Please do not share it with anyone.";
 
                 $mail->send();
 
-                // I-redirect sa verify_otp.php kapag naipadala na ang OTP
                 header("Location: verify_otp.php");
                 exit;
             } catch (Exception $e) {
@@ -109,114 +115,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - QR-Based Equipment Monitoring System</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background-color: #f4f6f9; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            margin: 0; 
-        }
-        .card { 
-            background: #fff; 
-            padding: 30px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-            width: 100%; 
-            max-width: 400px; 
-            text-align: center; 
-        }
-        .logo { 
-            width: 90px; 
-            height: auto; 
-            margin-bottom: 10px; 
-            display: inline-block;
-        }
-        h3 { 
-            margin: 5px 0 0 0; 
-            color: #2d6a4f; 
-            font-size: 1.15rem; 
-            font-weight: bold;
-        }
-        p.sub { 
-            font-size: 0.85rem; 
-            color: #666; 
-            margin-top: 5px;
-            margin-bottom: 20px; 
-        }
-        .alert { 
-            padding: 12px; 
-            border-radius: 4px; 
-            font-size: 0.85rem; 
-            margin-bottom: 20px; 
-            text-align: left; 
-        }
-        .alert-danger { 
-            background-color: #f8d7da; 
-            color: #721c24; 
-            border: 1px solid #f5c6cb; 
-        }
-        .form-group { 
-            text-align: left; 
-            margin-bottom: 20px; 
-        }
-        label { 
-            font-size: 0.85rem; 
-            font-weight: bold; 
-            color: #222; 
-            display: block; 
-            margin-bottom: 6px; 
-        }
-        input { 
-            width: 100%; 
-            padding: 11px 12px; 
-            border: 1px solid #ced4da; 
-            border-radius: 4px; 
-            box-sizing: border-box; 
-            font-size: 0.9rem; 
-            outline: none;
-        }
-        input:focus {
-            border-color: #2d6a4f;
-            box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.15);
-        }
-        button[type="submit"] { 
-            width: 100%; 
-            padding: 12px; 
-            background-color: #2d6a4f; 
-            color: #fff; 
-            border: none; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 0.95rem; 
-        }
-        button[type="submit"]:hover { 
-            background-color: #1b4332; 
-        }
-        .reg-link { 
-            font-size: 0.85rem; 
-            margin-top: 20px; 
-            display: block; 
-            color: #555; 
-            text-decoration: none; 
-        }
-        .reg-link a { 
-            color: #2d6a4f; 
-            font-weight: bold; 
-            text-decoration: none; 
-        }
-        .reg-link a:hover {
-            text-decoration: underline;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center; }
+        .logo { width: 90px; height: auto; margin-bottom: 10px; display: inline-block; }
+        h3 { margin: 5px 0 0 0; color: #2d6a4f; font-size: 1.15rem; font-weight: bold; }
+        p.sub { font-size: 0.85rem; color: #666; margin-top: 5px; margin-bottom: 20px; }
+        .alert { padding: 12px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 20px; text-align: left; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .form-group { text-align: left; margin-bottom: 20px; }
+        label { font-size: 0.85rem; font-weight: bold; color: #222; display: block; margin-bottom: 6px; }
+        input { width: 100%; padding: 11px 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; outline: none; }
+        input:focus { border-color: #2d6a4f; box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.15); }
+        button[type="submit"] { width: 100%; padding: 12px; background-color: #2d6a4f; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+        button[type="submit"]:hover { background-color: #1b4332; }
+        .reg-link { font-size: 0.85rem; margin-top: 20px; display: block; color: #555; text-decoration: none; }
+        .reg-link a { color: #2d6a4f; font-weight: bold; text-decoration: none; }
+        .reg-link a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="card">
-        <!-- School Logo -->
         <img src="logo.jpg" alt="School Logo" class="logo">
-
         <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
         <p class="sub">Account Login (OTP Authentication)</p>
 
@@ -229,7 +148,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label>Email Address or ID Number</label>
                 <input type="text" name="login_input" placeholder="Enter your Email or ID Number" required>
             </div>
-
             <button type="submit">Send OTP</button>
         </form>
 

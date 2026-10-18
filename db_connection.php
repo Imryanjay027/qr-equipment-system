@@ -1,11 +1,10 @@
 <?php
-// Gamitin ang IP address ng VPS server mo o ang localhost IP sa pamamagitan ng host.docker.internal kung suportado, 
-// o kaya ang pampublikong IP ng iyong VPS (halimbawa: '127.0.0.1' kung nasa parehong server, pero dahil hiwalay ang container, gamitin ang VPS IP o mariadb IP)
-$host = '127.0.0.1'; // O ang IP ng iyong VPS kung saan naka-port map ang MariaDB (hal. port 3306)
+// Gamitin ang host.docker.internal at ang public port mula sa Coolify
+$host = 'host.docker.internal';
 $user = 'root';
 $pass = ''; // Ilagay ang Normal User Password mo sa Coolify kung meron
 $dbname = 'qrcode';
-$port = 3306; // Siguraduhing tugma sa port mapping sa Coolify
+$port = 3306; // Palitan ito kung ibang port ang nakalagay sa Port Mappings sa Coolify (hal. 3307)
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 

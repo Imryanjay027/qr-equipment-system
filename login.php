@@ -6,10 +6,10 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Coolify Database Connection
+// Coolify Database Connection (Gamit ang Root at Root Password)
 $host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
-$password = "ryan072797";
+$password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
 $database = "qrcode";
 
 $conn = new mysqli($host, $username, $password, $database);
@@ -32,7 +32,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
             
-            // Suriin ang password (sumusuporta sa plain text o password_hash)
             if ($password_input === $user['password'] || password_verify($password_input, $user['password'])) {
                 $_SESSION['logged_in'] = true;
                 $_SESSION['user_id'] = $user['id'];

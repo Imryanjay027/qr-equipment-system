@@ -28,7 +28,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS system_users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
-// 2. Awtomatikong idagdag ang iyong account kung wala pa sa Coolify database na ito
+// 2. Awtomatikong idagdag ang iyong account kung wala pa
 $check_admin = $conn->query("SELECT id FROM system_users WHERE email = 'ryanjayleoligao64@gmail.com' LIMIT 1");
 if ($check_admin->num_rows == 0) {
     $conn->query("INSERT INTO system_users (fullname, username, email, password, role) 
@@ -53,8 +53,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($result->num_rows > 0) {
                 $user = $result->fetch_assoc();
                 $_SESSION['temp_user_id'] = $user['id'];
-                $error_msg = "Tagumpay! Nakita ang account ID: " . $user['id'];
-                // Ilagay dito ang susunod na hakbang para sa OTP
+                
+                // ---- NARITO ANG PAGBABAGO: Mag-redirect sa OTP page ----
+                header("Location: verify_otp.php");
+                exit();
+                
             } else {
                 $error_msg = "Walang nahanap para sa input na: <b>" . htmlspecialchars($input_val) . "</b>";
             }

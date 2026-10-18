@@ -37,6 +37,14 @@ if (!isset($pdo) || $pdo === null) {
     }
 }
 
+// I-include ang PHPMailer files
+require 'Exception.php';
+require 'PHPMailer.php';
+require 'SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -45,23 +53,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($login_input)) {
         $error = "Please enter your Email or ID Number.";
     } else {
-        // Titingnan kung umiiral ang user batay sa email o ID number/username
         $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ? OR username = ?");
         $stmt->execute([$login_input, $login_input]);
         $user = $stmt->fetch();
 
         if ($user) {
-            // I-save ang email sa session para magamit sa verify_otp.php
-            $_SESSION['pending_otp_email'] = $user['email'];
+            $email = $user['email'];
+            $_SESSION['pending_otp_email'] = $email;
             $_SESSION['user_id'] = $user['id'] ?? null;
 
-            // Mag-generate ng 6-digit OTP (PWEDE MONG AYUSIN DITO ANG PAG-SEND NG EMAIL/OTP)
+            // Mag-generate ng 6-digit OTP
             $otp = rand(100000, 999999);
             $_SESSION['otp_code'] = $otp;
 
-            // I-redirect agad sa OTP verification page
-            header("Location: verify_otp.php");
-            exit;
+            // Pagpapadala ng email gamit ang PHPMailer at Gmail SMTP
+            $mail = new PHPMailer(true);
+            try {
+                // Server settings
+                $mail->isSMTP();
+                $mail->Host       = 'smtp.gmail.com';
+                $mail->SMTPAuth   = true;
+                $mail->Username   = 'ryanjayleoligao64@gmail.com';
+                $mail->Password   = 'hjqxbxkyqsngepi';
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = 587;
+
+                // Recipients
+                $mail->setFrom('ryanjayleoligao64@gmail.com', 'QR Equipment Monitoring System');
+                $mail->addAddress($email, $user['fullname']);
+
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = 'Your Login OTP Verification Code';
+                $mail->Body    = "Hello <b>{$user['fullname']}</b>,<br><br>Your OTP verification code is: <h1>{$otp}</h1><br>This code will expire shortly. Please do not share it with anyone.";
+
+                $mail->send();
+
+                // I-redirect sa verify_otp.php kapag naipadala na ang OTP
+                header("Location: verify_otp.php");
+                exit;
+            } catch (Exception $e) {
+                $error = "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+            }
         } else {
             $error = "Account not found. Please check your Email or ID Number.";
         }

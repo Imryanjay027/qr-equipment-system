@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mail->Host       = 'smtp.gmail.com';
                 $mail->SMTPAuth   = true;
                 $mail->Username   = 'ryanjayleoligao64@gmail.com';
-                $mail->Password   = 'hjqxbxkyqsngepi'; // Walang spaces
+                $mail->Password   = 'joajicxaxmfmrdcm'; // Bagong App Password
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
                 $mail->Port       = 465;
 

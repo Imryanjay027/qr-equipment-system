@@ -6,7 +6,6 @@ ini_set('display_errors', 1);
 session_start();
 include('db_connection.php');
 
-// Siguraduhing naka-login at tama ang role nang hindi basta-basta nag-a-unauthorize
 $is_logged_in = false;
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     $is_logged_in = true;
@@ -22,7 +21,6 @@ $fullname_custodian = $_SESSION['fullname'] ?? 'Property Custodian';
 $user_student_id = $_SESSION['student_id'] ?? 'CUST-001';
 $user_photo = '';
 
-// Ligtas na pagkuha ng profile gamit ang user_id o kaya ay ang email
 $user_id = $_SESSION['user_id'] ?? 0;
 $user_email = $_SESSION['email'] ?? 'ryanjayleoligao64@gmail.com';
 
@@ -42,7 +40,6 @@ if ($conn) {
         if (!empty($u_data['student_id'])) $user_student_id = $u_data['student_id'];
         if (!empty($u_data['photo'])) $user_photo = trim($u_data['photo']);
         
-        // I-save ulit sa session para permanenteng magtuloy-tuloy
         $_SESSION['user_id'] = $u_data['id'];
         $_SESSION['fullname'] = $fullname_custodian;
         $_SESSION['student_id'] = $user_student_id;
@@ -50,9 +47,10 @@ if ($conn) {
     }
 }
 
-// Ayusin ang path ng larawan
-if (empty($user_photo)) {
-    $user_photo_url = "uploads/default.png";
+// Siguraduhing walang 404 error sa pamamagitan ng paggamit ng UI Avatars o uploads path
+if (empty($user_photo) || $user_photo == 'default.png') {
+    // Gumagamit ito ng initials ng pangalan mo para laging maganda at lilitaw agad
+    $user_photo_url = "https://ui-avatars.com/api/?name=" . urlencode($fullname_custodian) . "&background=1a365d&color=ffffff&size=150&bold=true";
 } else {
     $user_photo_url = (strpos($user_photo, 'uploads/') === false) ? "uploads/" . $user_photo : $user_photo;
 }
@@ -146,7 +144,7 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 <div class="container">
     <!-- Property Custodian Profile Overview -->
     <div class="profile-card">
-        <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar" onerror="this.src='uploads/default.png';">
+        <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar">
         <div class="profile-details">
             <h2><?php echo htmlspecialchars($fullname_custodian); ?></h2>
             <div class="profile-role">Role: <strong>Property Custodian</strong></div>

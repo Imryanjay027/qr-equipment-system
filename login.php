@@ -1,14 +1,13 @@
 <?php
 session_start();
-include 'db_connection.php'; // o kung ano ang filename ng database connection mo
+include 'db_connection.php';
 
 // 1. I-declare ang PHPMailer Namespaces
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// 2. I-require ang PHPMailer core files nang TAMA ANG PAGKAKASUNOD-SUNOD
-// (Dapat unang mai-load ang Exception at SMTP bago ang PHPMailer)
+// 2. I-require ang PHPMailer files sa TAMANG PAGKAKASUNOD-SUNOD
 require 'phpmailer/Exception.php';
 require 'phpmailer/SMTP.php';
 require 'phpmailer/PHPMailer.php';
@@ -27,10 +26,10 @@ if (isset($_POST['send_otp'])) {
     try {
         // Server settings
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com'; // O ang gamit mong SMTP host
+        $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'your_email@gmail.com'; // Gamitin ang iyong email
-        $mail->Password   = 'your_app_password';   // Gamitin ang iyong App Password
+        $mail->Username   = 'your_email@gmail.com'; // Palitan ng email mo
+        $mail->Password   = 'your_app_password';   // Palitan ng App Password mo
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 

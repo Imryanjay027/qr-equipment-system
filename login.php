@@ -64,12 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $otp = rand(100000, 999999);
             $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
-            // Subukang i-update ang otp at otp_expiry sa tbl_users
+            // Ligtas na pag-update sa database (Hindi mag-a-abort o magfa-fatal error kahit magka-issue sa column)
             try {
                 $update_stmt = $pdo->prepare("UPDATE tbl_users SET otp_code = ?, otp_expiry = ? WHERE id = ?");
                 $update_stmt->execute([$otp, $expiry, $user['id']]);
-            } catch (Exception $ex) {
-                // Kung wala pang columns na otp_code at otp_expiry, gagamit muna ng Session bilang fallback
+            } catch (\Throwable $e) {
+                // Babalik sa Session kung sakaling magka-issue sa database column
             }
 
             $_SESSION['pending_otp_email'] = $email;

@@ -1,91 +1,206 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-include 'db_connection.php';
 session_start();
 
-// PHPMailer files (direkta na sa root directory)
-require_once('PHPMailer.php');
-require_once('SMTP.php');
-require_once('Exception.php');
+// Database connection parameters
+$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
+$db   = 'qrcode';
+$user = 'root';
+$pass = 'wfbyfhr4404k2y9u2spiv101';
+$charset = 'utf8mb4';
 
-$error = "";
+if (file_exists('db_connection.php')) {
+    require_once 'db_connection.php';
+} elseif (file_exists('config.php')) {
+    require_once 'config.php';
+}
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email'] ?? '');
-    
-    if (!empty($email)) {
-        $sql = "SELECT * FROM tbl_users WHERE email = ?";
-        $stmt = $conn->prepare($sql);
-        if ($stmt) {
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            
-            if ($result->num_rows === 1) {
-                $user = $result->fetch_assoc();
-                
-                // Store session data
-                $_SESSION['user_id'] = $user['id'] ?? $user['user_id'] ?? 1;
-                $_SESSION['fullname'] = $user['fullname'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['email'] = $user['email'];
-                
-                // Redirect based on role
-                if ($user['role'] === 'Custodian') {
-                    header("Location: custodian_dashboard.php");
-                    exit();
-                } else {
-                    header("Location: borrower_dashboard.php");
-                    exit();
-                }
-            } else {
-                $error = "Email address not found. Please register first.";
-            }
-            $stmt->close();
-        } else {
-            $error = "Database error: " . $conn->error;
+if (!isset($pdo) || $pdo === null) {
+    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ];
+    try {
+        $pdo = new PDO($dsn, $user, $pass, $options);
+    } catch (\PDOException $e) {
+        $env_host = getenv('DB_HOST') ?: 'localhost';
+        $env_db   = getenv('DB_NAME') ?: 'qrcode';
+        $env_user = getenv('DB_USER') ?: 'root';
+        $env_pass = getenv('DB_PASS') ?: '';
+        
+        try {
+            $pdo = new PDO("mysql:host=$env_host;dbname=$env_db;charset=$charset", $env_user, $env_pass, $options);
+        } catch (\PDOException $ex) {
+            die("Database Connection Failed: " . $ex->getMessage());
         }
+    }
+}
+
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $login_input = trim($_POST['login_input'] ?? '');
+
+    if (empty($login_input)) {
+        $error = "Please enter your Email or ID Number.";
     } else {
-        $error = "Please enter your email address.";
+        // Titingnan kung umiiral ang user batay sa email o ID number/username
+        $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ? OR username = ?");
+        $stmt->execute([$login_input, $login_input]);
+        $user = $stmt->fetch();
+
+        if ($user) {
+            // I-save ang email sa session para magamit sa verify_otp.php
+            $_SESSION['pending_otp_email'] = $user['email'];
+            $_SESSION['user_id'] = $user['id'] ?? null;
+
+            // Mag-generate ng 6-digit OTP (PWEDE MONG AYUSIN DITO ANG PAG-SEND NG EMAIL/OTP)
+            $otp = rand(100000, 999999);
+            $_SESSION['otp_code'] = $otp;
+
+            // I-redirect agad sa OTP verification page
+            header("Location: verify_otp.php");
+            exit;
+        } else {
+            $error = "Account not found. Please check your Email or ID Number.";
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - QR-BASED EQUIPMENT MONITORING SYSTEM</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <title>Login - QR-Based Equipment Monitoring System</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f4f6f9; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+        }
+        .card { 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            width: 100%; 
+            max-width: 400px; 
+            text-align: center; 
+        }
+        .logo { 
+            width: 90px; 
+            height: auto; 
+            margin-bottom: 10px; 
+            display: inline-block;
+        }
+        h3 { 
+            margin: 5px 0 0 0; 
+            color: #2d6a4f; 
+            font-size: 1.15rem; 
+            font-weight: bold;
+        }
+        p.sub { 
+            font-size: 0.85rem; 
+            color: #666; 
+            margin-top: 5px;
+            margin-bottom: 20px; 
+        }
+        .alert { 
+            padding: 12px; 
+            border-radius: 4px; 
+            font-size: 0.85rem; 
+            margin-bottom: 20px; 
+            text-align: left; 
+        }
+        .alert-danger { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb; 
+        }
+        .form-group { 
+            text-align: left; 
+            margin-bottom: 20px; 
+        }
+        label { 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            color: #222; 
+            display: block; 
+            margin-bottom: 6px; 
+        }
+        input { 
+            width: 100%; 
+            padding: 11px 12px; 
+            border: 1px solid #ced4da; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            font-size: 0.9rem; 
+            outline: none;
+        }
+        input:focus {
+            border-color: #2d6a4f;
+            box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.15);
+        }
+        button[type="submit"] { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: #2d6a4f; 
+            color: #fff; 
+            border: none; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 0.95rem; 
+        }
+        button[type="submit"]:hover { 
+            background-color: #1b4332; 
+        }
+        .reg-link { 
+            font-size: 0.85rem; 
+            margin-top: 20px; 
+            display: block; 
+            color: #555; 
+            text-decoration: none; 
+        }
+        .reg-link a { 
+            color: #2d6a4f; 
+            font-weight: bold; 
+            text-decoration: none; 
+        }
+        .reg-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
-<body class="bg-light py-5">
-    <div class="container" style="max-width: 500px;">
-        <div class="card shadow border-0 p-4">
-            <!-- Logo at Pamagat -->
-            <div class="text-center mb-4">
-                <img src="logo.jpg" alt="Logo" style="max-height: 80px;" class="mb-2">
-                <h6 class="text-success fw-bold">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h6>
-                <p class="text-muted small mb-0">Account Login</p>
-            </div>
-            
-            <?php if (!empty($error)) { ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($error); ?></div>
-            <?php } ?>
+<body>
+    <div class="card">
+        <!-- School Logo -->
+        <img src="logo.jpg" alt="School Logo" class="logo">
 
-            <form method="POST">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Email Address</label>
-                    <input type="email" name="email" class="form-control" placeholder="Enter your registered email" required>
-                </div>
+        <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
+        <p class="sub">Account Login (OTP Authentication)</p>
 
-                <button type="submit" class="btn btn-success w-100 py-2 fw-bold text-white">Login</button>
-            </form>
-            <div class="text-center mt-3">
-                <p class="small text-muted">Don't have an account? <a href="register.php">Register here</a></p>
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+
+        <form action="login.php" method="POST">
+            <div class="form-group">
+                <label>Email Address or ID Number</label>
+                <input type="text" name="login_input" placeholder="Enter your Email or ID Number" required>
             </div>
-        </div>
+
+            <button type="submit">Send OTP</button>
+        </form>
+
+        <p class="reg-link">Don't have an account? <a href="register.php">Register here</a></p>
     </div>
 </body>
 </html>

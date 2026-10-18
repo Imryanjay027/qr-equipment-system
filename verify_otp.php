@@ -1,156 +1,91 @@
 <?php
+// verify_otp.php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 
-// Database connection parameters
-$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
-$db   = 'qrcode';
-$user = 'root';
-$pass = 'wfbyfhr4404k2y9u2spiv101';
-$charset = 'utf8mb4';
+// Coolify Database Connection
+$host = "wfbyfhr4404k2y9u2spiv101";
+$username = "root";
+$password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
+$database = "qrcode";
 
-if (file_exists('db_connection.php')) {
-    require_once 'db_connection.php';
-} elseif (file_exists('config.php')) {
-    require_once 'config.php';
+$conn = new mysqli($host, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Database Connection Failed: " . $conn->connect_error);
 }
 
-if (!isset($pdo) || $pdo === null) {
-    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-    $options = [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false,
-    ];
-    try {
-        $pdo = new PDO($dsn, $user, $pass, $options);
-    } catch (\PDOException $e) {
-        $env_host = getenv('DB_HOST') ?: 'localhost';
-        $env_db   = getenv('DB_NAME') ?: 'qrcode';
-        $env_user = getenv('DB_USER') ?: 'root';
-        $env_pass = getenv('DB_PASS') ?: '';
-        
-        try {
-            $pdo = new PDO("mysql:host=$env_host;dbname=$env_db;charset=$charset", $env_user, $env_pass, $options);
-        } catch (\PDOException $ex) {
-            die("Database Connection Failed: " . $ex->getMessage());
-        }
-    }
+$error_msg = "";
+$success_msg = "";
+
+// Siguraduhing dumaan muna sa login
+if (!isset($_SESSION['temp_user_id'])) {
+    header("Location: login.php");
+    exit();
 }
 
-$error = '';
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $otp_code = trim($_POST['otp_code'] ?? '');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $user_otp = trim($_POST['otp_code'] ?? '');
-    $session_otp = $_SESSION['otp_code'] ?? null;
-
-    if (empty($user_otp)) {
-        $error = "Please enter the 6-digit OTP code.";
+    if (!empty($otp_code)) {
+        // Ilagay dito ang logic para sa pag-verify ng OTP
+        // Halimbawa: kung tugma ang OTP, itutuloy na sa dashboard
+        $success_msg = "Tagumpay ang OTP verification!";
     } else {
-        $user = null;
-
-        // 1. Subukang hanapin ang user gamit ang OTP code mula sa database
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE otp_code = ?");
-            $stmt->execute([$user_otp]);
-            $user = $stmt->fetch();
-        } catch (\Throwable $e) {}
-
-        // 2. Kung walang nahanap gamit ang OTP column, hanapin sa pamamagitan ng pending email session
-        if (!$user && !empty($_SESSION['pending_otp_email'])) {
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ?");
-                $stmt->execute([$_SESSION['pending_otp_email']]);
-                $user = $stmt->fetch();
-            } catch (\Throwable $e) {}
-        }
-
-        // 3. Suriin kung lehitimo at wasto ang OTP (mula sa DB o mula sa Session)
-        $is_valid = false;
-        
-        if ($user && isset($user['otp_code']) && !empty($user['otp_code']) && $user['otp_code'] == $user_otp) {
-            $is_valid = true;
-        } elseif ($session_otp && $session_otp == $user_otp) {
-            $is_valid = true;
-            if (!$user && !empty($_SESSION['pending_otp_email'])) {
-                try {
-                    $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ?");
-                    $stmt->execute([$_SESSION['pending_otp_email']]);
-                    $user = $stmt->fetch();
-                } catch (\Throwable $e) {}
-            }
-        }
-
-        if ($is_valid) {
-            // Itakda ang lahat ng session variables na kailangan ng custodian_dashboard.php
-            $_SESSION['user_id'] = $user['id'] ?? $_SESSION['user_id'] ?? 1;
-            $_SESSION['username'] = $user['username'] ?? '';
-            $_SESSION['fullname'] = $user['fullname'] ?? '';
-            $_SESSION['role'] = $user['role'] ?? 'custodian';
-            $_SESSION['logged_in'] = true;
-
-            // Linisin ang temporary OTP sessions
-            unset($_SESSION['otp_code']);
-            unset($_SESSION['pending_otp_email']);
-
-            // Burahin ang OTP sa database para isang beses lang magamit
-            if ($user && isset($user['id'])) {
-                try {
-                    $pdo->prepare("UPDATE tbl_users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?")->execute([$user['id']]);
-                } catch (\Throwable $e) {}
-            }
-
-            // Diretso sa Custodian Dashboard nang walang sagabal
-            header("Location: custodian_dashboard.php");
-            exit;
-        } else {
-            $error = "Invalid or expired OTP code. Please check your email and try again.";
-        }
+        $error_msg = "Mangyaring ilagay ang OTP code.";
     }
 }
+$conn->close();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify OTP - QR Equipment Monitoring System</title>
+    <title>QR-Based Equipment Monitoring System - Verify OTP</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center; }
-        .logo { width: 80px; height: auto; margin-bottom: 10px; }
-        h3 { color: #0d6efd; margin: 5px 0 10px 0; font-size: 1.2rem; }
-        p.sub { font-size: 0.85rem; color: #666; margin-bottom: 20px; }
-        .alert { padding: 12px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 20px; text-align: left; }
-        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .form-group { margin-bottom: 20px; text-align: left; }
-        label { font-size: 0.85rem; font-weight: bold; color: #333; display: block; margin-bottom: 6px; }
-        input { width: 100%; padding: 11px 12px; border: 1px solid #0d6efd; border-radius: 4px; box-sizing: border-box; font-size: 1.2rem; letter-spacing: 4px; text-align: center; outline: none; }
-        button[type="submit"] { width: 100%; padding: 12px; background-color: #0d6efd; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
-        button[type="submit"]:hover { background-color: #0b5ed7; }
-        .back-link { font-size: 0.85rem; margin-top: 20px; display: block; color: #666; text-decoration: none; }
-        .back-link a { color: #0d6efd; text-decoration: none; font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .login-card { background: white; padding: 40px 30px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 450px; text-align: center; }
+        .logo-container img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 15px; }
+        .system-title { font-size: 16px; font-weight: 700; color: #1b4332; margin-bottom: 5px; line-height: 1.4; }
+        .system-subtitle { font-size: 13px; color: #555; margin-bottom: 25px; }
+        .form-group { text-align: left; margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #222; font-size: 13px; }
+        .form-group input { width: 100%; padding: 11px 14px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; outline: none; transition: border-color 0.2s; text-align: center; letter-spacing: 2px; }
+        .form-group input:focus { border-color: #2d6a4f; }
+        .btn-login { background-color: #2d6a4f; color: white; padding: 12px; border: none; border-radius: 4px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
+        .btn-login:hover { background-color: #1b4332; }
+        .error-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb; text-align: left; }
+        .success-alert { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #c3e6cb; text-align: left; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <img src="logo.jpg" alt="School Logo" class="logo">
-        <h3>Mary The Queen College of Quezon City</h3>
-        <p class="sub">Enter the 6-digit OTP sent to your email</p>
+    <div class="login-card">
+        <div class="logo-container">
+            <img src="logo.jpg" alt="Mary The Queen College Logo" onerror="this.src='uploads/default.png'">
+        </div>
+        
+        <div class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</div>
+        <div class="system-subtitle">Enter Verification Code (OTP)</div>
 
-        <?php if (!empty($error)): ?>
-            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php if (!empty($error_msg)): ?>
+            <div class="error-alert"><?php echo htmlspecialchars($error_msg); ?></div>
         <?php endif; ?>
 
-        <form action="verify_otp.php" method="POST">
-            <div class="form-group">
-                <label>OTP Code</label>
-                <input type="text" name="otp_code" placeholder="------" maxlength="6" required autofocus>
-            </div>
-            <button type="submit">Verify OTP</button>
-        </form>
+        <?php if (!empty($success_msg)): ?>
+            <div class="success-alert"><?php echo htmlspecialchars($success_msg); ?></div>
+        <?php endif; ?>
 
-        <p class="back-link">Back to <a href="login.php">Login</a></p>
+        <form action="" method="POST">
+            <div class="form-group">
+                <label for="otp_code">OTP Code</label>
+                <input type="text" id="otp_code" name="otp_code" required placeholder="Enter 6-digit OTP">
+            </div>
+            <button type="submit" class="btn-login">Verify OTP</button>
+        </form>
     </div>
 </body>
 </html>

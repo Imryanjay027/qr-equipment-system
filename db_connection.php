@@ -1,17 +1,21 @@
 <?php
 // db_connection.php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Subukan nating tukuyin kung nasa live server o local ka
-$host = (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) ? 'localhost' : 'localhost'; // Palitan ng host ng live server mo kung iba
-$username = "root"; // Palitan ng live database username mo kung kinakailangan
-$password = ""; // Ilagay ang live database password mo kung meron
-$database = "qrcode"; // Ang pangalan ng database mo
+$host = 'localhost';
+$username = 'root';
+$password = ''; // I-update kung may password ang live database mo
+$database = 'qrcode';
 
-// Pagkonekta gamit ang mysqli
-$conn = new mysqli($host, $username, $password, $database);
-
-// Suriin kung may error sa koneksyon
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    $conn = new mysqli($host, $username, $password, $database);
+} catch (mysqli_sql_exception $e) {
+    // Fallback sakaling ang socket naman ang magka-problema sa cloud environment
+    try {
+        $conn = new mysqli('127.0.0.1', $username, $password, $database);
+    } catch (mysqli_sql_exception $e2) {
+        die("Database Connection Failed: " . $e2->getMessage());
+    }
 }
 ?>

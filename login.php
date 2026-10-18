@@ -6,7 +6,6 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Coolify Database Connection
 $host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
 $password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
@@ -17,7 +16,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// 1. Siguraduhing naroon ang table
+// Siguraduhing may table at column para sa OTP
 $conn->query("CREATE TABLE IF NOT EXISTS system_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     fullname VARCHAR(255) NOT NULL,
@@ -25,15 +24,10 @@ $conn->query("CREATE TABLE IF NOT EXISTS system_users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'custodian',
+    otp_code VARCHAR(10) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
-
-// 2. Awtomatikong idagdag ang iyong account kung wala pa
-$check_admin = $conn->query("SELECT id FROM system_users WHERE email = 'ryanjayleoligao64@gmail.com' LIMIT 1");
-if ($check_admin->num_rows == 0) {
-    $conn->query("INSERT INTO system_users (fullname, username, email, password, role) 
-                  VALUES ('Ryan Jay Leoligao', 'ryan', 'ryanjayleoligao64@gmail.com', 'password123', 'admin')");
-}
+$conn->query("ALTER TABLE system_users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(10) DEFAULT NULL");
 
 $error_msg = "";
 
@@ -41,30 +35,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_val = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($input_val)) {
-        try {
-            $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
-            if (!$stmt) {
-                throw new Exception($conn->error);
-            }
-            $stmt->bind_param("ss", $input_val, $input_val);
-            $stmt->execute();
-            $result = $stmt->get_result();
+        $stmt = $conn->prepare("SELECT id, email, fullname FROM system_users WHERE username = ? OR email = ? LIMIT 1");
+        $stmt->bind_param("ss", $input_val, $input_val);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-            if ($result->num_rows > 0) {
-                $user = $result->fetch_assoc();
-                $_SESSION['temp_user_id'] = $user['id'];
-                
-                // ---- NARITO ANG PAGBABAGO: Mag-redirect sa OTP page ----
-                header("Location: verify_otp.php");
-                exit();
-                
-            } else {
-                $error_msg = "Walang nahanap para sa input na: <b>" . htmlspecialchars($input_val) . "</b>";
-            }
-            $stmt->close();
-        } catch (Exception $e) {
-            $error_msg = "Database Error: " . $e->getMessage();
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
+            $_SESSION['temp_user_id'] = $user['id'];
+            
+            // 1. Gumawa ng random 6-digit OTP
+            $otp = rand(100000, 999999);
+
+            // 2. I-save sa database
+            $update_otp = $conn->prepare("UPDATE system_users SET otp_code = ? WHERE id = ?");
+            $update_otp->bind_param("si", $otp, $user['id']);
+            $update_otp->execute();
+            $update_otp->close();
+
+            // 3. Magpadala ng email gamit ang PHP Mail (o PHPMailer kung naka-install)
+            $to = $user['email'];
+            $subject = "QR-Based Equipment Monitoring System - OTP Code";
+            $message = "Hello " . $user['fullname'] . ",\n\nYour OTP verification code is: " . $otp . "\n\nUse this code to complete your login.";
+            $headers = "From: noreply@mqcqc-equipment-monitoring-system.araosds.cloud";
+
+            // Subukang mag-send gamit ang built-in mail function
+            @mail($to, $subject, $message, $headers);
+
+            // Mag-redirect sa verify_otp.php
+            header("Location: verify_otp.php");
+            exit();
+        } else {
+            $error_msg = "Walang nahanap na account para sa input na ito.";
         }
+        $stmt->close();
     } else {
         $error_msg = "Mangyaring ilagay ang iyong Email o ID Number.";
     }
@@ -93,7 +97,7 @@ $conn->close();
         .register-link { margin-top: 20px; font-size: 13px; color: #555; }
         .register-link a { color: #2d6a4f; text-decoration: none; font-weight: 600; }
         .register-link a:hover { text-decoration: underline; }
-        .error-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb; text-align: left; word-break: break-all; }
+        .error-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb; text-align: left; }
     </style>
 </head>
 <body>
@@ -106,7 +110,7 @@ $conn->close();
         <div class="system-subtitle">Account Login (OTP Authentication)</div>
 
         <?php if (!empty($error_msg)): ?>
-            <div class="error-alert"><?php echo $error_msg; ?></div>
+            <div class="error-alert"><?php echo htmlspecialchars($error_msg); ?></div>
         <?php endif; ?>
 
         <form action="" method="POST">

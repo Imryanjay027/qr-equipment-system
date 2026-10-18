@@ -1,15 +1,19 @@
 <?php
-// Gamitin ang domain o IP ng iyong Coolify server
-$host = 'vps.araosds.cloud'; // O ang IP address ng VPS mo kung ano ang ginagamit mo pantawag sa Coolify
+// Gamitin ang eksaktong pangalan mula sa Coolify Name field
+$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101'; // o yung buong text sa Name field sa screenshot
 $user = 'root';
-$pass = ''; // Ilagay ang database password mo rito kung meron
+$pass = ''; // Kung may password kang nilagay sa Normal User Password sa Coolify, ilagay mo rito, kung wala, iwanang blangko
 $dbname = 'qrcode';
-$port = 3306; // Kung binago ang port sa Coolify, ilagay ang tamang port dito
+$port = 3306;
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
-    $conn = new mysqli($host, $user, $pass, $dbname, $port);
+    // Mag-set ng timeout para hindi bumagal o mag-hang ang page kung sakaling magtagal
+    $mysqli = mysqli_init();
+    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+    $mysqli->real_connect($host, $user, $pass, $dbname, $port);
+    $conn = $mysqli;
 } catch (mysqli_sql_exception $e) {
     die("Connection failed: " . $e->getMessage());
 }

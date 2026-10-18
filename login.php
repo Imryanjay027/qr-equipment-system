@@ -23,19 +23,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_val = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($input_val)) {
-        $stmt = $conn->prepare("SELECT id, fullname, role FROM qrcode.system_users WHERE username = ? OR email = ? LIMIT 1");
-        $stmt->bind_param("ss", $input_val, $input_val);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        // Gumamit tayo ng try-catch para mahuli agad kung may table error at maiwasan ang fatal crash
+        try {
+            $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
+            if (!$stmt) {
+                throw new Exception($conn->error);
+            }
+            $stmt->bind_param("ss", $input_val, $input_val);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-        if ($result->num_rows > 0) {
-            $user = $result->fetch_assoc();
-            $_SESSION['temp_user_id'] = $user['id'];
-            // Ilagay dito ang sunod na hakbang para sa OTP
-        } else {
-            $error_msg = "Walang nahanap na account para sa Email o ID na ito.";
+            if ($result->num_rows > 0) {
+                $user = $result->fetch_assoc();
+                $_SESSION['temp_user_id'] = $user['id'];
+                // Ilagay dito ang sunod na hakbang para sa OTP
+            } else {
+                $error_msg = "Walang nahanap na account para sa Email o ID na ito.";
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            $error_msg = "Database Error: " . $e->getMessage();
         }
-        $stmt->close();
     } else {
         $error_msg = "Mangyaring ilagay ang iyong Email o ID Number.";
     }
@@ -64,7 +72,7 @@ $conn->close();
         .register-link { margin-top: 20px; font-size: 13px; color: #555; }
         .register-link a { color: #2d6a4f; text-decoration: none; font-weight: 600; }
         .register-link a:hover { text-decoration: underline; }
-        .error-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb; text-align: left; }
+        .error-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb; text-align: left; word-break: break-all; }
     </style>
 </head>
 <body>

@@ -1,25 +1,41 @@
 <?php
-// Gamitin ang hostname na nakalagay sa iyong Coolify MariaDB resource
-$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
+// Subukan ang iba't ibang posibleng internal Docker IP o hostname para sa MariaDB
+$possible_hosts = [
+    'mariadb-database-wfbyfhr4404k2y9u2spiv101',
+    'mariadb',
+    'database',
+    '172.17.0.1',
+    '172.18.0.1',
+    'localhost'
+];
+
 $user = 'root';
-$pass = ''; // Siguraduhing blangko o naka-match sa Normal User Password sa Coolify
+$pass = ''; // Ilagay ang Normal User Password mo sa Coolify kung meron
 $dbname = 'qrcode';
 $port = 3306;
 
+$conn = null;
+$last_error = "";
+
+mysqli_report(MYSQLI_REPORT_OFF);
+
+foreach ($possible_hosts as $host) {
+    try {
+        $mysqli = mysqli_init();
+        $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 2);
+        if (@$mysqli->real_connect($host, $user, $pass, $dbname, $port)) {
+            $conn = $mysqli;
+            break; // Tagumpay! Nakakonekta na sa host na ito.
+        }
+    } catch (\Throwable $e) {
+        $last_error = $e->getMessage();
+    }
+}
+
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-try {
-    $mysqli = mysqli_init();
-    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-    $mysqli->real_connect($host, $user, $pass, $dbname, $port);
-    $conn = $mysqli;
-} catch (mysqli_sql_exception $e) {
-    // Kung sakaling mag-fail ang container name, subukan ang fallback sa environment o localhost
-    try {
-        $conn = new mysqli('localhost', $user, $pass, $dbname, $port);
-    } catch (\Throwable $ex) {
-        die("Connection failed completely. Error: " . $e->getMessage());
-    }
+if (!$conn) {
+    die("Connection failed on all hosts. Last error: " . $last_error);
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

@@ -2,20 +2,18 @@
 session_start();
 
 // Database connection parameters
-$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101'; // O kung ano ang host variable sa inyong environment
+$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
 $db   = 'qrcode';
 $user = 'root';
-$pass = 'wfbyfhr4404k2y9u2spiv101'; // Siguraduhing tugma sa inyong database password
+$pass = 'wfbyfhr4404k2y9u2spiv101';
 $charset = 'utf8mb4';
 
-// Isama ang db connection file kung mayroon ka, o gamitin ang PDO instance sa ibaba
 if (file_exists('db_connection.php')) {
     require_once 'db_connection.php';
 } elseif (file_exists('config.php')) {
     require_once 'config.php';
 }
 
-// Fallback: Pagbuo ng $pdo connection kung wala pa
 if (!isset($pdo) || $pdo === null) {
     $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
     $options = [
@@ -26,7 +24,6 @@ if (!isset($pdo) || $pdo === null) {
     try {
         $pdo = new PDO($dsn, $user, $pass, $options);
     } catch (\PDOException $e) {
-        // Subukan gamitin ang env variables kung available
         $env_host = getenv('DB_HOST') ?: 'localhost';
         $env_db   = getenv('DB_NAME') ?: 'qrcode';
         $env_user = getenv('DB_USER') ?: 'root';
@@ -50,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    // PANSAMANTALANG LIMIT CHECK (Binago sa 5 muna para sa client test)
+    // PANSAMANTALANG LIMIT CHECK (Binago sa 5 para sa client test)
     if ($role === 'Custodian') {
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_users WHERE role = 'Custodian'");
         $stmt->execute();
@@ -62,7 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($error)) {
-        // I-check kung may umiiral nang email o username
         $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ? OR username = ?");
         $stmt->execute([$email, $username]);
         if ($stmt->rowCount() > 0) {
@@ -70,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
+            // Handle image/selfie if needed depending on your schema
             $insert = $pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
             if ($insert->execute([$username, $fullname, $email, $hashedPassword, $role])) {
                 $success = "Registration successful! You can now log in.";
@@ -89,8 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Account Registration - QR-Based Equipment Monitoring System</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        .logo { max-width: 80px; margin-bottom: 10px; }
+        .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; }
         h3 { margin-bottom: 5px; color: #1b4332; font-size: 1.1rem; }
         p.sub { font-size: 0.9rem; color: #666; margin-bottom: 20px; }
         .alert { padding: 10px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 15px; text-align: left; }
@@ -103,6 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         button:hover { background-color: #1b4332; }
         .login-link { font-size: 0.85rem; margin-top: 15px; display: block; color: #333; text-decoration: none; }
         .login-link a { color: #2d6a4f; font-weight: bold; text-decoration: none; }
+        #camera-section, #upload-section { margin-top: 15px; display: none; text-align: left; }
+        video { width: 100%; border-radius: 4px; background: #000; }
     </style>
 </head>
 <body>
@@ -118,11 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
-        <form action="register.php" method="POST">
+        <form action="register.php" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label>Account Role</label>
-                <select name="role" required>
-                    <option value="Student">Student</option>
+                <select name="role" id="roleSelect" required onchange="toggleFields()">
+                    <option value="">Select Role</option>
+                    <option value="Student">Student (Borrower)</option>
                     <option value="Custodian">Custodian</option>
                 </select>
             </div>
@@ -147,10 +146,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="password" name="password" placeholder="Enter password" required>
             </div>
 
-            <button type="submit">Register</button>
+            <!-- Live Selfie Section para sa Student/Borrower -->
+            <div id="camera-section" class="form-group">
+                <label>Live Selfie Capture</label>
+                <video id="video" autoplay playsinline></video>
+                <button type="button" onclick="captureSelfie()" style="margin-top: 5px; background: #555;">Capture Selfie</button>
+                <canvas id="canvas" style="display:none;"></canvas>
+                <input type="hidden" name="selfie_image" id="selfie_image">
+            </div>
+
+            <!-- Upload Picture Section para sa Custodian -->
+            <div id="upload-section" class="form-group">
+                <label>Upload Profile Picture</label>
+                <input type="file" name="profile_picture" accept="image/*">
+            </div>
+
+            <button type="submit" style="margin-top: 10px;">Register</button>
         </form>
 
         <p class="login-link">Already have an account? <a href="login.php">Login here</a></p>
     </div>
+
+    <script>
+        function toggleFields() {
+            const role = document.getElementById('roleSelect').value;
+            const cameraSection = document.getElementById('camera-section');
+            const uploadSection = document.getElementById('upload-section');
+
+            if (role === 'Student') {
+                cameraSection.style.display = 'block';
+                uploadSection.style.display = 'none';
+                startCamera();
+            } else if (role === 'Custodian') {
+                cameraSection.style.display = 'none';
+                uploadSection.style.display = 'block';
+                stopCamera();
+            } else {
+                cameraSection.style.display = 'none';
+                uploadSection.style.display = 'none';
+                stopCamera();
+            }
+        }
+
+        let videoStream = null;
+        function startCamera() {
+            const video = document.getElementById('video');
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    videoStream = stream;
+                    video.srcObject = stream;
+                })
+                .catch(err => console.error("Camera error: ", err));
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function captureSelfie() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/png');
+            document.getElementById('selfie_image').value = dataURL;
+            alert("Selfie captured successfully!");
+        }
+    </script>
 </body>
 </html>

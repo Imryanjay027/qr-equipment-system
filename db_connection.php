@@ -1,26 +1,25 @@
 <?php
-// Gamitin ang Coolify environment variable para sa host kung available, 
-// o ang pangalan ng database container mula sa iyong project
-$host = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASSWORD') ?: ''; // Ilagay ang password kung kinakailangan
-$dbname = getenv('DB_NAME') ?: 'qrcode';
-$port = (int)(getenv('DB_PORT') ?: 3306);
-
-// Kung sakaling hindi pa naka-link ang network, gamitin muna ang localhost habang inaayos ang network sa Coolify
-if (empty($host)) {
-    $host = 'localhost';
-}
+// Gamitin ang localhost o ang Docker bridge IP kung saan maaari silang mag-usap sa parehong makina
+$host = '172.17.0.1'; // Docker bridge gateway IP
+$user = 'root';
+$pass = ''; // Ilagay ang password kung meron sa MariaDB
+$dbname = 'qrcode';
+$port = 3306;
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
     $mysqli = mysqli_init();
-    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-    $mysqli->real_connect($host, $user, $pass, $dbname, $port);
+    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+    
+    // Subukan muna ang 172.17.0.1, kung mag-fail, subukan ang localhost
+    if (!@$mysqli->real_connect($host, $user, $pass, $dbname, $port)) {
+        $host = '127.0.0.1';
+        $mysqli->real_connect($host, $user, $pass, $dbname, $port);
+    }
     $conn = $mysqli;
 } catch (mysqli_sql_exception $e) {
-    die("Connection failed: " . $e->getMessage() . " (Host: $host)");
+    die("Connection failed: " . $e->getMessage());
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

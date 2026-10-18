@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $otp = rand(100000, 999999);
             $_SESSION['otp_code'] = $otp;
 
-            // Pagpapadala ng email gamit ang PHPMailer at Gmail SMTP
+            // Pagpapadala ng email gamit ang PHPMailer at Gmail SMTP (Port 465 SSL)
             $mail = new PHPMailer(true);
             try {
                 // Server settings
@@ -74,9 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mail->Host       = 'smtp.gmail.com';
                 $mail->SMTPAuth   = true;
                 $mail->Username   = 'ryanjayleoligao64@gmail.com';
-                $mail->Password   = 'hjqxbxkyqsngepi';
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = 587;
+                $mail->Password   = 'hjqxbxkyqsngepi'; // Walang spaces
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+                $mail->Port       = 465;
 
                 // Recipients
                 $mail->setFrom('ryanjayleoligao64@gmail.com', 'QR Equipment Monitoring System');

@@ -38,7 +38,6 @@ if (!isset($pdo) || $pdo === null) {
 }
 
 $error = '';
-$email = $_SESSION['pending_otp_email'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_otp = trim($_POST['otp_code'] ?? '');
@@ -46,36 +45,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Please enter the 6-digit OTP code.";
     } else {
-        $user = null;
+        // Direktang hahanapin sa database ang user gamit ang OTP na natanggap mula sa Gmail
+        $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE otp_code = ?");
+        $stmt->execute([$user_otp]);
+        $user = $stmt->fetch();
 
-        if (!empty($email)) {
-            $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
-        }
-
-        $session_otp = $_SESSION['otp_code'] ?? null;
-        $db_otp = $user['otp_code'] ?? null;
-
-        // I-verify kung tumutugma sa Database OTP o Session OTP
-        if (($db_otp && $db_otp == $user_otp) || ($session_otp && $session_otp == $user_otp)) {
-            // Success! Set persistent session flags
-            $_SESSION['user_id'] = $user['id'] ?? $_SESSION['user_id'] ?? 1;
+        if ($user) {
+            // Success! I-set ang mga session flags para sa dashboard
+            $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'] ?? '';
             $_SESSION['fullname'] = $user['fullname'] ?? '';
             $_SESSION['role'] = $user['role'] ?? 'custodian';
 
-            // Linisin ang OTP pagkatapos magamit (May try-catch para hindi mag-fatal error)
-            unset($_SESSION['otp_code']);
-            if ($user) {
-                try {
-                    $pdo->prepare("UPDATE tbl_users SET otp_code = NULL WHERE id = ?")->execute([$user['id']]);
-                } catch (\Throwable $e) {
-                    // Huwag pansinin ang exception para tuloy ang redirect sa dashboard
-                }
+            // Linisin ang OTP sa database para hindi na magamit ulit (one-time use)
+            try {
+                $pdo->prepare("UPDATE tbl_users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?")->execute([$user['id']]);
+            } catch (\Throwable $e) {
+                // Huwag pansinin kung sakaling may minor issue sa update
             }
 
-            // Direct Redirect sa Custodian Dashboard o katumbas nito
+            // Diretso sa Custodian Dashboard
             if (file_exists('custodian_dashboard.php')) {
                 header("Location: custodian_dashboard.php");
             } elseif (file_exists('dashboard.php')) {
@@ -85,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             exit;
         } else {
-            $error = "Invalid OTP code. Please check your email and try again.";
+            $error = "Invalid or expired OTP code. Please check your Gmail and try again.";
         }
     }
 }

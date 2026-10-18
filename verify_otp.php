@@ -1,121 +1,134 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-include 'db_connection.php';
 session_start();
 
-$error = "";
+// Database connection parameters
+$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
+$db   = 'qrcode';
+$user = 'root';
+$pass = 'wfbyfhr4404k2y9u2spiv101';
+$charset = 'utf8mb4';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $entered_otp = trim($_POST['otp'] ?? '');
-    
-    if (isset($_SESSION['otp'], $_SESSION['otp_expiry']) && time() <= $_SESSION['otp_expiry']) {
-        if ($entered_otp == $_SESSION['otp']) {
-            
-            $user_id = $_SESSION['temp_user_id'] ?? '';
-            
-            if (!empty($user_id)) {
-                $sql = "SELECT * FROM tbl_users WHERE id = ?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("i", $user_id);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                
-                if ($row = $result->fetch_assoc()) {
-                    // Itakda ang permanenteng session flag para hindi ma-log out tuwing magre-refresh
-                    $_SESSION['logged_in'] = true;
-                    
-                    $_SESSION['user_id'] = $row['id'];
-                    $_SESSION['email'] = $row['email'] ?? $row['Email'];
-                    $_SESSION['fullname'] = $row['fullname'] ?? $row['name'] ?? '';
-                    $_SESSION['student_id'] = $row['student_id'] ?? $row['username'] ?? '';
-                    $_SESSION['course_year'] = $row['course_year'] ?? '';
-                    $_SESSION['role'] = $row['role'] ?? 'Student';
-                    $_SESSION['photo'] = $row['photo'] ?? '';
-                    
-                    // Linisin ang temporary session variables
-                    unset($_SESSION['otp'], $_SESSION['otp_expiry'], $_SESSION['temp_user_id'], $_SESSION['temp_user_role'], $_SESSION['temp_email']);
-                    
-                    // Tamang pag-redirect batay sa database role
-                    $role = strtolower(trim($row['role'] ?? ''));
-                    if ($role === 'custodian') {
-                        header("Location: custodian_dashboard.php");
-                        exit();
-                    } else {
-                        header("Location: borrower.php");
-                        exit();
-                    }
-                }
+if (file_exists('db_connection.php')) {
+    require_once 'db_connection.php';
+} elseif (file_exists('config.php')) {
+    require_once 'config.php';
+}
+
+if (!isset($pdo) || $pdo === null) {
+    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ];
+    try {
+        $pdo = new PDO($dsn, $user, $pass, $options);
+    } catch (\PDOException $e) {
+        $env_host = getenv('DB_HOST') ?: 'localhost';
+        $env_db   = getenv('DB_NAME') ?: 'qrcode';
+        $env_user = getenv('DB_USER') ?: 'root';
+        $env_pass = getenv('DB_PASS') ?: '';
+        
+        try {
+            $pdo = new PDO("mysql:host=$env_host;dbname=$env_db;charset=$charset", $env_user, $env_pass, $options);
+        } catch (\PDOException $ex) {
+            die("Database Connection Failed: " . $ex->getMessage());
+        }
+    }
+}
+
+$error = '';
+$email = $_SESSION['pending_otp_email'] ?? '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $user_otp = trim($_POST['otp_code'] ?? '');
+
+    if (empty($user_otp)) {
+        $error = "Please enter the 6-digit OTP code.";
+    } else {
+        $user = null;
+
+        if (!empty($email)) {
+            $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+        }
+
+        $session_otp = $_SESSION['otp_code'] ?? null;
+        $db_otp = $user['otp_code'] ?? null;
+
+        // I-verify kung tumutugma sa Database OTP o Session OTP
+        if (($db_otp && $db_otp == $user_otp) || ($session_otp && $session_otp == $user_otp)) {
+            // Success! Set persistent session flags
+            $_SESSION['user_id'] = $user['id'] ?? $_SESSION['user_id'] ?? 1;
+            $_SESSION['username'] = $user['username'] ?? '';
+            $_SESSION['fullname'] = $user['fullname'] ?? '';
+            $_SESSION['role'] = $user['role'] ?? 'custodian'; // Default role
+
+            // Linisin ang OTP pagkatapos magamit
+            unset($_SESSION['otp_code']);
+            if ($user) {
+                $pdo->prepare("UPDATE tbl_users SET otp_code = NULL WHERE id = ?")->execute([$user['id']]);
             }
 
+            // Direct Redirect sa Custodian Dashboard (o nababagay na pahina)
+            if (file_exists('custodian_dashboard.php')) {
+                header("Location: custodian_dashboard.php");
+            } elseif (file_exists('dashboard.php')) {
+                header("Location: dashboard.php");
+            } else {
+                header("Location: index.php");
+            }
+            exit;
         } else {
-            $error = "Invalid OTP code. Please try again.";
+            $error = "Invalid OTP code. Please check your email and try again.";
         }
-    } else {
-        $error = "OTP code has expired. Please log in again.";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify OTP - Mary The Queen College of Quezon City</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Verify OTP - QR Equipment Monitoring System</title>
     <style>
-        body {
-            background-color: #f4f7f6;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .verify-card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-        }
-        .btn-primary {
-            background-color: #0d6efd;
-            border: none;
-        }
-        .btn-primary:hover {
-            background-color: #0b5ed7;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center; }
+        .logo { width: 80px; height: auto; margin-bottom: 10px; }
+        h3 { color: #0d6efd; margin: 5px 0 10px 0; font-size: 1.2rem; }
+        p.sub { font-size: 0.85rem; color: #666; margin-bottom: 20px; }
+        .alert { padding: 12px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 20px; text-align: left; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { font-size: 0.85rem; font-weight: bold; color: #333; display: block; margin-bottom: 6px; }
+        input { width: 100%; padding: 11px 12px; border: 1px solid #0d6efd; border-radius: 4px; box-sizing: border-box; font-size: 1.2rem; letter-spacing: 4px; text-align: center; outline: none; }
+        button[type="submit"] { width: 100%; padding: 12px; background-color: #0d6efd; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+        button[type="submit"]:hover { background-color: #0b5ed7; }
+        .back-link { font-size: 0.85rem; margin-top: 20px; display: block; color: #666; text-decoration: none; }
+        .back-link a { color: #0d6efd; text-decoration: none; font-weight: bold; }
     </style>
 </head>
-<body class="d-flex align-items-center justify-content-center vh-100">
+<body>
+    <div class="card">
+        <img src="logo.jpg" alt="School Logo" class="logo">
+        <h3>Mary The Queen College of Quezon City</h3>
+        <p class="sub">Enter the 6-digit OTP sent to your email</p>
 
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="card verify-card p-4 bg-white">
-                    <div class="text-center mb-4">
-                        <img src="logo.jpg" alt="Logo" class="mb-2" style="max-height: 70px;">
-                        <h4 class="fw-bold text-primary mb-1">Mary The Queen College of Quezon City</h4>
-                        <p class="text-muted small">Enter the 6-digit OTP sent to your email</p>
-                    </div>
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
 
-                    <?php if (!empty($error)) { ?>
-                        <div class="alert alert-danger py-2 text-center small" role="alert">
-                            <?= htmlspecialchars($error); ?>
-                        </div>
-                    <?php } ?>
-
-                    <form method="POST" action="">
-                        <div class="mb-4">
-                            <label for="otp" class="form-label fw-semibold text-secondary small">OTP Code</label>
-                            <input type="text" class="form-control text-center tracking-widest" id="otp" name="otp" placeholder="------" maxlength="6" required autofocus>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Verify OTP</button>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <p class="small text-muted mb-0">Back to <a href="logout.php" class="text-decoration-none fw-bold">Login</a></p>
-                    </div>
-                </div>
+        <form action="verify_otp.php" method="POST">
+            <div class="form-group">
+                <label>OTP Code</label>
+                <input type="text" name="otp_code" placeholder="------" maxlength="6" required autofocus>
             </div>
-        </div>
-    </div>
+            <button type="submit">Verify OTP</button>
+        </form>
 
+        <p class="back-link">Back to <a href="login.php">Login</a></p>
+    </div>
 </body>
 </html>

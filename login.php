@@ -6,7 +6,6 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Coolify Database Connection
 $host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
 $password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
@@ -17,7 +16,6 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Awtomatikong gawin ang table kung wala pa sa Coolify database na ito
 $conn->query("CREATE TABLE IF NOT EXISTS system_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     fullname VARCHAR(255) NOT NULL,
@@ -34,26 +32,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_val = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($input_val)) {
-        try {
-            $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
-            if (!$stmt) {
-                throw new Exception($conn->error);
-            }
-            $stmt->bind_param("ss", $input_val, $input_val);
-            $stmt->execute();
-            $result = $stmt->get_result();
+        $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
+        $stmt->bind_param("ss", $input_val, $input_val);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-            if ($result->num_rows > 0) {
-                $user = $result->fetch_assoc();
-                $_SESSION['temp_user_id'] = $user['id'];
-                // Ilagay dito ang sunod na hakbang para sa OTP
-            } else {
-                $error_msg = "Walang nahanap na account para sa Email o ID na ito.";
-            }
-            $stmt->close();
-        } catch (Exception $e) {
-            $error_msg = "Database Error: " . $e->getMessage();
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
+            $_SESSION['temp_user_id'] = $user['id'];
+            $error_msg = "Tagumpay! Nakita ang account ID: " . $user['id'];
+        } else {
+            // Debugging info para malaman kung ano ang sinubukan i-search
+            $error_msg = "Walang nahanap para sa input na: <b>" . htmlspecialchars($input_val) . "</b>";
         }
+        $stmt->close();
     } else {
         $error_msg = "Mangyaring ilagay ang iyong Email o ID Number.";
     }
@@ -95,7 +87,7 @@ $conn->close();
         <div class="system-subtitle">Account Login (OTP Authentication)</div>
 
         <?php if (!empty($error_msg)): ?>
-            <div class="error-alert"><?php echo htmlspecialchars($error_msg); ?></div>
+            <div class="error-alert"><?php echo $error_msg; ?></div>
         <?php endif; ?>
 
         <form action="" method="POST">

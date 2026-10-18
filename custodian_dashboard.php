@@ -22,20 +22,26 @@ if (isset($_SESSION['fullname'])) {
     $fullname_custodian = $_SESSION['fullname'];
 }
 
-// Kunin ang profile info ng kasalukuyang user mula sa session
+// Kunin ang profile info ng kasalukuyang user mula sa session o database
 $user_id = $_SESSION['user_id'] ?? 0;
 $user_student_id = $_SESSION['student_id'] ?? 'CUST-001';
-$user_photo = $_SESSION['photo'] ?? 'uploads/default.png';
+$user_photo = '';
 
-// Subukang mag-query sa database para makuha ang pinakasariwang profile info
 if ($conn && $user_id) {
-    $user_query = mysqli_query($conn, "SELECT student_id, fullname, photo FROM tbl_users WHERE id = '$user_id'");
+    $user_query = mysqli_query($conn, "SELECT * FROM tbl_users WHERE id = '$user_id'");
     if ($user_query && mysqli_num_rows($user_query) > 0) {
         $u_data = mysqli_fetch_assoc($user_query);
         if (!empty($u_data['fullname'])) $fullname_custodian = $u_data['fullname'];
         if (!empty($u_data['student_id'])) $user_student_id = $u_data['student_id'];
-        if (!empty($u_data['photo'])) $user_photo = $u_data['photo'];
+        if (!empty($u_data['photo'])) $user_photo = trim($u_data['photo']);
     }
+}
+
+// Ayusin ang path ng larawan para sigurado na ma-load ng browser
+if (empty($user_photo)) {
+    $user_photo_url = "uploads/default.png";
+} else {
+    $user_photo_url = (strpos($user_photo, 'uploads/') === false) ? "uploads/" . $user_photo : $user_photo;
 }
 
 if (isset($_POST['update_status']) && isset($_POST['record_id']) && isset($_POST['status'])) {
@@ -127,7 +133,7 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 <div class="container">
     <!-- Active User/Custodian Profile Overview -->
     <div class="profile-card">
-        <img src="<?php echo htmlspecialchars($user_photo); ?>" alt="Profile Picture" class="profile-avatar" onerror="this.src='uploads/default.png';">
+        <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar" onerror="this.src='uploads/default.png';">
         <div class="profile-details">
             <h2><?php echo htmlspecialchars($fullname_custodian); ?></h2>
             <div class="profile-role">Account Role: <strong>Property Custodian</strong></div>

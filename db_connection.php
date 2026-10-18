@@ -1,37 +1,17 @@
 <?php
-// Subukan ang iba't ibang paraan ng pagkonekta (Internal name, IP, o localhost)
-$hosts = [
-    'mariadb-database-wfbyfhr4404k2y9u2spiv101',
-    '127.0.0.1',
-    'localhost',
-    'host.docker.internal'
-];
-
+// Gamitin ang IP ng iyong VPS / Server kung saan naka-host ang Coolify at ang database port nito
+$host = 'IP_NG_VPS_MO_DITO'; // Halimbawa: '192.168.1.50' o ang domain ng server mo
 $user = 'root';
-$pass = ''; // Ilagay ang password dito kung meron
+$pass = ''; // Ilagay ang database password mo rito kung meron
 $dbname = 'qrcode';
-$port = 3306;
-
-$conn = null;
-$last_error = "";
-
-mysqli_report(MYSQLI_REPORT_OFF);
-
-foreach ($hosts as $host) {
-    try {
-        $conn = @new mysqli($host, $user, $pass, $dbname, $port);
-        if (!$conn->connect_error) {
-            break; // Tagumpay! Nakakonekta na.
-        }
-    } catch (\Throwable $e) {
-        $last_error = $e->getMessage();
-    }
-}
+$port = 3307; // Ang public port ng database sa Coolify (kung binago) o 3306
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-if (!$conn || $conn->connect_error) {
-    die("Connection failed on all available hosts. Last error: " . ($conn->connect_error ?? $last_error));
+try {
+    $conn = new mysqli($host, $user, $pass, $dbname, $port);
+} catch (mysqli_sql_exception $e) {
+    die("Connection failed: " . $e->getMessage());
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

@@ -1,23 +1,17 @@
 <?php
+// Gamitin ang container name kasama ang coolify network context o ang environment variables
+$host = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASSWORD') ?: '';
 $dbname = getenv('DB_NAME') ?: 'qrcode';
 $port = (int)(getenv('DB_PORT') ?: 3306);
 
-// Subukan nating direktang gamitin ang IP ng iyong Coolify server o ang localhost loopback sa loob ng container
-$host = '127.0.0.1'; 
-
-// I-on ang lahat ng error reporting para makita natin ang totoong dahilan
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
-    $mysqli = mysqli_init();
-    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-    $mysqli->real_connect($host, $user, $pass, $dbname, $port);
-    $conn = $mysqli;
+    $conn = new mysqli($host, $user, $pass, $dbname, $port);
 } catch (mysqli_sql_exception $e) {
-    // I-print ang eksaktong error mula sa database
-    die("EXAKTONG ERROR: " . $e->getMessage() . " | Host: $host | User: $user | Port: $port");
+    die("Connection failed: " . $e->getMessage());
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

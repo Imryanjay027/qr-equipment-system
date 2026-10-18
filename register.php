@@ -3,10 +3,8 @@ session_start();
 
 // Database connection parameters
 $host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
-$db   = 'qrcode';
-$user = 'root';
-$pass = 'wfbyfhr4404k2y9u2spiv101';
-$charset = 'utf8mb4';
+$db   = 'qrcode';$user = 'root';
+$pass = 'wfbyfhr4404k2y9u2spiv101';$charset = 'utf8mb4';
 
 if (file_exists('db_connection.php')) {
     require_once 'db_connection.php';
@@ -14,7 +12,7 @@ if (file_exists('db_connection.php')) {
     require_once 'config.php';
 }
 
-if (!isset($pdo) || $pdo === null) {
+if (!isset($pdo) \vert{}\vert{}$pdo === null) {
     $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
     $options = [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -22,53 +20,47 @@ if (!isset($pdo) || $pdo === null) {
         PDO::ATTR_EMULATE_PREPARES   => false,
     ];
     try {
-        $pdo = new PDO($dsn, $user, $pass, $options);
+        $pdo = new PDO($dsn,$user, $pass,$options);
     } catch (\PDOException $e) {
-        $env_host = getenv('DB_HOST') ?: 'localhost';
-        $env_db   = getenv('DB_NAME') ?: 'qrcode';
-        $env_user = getenv('DB_USER') ?: 'root';
-        $env_pass = getenv('DB_PASS') ?: '';
+        $env_host = getenv('DB_HOST') ?: 'localhost';$env_db   = getenv('DB_NAME') ?: 'qrcode';
+        $env_user = getenv('DB_USER') ?: 'root';$env_pass = getenv('DB_PASS') ?: '';
         
         try {
-            $pdo = new PDO("mysql:host=$env_host;dbname=$env_db;charset=$charset", $env_user, $env_pass, $options);
+            $pdo = new PDO("mysql:host=$env_host;dbname=$env_db;charset=$charset", $env_user, $env_pass,$options);
         } catch (\PDOException $ex) {
             die("Database Connection Failed: " . $ex->getMessage());
         }
     }
 }
 
-$error = '';
-$success = '';
+$error = '';$success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $role = $_POST['role'] ?? '';
+    $role =$_POST['role'] ?? '';
     $username = trim($_POST['username'] ?? '');
     $fullname = trim($_POST['fullname'] ?? '');
     $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $password =$_POST['password'] ?? '';
 
     // PANSAMANTALANG LIMIT CHECK (Binago sa 5 para sa client test)
     if ($role === 'Custodian') {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_users WHERE role = 'Custodian'");
+        $stmt =$pdo->prepare("SELECT COUNT(*) FROM tbl_users WHERE role = 'Custodian'");
         $stmt->execute();
-        $custodianCount = $stmt->fetchColumn();
+        $custodianCount =$stmt->fetchColumn();
 
-        if ($custodianCount >= 5) { // Ibalik sa 2 pagkatapos ng testing
-            $error = "Maximum limit of 5 Custodian accounts reached.";
+        if ($custodianCount >= 5) { // Ibalik sa 2 pagkatapos ng testing$error = "Maximum limit of 5 Custodian accounts reached.";
         }
     }
 
     if (empty($error)) {
-        $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ? OR username = ?");
-        $stmt->execute([$email, $username]);
-        if ($stmt->rowCount() > 0) {
-            $error = "Email or Username already exists.";
+        $stmt =$pdo->prepare("SELECT * FROM tbl_users WHERE email = ? OR username = ?");
+        $stmt->execute([$email,$username]);
+        if ($stmt->rowCount() > 0) {$error = "Email or Username already exists.";
         } else {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-            $insert = $pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
-            if ($insert->execute([$username, $fullname, $email, $hashedPassword, $role])) {
-                $success = "Registration successful! You can now log in.";
+            $insert =$pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
+            if ($insert->execute([$username,$fullname, $email,$hashedPassword, $role])) {$success = "Registration successful! You can now log in.";
             } else {
                 $error = "Something went wrong. Please try again.";
             }
@@ -103,14 +95,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center; 
         }
         .logo { 
-            width: 80px; 
-            height: 80px; 
-            object-fit: contain; 
-            margin-bottom: 5px; 
+            width: 90px; 
+            height: auto; 
+            margin-bottom: 10px; 
+            display: inline-block;
         }
         h3 { 
             margin: 5px 0 0 0; 
-            color: #1b4332; 
+            color: #2d6a4f; /* Green font color */
             font-size: 1.15rem; 
             font-weight: bold;
         }
@@ -205,8 +197,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <div class="card">
-        <!-- Mary the Queen College Logo (Palitan ang filename kung kinakailangan) -->
-        <img src="logo.png" alt="School Logo" class="logo" onerror="this.style.display='none'">
+        <!-- Mary the Queen College Logo (gamit ang logo.jpg) -->
+        <img src="logo.jpg" alt="School Logo" class="logo">
 
         <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
         <p class="sub">Account Registration</p>
@@ -277,48 +269,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const uploadSection = document.getElementById('upload-section');
 
             if (role === 'Student') {
-                cameraSection.style.display = 'block';
-                uploadSection.style.display = 'none';
-                startCamera();
-            } else if (role === 'Custodian') {
-                cameraSection.style.display = 'none';
-                uploadSection.style.display = 'block';
-                stopCamera();
-            } else {
-                cameraSection.style.display = 'none';
-                uploadSection.style.display = 'none';
-                stopCamera();
-            }
-        }
-
-        let videoStream = null;
-        function startCamera() {
-            const video = document.getElementById('video');
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    videoStream = stream;
-                    video.srcObject = stream;
-                })
-                .catch(err => console.error("Camera error: ", err));
-        }
-
-        function stopCamera() {
-            if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
-            }
-        }
-
-        function captureSelfie() {
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/png');
-            document.getElementById('selfie_image').value = dataURL;
-            alert("Selfie captured successfully!");
-        }
-    </script>
-</body>
-</html>
+                cameraSection.style.

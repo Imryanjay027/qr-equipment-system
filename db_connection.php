@@ -1,6 +1,6 @@
 <?php
-// Kunin ang mga detalye mula sa Coolify environment variables
-$host = getenv('DB_HOST') ?: '127.0.0.1';
+// Kunin ang mga koneksyon mula sa Coolify environment variables
+$host = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASSWORD') ?: '';
 $dbname = getenv('DB_NAME') ?: 'qrcode';
@@ -11,7 +11,7 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 try {
     $conn = new mysqli($host, $user, $pass, $dbname, $port);
 } catch (mysqli_sql_exception $e) {
-    die("Connection failed using host '$host': " . $e->getMessage());
+    die("Connection failed: " . $e->getMessage());
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

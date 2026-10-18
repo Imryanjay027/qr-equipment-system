@@ -1,6 +1,7 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Itago ang warnings sa display para hindi lumitaw sa itaas ng form, pero i-log pa rin kung kailangan
+ini_set('display_errors', 0);
 
 include 'db_connection.php';
 session_start();
@@ -18,8 +19,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     $photo_path = "";
 
-    // Siguraduhing nage-exist at writable ang uploads folder para sa Coolify
-    $target_dir = "uploads/";
+    // Gamitin ang tamang absolute path gamit ang __DIR__ para sigurado sa Coolify container
+    $target_dir = __DIR__ . "/uploads/";
     if (!file_exists($target_dir)) {
         @mkdir($target_dir, 0777, true);
     }
@@ -32,16 +33,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (count($image_parts) == 2) {
                 $image_base64 = base64_decode($image_parts[1]);
                 $file_name = "student_" . time() . "_" . mt_rand(1000, 9999) . ".jpg";
-                $photo_path = $target_dir . $file_name;
-                file_put_contents($photo_path, $image_base64);
+                $photo_path = "uploads/" . $file_name; // Relative path para sa database
+                file_put_contents($target_dir . $file_name, $image_base64);
             }
         }
     } else {
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
             $file_extension = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
             $file_name = "custodian_" . time() . "_" . mt_rand(1000, 9999) . "." . $file_extension;
-            $photo_path = $target_dir . $file_name;
-            move_uploaded_file($_FILES['photo']['tmp_name'], $photo_path);
+            $photo_path = "uploads/" . $file_name; // Relative path para sa database
+            @move_uploaded_file($_FILES['photo']['tmp_name'], $target_dir . $file_name);
         }
     }
 

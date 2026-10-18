@@ -88,8 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="card shadow border-0 p-4">
             <!-- Logo at Pamagat -->
             <div class="text-center mb-4">
-                <!-- Palitan ang src kung iba ang path ng logo mo -->
-                <img src="logo.png" alt="Logo" style="max-height: 80px;" class="mb-2 onerror-hide">
+                <img src="logo.jpg" alt="Logo" style="max-height: 80px;" class="mb-2">
                 <h6 class="text-success fw-bold">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h6>
                 <p class="text-muted small mb-0">Account Registration</p>
             </div>

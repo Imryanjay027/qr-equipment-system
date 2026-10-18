@@ -1,10 +1,10 @@
 <?php
-// Gamitin ang IP ng iyong VPS / Server kung saan naka-host ang Coolify at ang database port nito
-$host = 'IP_NG_VPS_MO_DITO'; // Halimbawa: '192.168.1.50' o ang domain ng server mo
+// Gamitin ang domain o IP ng iyong Coolify server
+$host = 'vps.araosds.cloud'; // O ang IP address ng VPS mo kung ano ang ginagamit mo pantawag sa Coolify
 $user = 'root';
 $pass = ''; // Ilagay ang database password mo rito kung meron
 $dbname = 'qrcode';
-$port = 3307; // Ang public port ng database sa Coolify (kung binago) o 3306
+$port = 3306; // Kung binago ang port sa Coolify, ilagay ang tamang port dito
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 

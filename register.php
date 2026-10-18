@@ -45,7 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $fullname = trim($_POST['fullname'] ?? '');
     $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
 
     // PANSAMANTALANG LIMIT CHECK (Binago sa 5 para sa client test)
     if ($role === 'Custodian') {
@@ -64,11 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->rowCount() > 0) {
             $error = "Email or Username already exists.";
         } else {
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            // Mag-generate ng random placeholder password para sa database dahil OTP-based ang login
+            $randomPassword = bin2hex(random_bytes(16));
+            $hashedPassword = password_hash($randomPassword, PASSWORD_DEFAULT);
 
             $insert = $pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
             if ($insert->execute([$username, $fullname, $email, $hashedPassword, $role])) {
-                $success = "Registration successful! You can now log in.";
+                $success = "Registration successful! You can now log in via OTP.";
             } else {
                 $error = "Something went wrong. Please try again.";
             }
@@ -242,11 +243,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label>Email Address</label>
                 <input type="email" name="email" placeholder="Enter your email" required>
-            </div>
-
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="Enter password" required>
             </div>
 
             <!-- Live Selfie Section para sa Student -->

@@ -17,40 +17,24 @@ if (!$is_logged_in || ($role !== 'custodian' && $role !== 'admin')) {
     exit();
 }
 
-$fullname_custodian = $_SESSION['fullname'] ?? 'Property Custodian';
-$user_student_id = $_SESSION['student_id'] ?? 'CUST-001';
-$user_photo = '';
+$fullname_custodian = 'Ryan Jay Leoligao';
+$user_student_id = 'CUST-001';
+$user_photo = 'ryan.jpg'; // Tuwirang itinakda natin ang ryan.jpg para sa custodian
 
-$user_id = $_SESSION['user_id'] ?? 0;
-$user_email = $_SESSION['email'] ?? 'ryanjayleoligao64@gmail.com';
-
+// Kunin ang pinakabagong detalye mula sa database kung saan student_id ay CUST-001 o ID 9
 if ($conn) {
-    $user_query = null;
-    if ($user_id > 0) {
-        $user_query = mysqli_query($conn, "SELECT * FROM tbl_users WHERE id = '$user_id' LIMIT 1");
-    }
-    
-    if ((!$user_query || mysqli_num_rows($user_query) === 0) && !empty($user_email)) {
-        $user_query = mysqli_query($conn, "SELECT * FROM tbl_users WHERE email = '$user_email' LIMIT 1");
-    }
-
+    $user_query = mysqli_query($conn, "SELECT * FROM tbl_users WHERE student_id = 'CUST-001' OR id = 9 LIMIT 1");
     if ($user_query && mysqli_num_rows($user_query) > 0) {
         $u_data = mysqli_fetch_assoc($user_query);
         if (!empty($u_data['fullname'])) $fullname_custodian = $u_data['fullname'];
         if (!empty($u_data['student_id'])) $user_student_id = $u_data['student_id'];
         if (!empty($u_data['photo'])) $user_photo = trim($u_data['photo']);
-        
-        $_SESSION['user_id'] = $u_data['id'];
-        $_SESSION['fullname'] = $fullname_custodian;
-        $_SESSION['student_id'] = $user_student_id;
-        $_SESSION['photo'] = $user_photo;
     }
 }
 
-// Siguraduhing walang 404 error sa pamamagitan ng paggamit ng UI Avatars o uploads path
-if (empty($user_photo) || $user_photo == 'default.png') {
-    // Gumagamit ito ng initials ng pangalan mo para laging maganda at lilitaw agad
-    $user_photo_url = "https://ui-avatars.com/api/?name=" . urlencode($fullname_custodian) . "&background=1a365d&color=ffffff&size=150&bold=true";
+// Siguraduhing tama ang landas patungo sa uploads folder
+if (empty($user_photo)) {
+    $user_photo_url = "uploads/default.png";
 } else {
     $user_photo_url = (strpos($user_photo, 'uploads/') === false) ? "uploads/" . $user_photo : $user_photo;
 }
@@ -121,7 +105,6 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
         .btn-replaced { background-color: #ffc107; color: #333; }
         .btn-replaced:hover { background-color: #e0a800; }
 
-        /* Mobile Responsive Media Queries */
         @media (max-width: 768px) {
             .navbar { padding: 12px 15px; flex-direction: column; align-items: flex-start; }
             .nav-links { width: 100%; justify-content: space-between; }
@@ -144,7 +127,7 @@ $result_borrowers = mysqli_query($conn, $query_borrowers);
 <div class="container">
     <!-- Property Custodian Profile Overview -->
     <div class="profile-card">
-        <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar">
+        <img src="<?php echo htmlspecialchars($user_photo_url); ?>" alt="Profile Picture" class="profile-avatar" onerror="this.src='uploads/default.png';">
         <div class="profile-details">
             <h2><?php echo htmlspecialchars($fullname_custodian); ?></h2>
             <div class="profile-role">Role: <strong>Property Custodian</strong></div>

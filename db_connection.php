@@ -10,7 +10,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// 1. Gumawa ng table kung wala pa na kumpleto ang kolum kasama ang password
+// 1. Gumawa ng table kung wala pa
 $conn->query("CREATE TABLE IF NOT EXISTS tbl_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     role VARCHAR(50) DEFAULT 'Student',
@@ -24,7 +24,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS tbl_users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
-// 2. Ligtas na idagdag ang bawat kolum kung sakaling lumang table ang nauna
+// 2. Ligtas na i-update o idagdag ang mga kolum
 $columns = [
     "ALTER TABLE tbl_users ADD COLUMN role VARCHAR(50) DEFAULT 'Student'",
     "ALTER TABLE tbl_users ADD COLUMN username VARCHAR(100)",
@@ -32,7 +32,6 @@ $columns = [
     "ALTER TABLE tbl_users ADD COLUMN fullname VARCHAR(150)",
     "ALTER TABLE tbl_users ADD COLUMN course_year VARCHAR(100)",
     "ALTER TABLE tbl_users ADD COLUMN email VARCHAR(150)",
-    "ALTER TABLE tbl_users ADD COLUMN password VARCHAR(255) NULL",
     "ALTER TABLE tbl_users ADD COLUMN photo VARCHAR(255)"
 ];
 
@@ -40,7 +39,14 @@ foreach ($columns as $sql) {
     try {
         $conn->query($sql);
     } catch (mysqli_sql_exception $e) {
-        // Hahayaan lang kung umiiral na ang kolum para hindi mag-error
+        // Hahayaan lang kung umiiral na ang kolum
     }
+}
+
+// 3. Piliting gawing NULL ang password column kung sakaling NOT NULL ito dati
+try {
+    $conn->query("ALTER TABLE tbl_users MODIFY COLUMN password VARCHAR(255) NULL");
+} catch (mysqli_sql_exception $e) {
+    // Hahayaan lang kung sakaling may error sa pagbabago
 }
 ?>

@@ -23,7 +23,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_val = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($input_val)) {
-        // Halimbawa ng pag-verify o pag-handle ng OTP login
         $stmt = $conn->prepare("SELECT id, fullname, role FROM users WHERE username = ? OR email = ? LIMIT 1");
         $stmt->bind_param("ss", $input_val, $input_val);
         $stmt->execute();
@@ -31,10 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
-            // Ilagay dito ang sunod na hakbang para sa OTP kung kinakailangan
             $_SESSION['temp_user_id'] = $user['id'];
-            // header("Location: verify_otp.php");
-            // exit();
         } else {
             $error_msg = "Walang nahanap na account para sa Email o ID na ito.";
         }
@@ -73,8 +69,8 @@ $conn->close();
 <body>
     <div class="login-card">
         <div class="logo-container">
-            <!-- Palitan ang src kung iba ang pangalan o lokasyon ng logo image file mo -->
-            <img src="logo.png" alt="Mary The Queen College Logo" onerror="this.src='uploads/default.png'">
+            <!-- Naka-set na sa logo.jpg tulad ng dati mong gamit -->
+            <img src="logo.jpg" alt="Mary The Queen College Logo" onerror="this.src='uploads/default.png'">
         </div>
         
         <div class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</div>

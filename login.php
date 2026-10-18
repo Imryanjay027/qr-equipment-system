@@ -17,13 +17,23 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// Awtomatikong gawin ang table kung wala pa sa Coolify database na ito
+$conn->query("CREATE TABLE IF NOT EXISTS system_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fullname VARCHAR(255) NOT NULL,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'custodian',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
 $error_msg = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_val = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($input_val)) {
-        // Gumamit tayo ng try-catch para mahuli agad kung may table error at maiwasan ang fatal crash
         try {
             $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
             if (!$stmt) {

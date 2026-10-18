@@ -7,9 +7,12 @@ $password = getenv('DB_PASSWORD') ?: 'ryan072797';
 $database = getenv('DB_NAME') ?: 'qrcode';
 $port     = getenv('DB_PORT') ?: 3306;
 
-$conn = mysqli_connect($host, $user, $password, $database, $port);
+// Subukan nating i-suppress o i-handle nang maayos ang connection error para makita natin agad
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
+try {
+    $conn = mysqli_connect($host, $user, $password, $database, $port);
+} catch (mysqli_sql_exception $e) {
+    die("Database Connection Error: " . $e->getMessage());
 }
 ?>

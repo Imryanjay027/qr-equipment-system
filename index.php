@@ -6,27 +6,29 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Direktang Database Connection para sa Coolify
-$host = "wfbyfhr4404k2y9u2spiv101";
-$username = "root";
-$password = "ILAGAY_MO_DITO_YUNG_ROOT_PASSWORD_MULA_SA_COOLIFY"; // Palitan ito ng Root Password mula sa Coolify panel kung nag-access denied ang ryan072797
-$database = "qrcode";
-
-$conn = new mysqli($host, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-// Ensure the custodian is logged in
+// 1. Suriin muna kung naka-log in ang custodian/admin bago kumonekta sa database
 $is_logged_in = false;
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     $is_logged_in = true;
 }
 
 $role = strtolower(trim($_SESSION['role'] ?? ''));
+
+// Kung hindi naka-log in o hindi custodian/admin, i-redirect agad sa login.php
 if (!$is_logged_in || ($role !== 'custodian' && $role !== 'admin')) {
     header("Location: login.php");
     exit();
+}
+
+// 2. Kapag naka-log in na, saka lamang ikokonekta sa Coolify database
+$host = "wfbyfhr4404k2y9u2spiv101";
+$username = "root";
+$password = "ryan072797"; // O ang tamang Root Password mula sa Coolify kung kinakailangan
+$database = "qrcode";
+
+$conn = new mysqli($host, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 
 $fullname_custodian = $_SESSION['fullname'] ?? 'Custodian';
@@ -39,7 +41,7 @@ $student_photo = "";
 $borrowed_items = [];
 
 if (!empty($student_id)) {
-    // 1. Kunin ang impormasyon ng estudyante mula sa borrowers table
+    // Kunin ang impormasyon ng estudyante mula sa borrowers table
     $query = "SELECT fullname, course_year, selfie_image FROM borrowers WHERE student_id = ? ORDER BY id DESC LIMIT 1";
     $stmt = $conn->prepare($query);
     if ($stmt) {
@@ -57,7 +59,7 @@ if (!empty($student_id)) {
         $stmt->close();
     }
 
-    // 2. Kunin ang kasaysayan ng mga hiniram na gamit mula sa borrowed_equipment table
+    // Kunin ang kasaysayan ng mga hiniram na gamit mula sa borrowed_equipment table
     $query_items = "SELECT item_to_borrow AS equipment_name, borrow_date, status FROM borrowed_equipment WHERE student_id = ?";
     $stmt_items = $conn->prepare($query_items);
     if ($stmt_items) {

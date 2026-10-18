@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = "localhost";
+$host = "127.0.0.1"; // Binago mula 'localhost' para maiwasan ang socket error sa live server
 $username = "root";
 $password = "";
 $database = "qrcode";

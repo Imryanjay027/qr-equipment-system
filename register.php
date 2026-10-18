@@ -12,12 +12,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = trim($_POST['role'] ?? 'Student');
     $student_id = trim($_POST['student_id'] ?? '');
     $fullname = trim($_POST['fullname'] ?? '');
-    $course_year = ($role === 'Student') ? trim($_POST['course_year'] ?? '') : '';
     $email = trim($_POST['email'] ?? '');
+
+    // SECURITY CHECK: Kung Custodian ang pinili, suriin kung umabot na sa 2 ang Custodian sa database
+    if ($role === 'Custodian') {
+        $count_sql = "SELECT COUNT(*) as total FROM tbl_users WHERE role = 'Custodian'";
+        $count_result = $conn->query($count_sql);
+        $count_row = $count_result->fetch_assoc();
+        
+        if ($count_row['total'] >= 2) {
+            $error = "Paumanhin, naabot na ang maximum limit na 2 Custodian sa sistema. Hindi na maaaring mag-register bilang Custodian.";
+            $role = 'Student'; // Fallback para hindi mag-error ang flow
+        }
+    }
+
+    $course_year = ($role === 'Student') ? trim($_POST['course_year'] ?? '') : '';
     $selfie_data = ($role === 'Student') ? ($_POST['selfie_image'] ?? '') : '';
     $filename = '';
 
-    if (!empty($student_id) && !empty($fullname) && !empty($email)) {
+    if (empty($error) && !empty($student_id) && !empty($fullname) && !empty($email)) {
         // I-save ang selfie kung student at meron
         if ($role === 'Student' && !empty($selfie_data)) {
             $image_parts = explode(";base64,", $selfie_data);
@@ -53,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $error = "May naganap na error sa pag-rehistro: " . $conn->error;
             }
         }
-    } else {
+    } elseif (empty($error)) {
         $error = "Mangyaring punan ang lahat ng kinakailangang impormasyon.";
     }
 }

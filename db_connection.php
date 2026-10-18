@@ -1,16 +1,18 @@
 <?php
-// Kunin ang database credentials mula sa Coolify Environment Variables, 
-// o gumamit ng fallback values para sa local development (XAMPP).
-$host   = getenv('DB_HOST')     ?: 'localhost';
-$user   = getenv('DB_USER')     ?: 'root';
-$pass   = getenv('DB_PASSWORD') ?: '';
-$dbname = getenv('DB_NAME')     ?: 'qrcode';
+// Kunin ang mga detalye mula sa Environment Variables na sinet natin sa Coolify
+$host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
+$user = getenv('DB_USER') ?: 'mariadb';
+$pass = getenv('DB_PASSWORD') ?: ''; // Kukuha sa DB_PASSWORD na ginawa natin
+$dbname = getenv('DB_NAME') ?: 'qrcode';
 
-// Gumawa ng koneksyon sa MariaDB/MySQL
+// Pagkonekta gamit ang MySQLi
 $conn = new mysqli($host, $user, $pass, $dbname);
 
 // Suriin kung may error sa koneksyon
 if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+    die("Connection failed: " . $conn->connect_error);
 }
+
+// I-set ang character set sa UTF-8
+$conn->set_charset("utf8");
 ?>

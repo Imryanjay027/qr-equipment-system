@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-$host = "127.0.0.1"; // Binago mula 'localhost' para maiwasan ang socket error sa live server
+$host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
-$password = "";
+$password = "ryan072797";
 $database = "qrcode";
 
 $conn = new mysqli($host, $username, $password, $database);

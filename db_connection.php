@@ -1,38 +1,26 @@
 <?php
-// Subukan ang Docker default bridge gateway IP o localhost IP para maabot ang host/database port
-$hosts = [
-    '172.17.0.1', // Karaniwang Docker bridge gateway IP sa Linux/Coolify servers
-    '172.18.0.1',
-    'localhost'
-];
+// Gamitin ang Coolify environment variable para sa host kung available, 
+// o ang pangalan ng database container mula sa iyong project
+$host = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASSWORD') ?: ''; // Ilagay ang password kung kinakailangan
+$dbname = getenv('DB_NAME') ?: 'qrcode';
+$port = (int)(getenv('DB_PORT') ?: 3306);
 
-$user = 'root';
-$pass = ''; // Ilagay ang Normal User Password mo sa Coolify kung meron
-$dbname = 'qrcode';
-$port = 3306; // O ang port number na nakalagay sa Ports Mappings sa Coolify
-
-$conn = null;
-$last_error = "";
-
-mysqli_report(MYSQLI_REPORT_OFF);
-
-foreach ($hosts as $host) {
-    try {
-        $mysqli = mysqli_init();
-        $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
-        if (@$mysqli->real_connect($host, $user, $pass, $dbname, $port)) {
-            $conn = $mysqli;
-            break; // Tagumpay! Nakakonekta na.
-        }
-    } catch (\Throwable $e) {
-        $last_error = $e->getMessage();
-    }
+// Kung sakaling hindi pa naka-link ang network, gamitin muna ang localhost habang inaayos ang network sa Coolify
+if (empty($host)) {
+    $host = 'localhost';
 }
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-if (!$conn) {
-    die("Connection failed on all gateway IPs. Last error: " . ($conn->connect_error ?? $last_error));
+try {
+    $mysqli = mysqli_init();
+    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+    $mysqli->real_connect($host, $user, $pass, $dbname, $port);
+    $conn = $mysqli;
+} catch (mysqli_sql_exception $e) {
+    die("Connection failed: " . $e->getMessage() . " (Host: $host)");
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

@@ -1,6 +1,6 @@
 <?php
-// Gamitin ang container name kasama ang coolify network context o ang environment variables
-$host = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
+// Huwag nang gamitin ang container hostname na nag-a-error, direktang gamitin ang Docker gateway IP o localhost ng host
+$host = '172.17.0.1'; 
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASSWORD') ?: '';
 $dbname = getenv('DB_NAME') ?: 'qrcode';

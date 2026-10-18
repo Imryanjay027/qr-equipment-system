@@ -1,33 +1,38 @@
 <?php
-// Huwag nang gamitin ang container hostname na nag-a-error, direktang gamitin ang Docker gateway IP o localhost ng host
-$host = '172.17.0.1'; 
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASSWORD') ?: '';
-$dbname = getenv('DB_NAME') ?: 'qrcode';
-$port = (int)(getenv('DB_PORT') ?: 3306);
+// Kunin ang mga configuration mula sa Environment Variables ng Coolify
+$host     = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASSWORD') ?: ''; // Kung may password ka sa Coolify, ilagay rito o hayaang basahin ng getenv
+$dbname   = getenv('DB_NAME') ?: 'qrcode';
+$port     = getenv('DB_PORT') ?: '3306';
 
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+// Piliin kung PDO o MySQLi ang gusto mong gamitin:
 
+// --- OPTION A: Gamit ang PDO (Recommended) ---
 try {
-    $conn = new mysqli($host, $user, $pass, $dbname, $port);
-} catch (mysqli_sql_exception $e) {
+    $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+    $conn = new PDO($dsn, $username, $password);
+    
+    // Set PDO error mode to exception para madaling ma-debug kung may mali
+    $conn->setAttribute(PDO.ATTR_ERRMODE, PDO.ERRMODE_EXCEPTION);
+    
+    // Pwede mong tanggalin o i-comment out itong echo kapag gumagana na para hindi makaistorbo sa UI
+    // echo "Connected successfully using PDO!";
+
+} catch (PDOException $e) {
+    // Kapag nag-fail, ipapakita ang eksaktong error message
     die("Connection failed: " . $e->getMessage());
 }
 
-// Automatic creation ng tbl_users kung hindi pa ito umiiral
-$createTableSql = "CREATE TABLE IF NOT EXISTS tbl_users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    role VARCHAR(50) NOT NULL DEFAULT 'Student',
-    username VARCHAR(100) NOT NULL,
-    password VARCHAR(255) DEFAULT NULL,
-    email VARCHAR(255) NOT NULL,
-    student_id VARCHAR(100) NOT NULL,
-    fullname VARCHAR(255) NOT NULL,
-    course_year VARCHAR(100) DEFAULT NULL,
-    photo VARCHAR(255) DEFAULT NULL,
-    selfie_image TEXT DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)";
 
-$conn->query($createTableSql);
+/*
+// --- OPTION B: Gamit ang MySQLi (I-uncomment ito kung MySQLi ang gamit ng buong sistema mo) ---
+$conn = new mysqli($host, $username, $password, $dbname, $port);
+
+// Suriin ang koneksyon
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+// echo "Connected successfully using MySQLi!";
+*/
 ?>

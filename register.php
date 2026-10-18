@@ -66,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-            // Handle image/selfie if needed depending on your schema
             $insert = $pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
             if ($insert->execute([$username, $fullname, $email, $hashedPassword, $role])) {
                 $success = "Registration successful! You can now log in.";
@@ -85,26 +84,130 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Registration - QR-Based Equipment Monitoring System</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; }
-        h3 { margin-bottom: 5px; color: #1b4332; font-size: 1.1rem; }
-        p.sub { font-size: 0.9rem; color: #666; margin-bottom: 20px; }
-        .alert { padding: 10px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 15px; text-align: left; }
-        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .form-group { text-align: left; margin-bottom: 15px; }
-        label { font-size: 0.85rem; font-weight: bold; color: #333; display: block; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; }
-        button { width: 100%; padding: 11px; background-color: #2d6a4f; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
-        button:hover { background-color: #1b4332; }
-        .login-link { font-size: 0.85rem; margin-top: 15px; display: block; color: #333; text-decoration: none; }
-        .login-link a { color: #2d6a4f; font-weight: bold; text-decoration: none; }
-        #camera-section, #upload-section { margin-top: 15px; display: none; text-align: left; }
-        video { width: 100%; border-radius: 4px; background: #000; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f4f6f9; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+        }
+        .card { 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            width: 100%; 
+            max-width: 450px; 
+            text-align: center; 
+        }
+        .logo { 
+            width: 80px; 
+            height: 80px; 
+            object-fit: contain; 
+            margin-bottom: 5px; 
+        }
+        h3 { 
+            margin: 5px 0 0 0; 
+            color: #1b4332; 
+            font-size: 1.15rem; 
+            font-weight: bold;
+        }
+        p.sub { 
+            font-size: 0.85rem; 
+            color: #666; 
+            margin-top: 5px;
+            margin-bottom: 20px; 
+        }
+        .alert { 
+            padding: 12px; 
+            border-radius: 4px; 
+            font-size: 0.85rem; 
+            margin-bottom: 20px; 
+            text-align: left; 
+        }
+        .alert-danger { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb; 
+        }
+        .alert-success { 
+            background-color: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb; 
+        }
+        .form-group { 
+            text-align: left; 
+            margin-bottom: 15px; 
+        }
+        label { 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            color: #222; 
+            display: block; 
+            margin-bottom: 6px; 
+        }
+        input, select { 
+            width: 100%; 
+            padding: 10px 12px; 
+            border: 1px solid #ced4da; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            font-size: 0.9rem; 
+            outline: none;
+        }
+        input:focus, select:focus {
+            border-color: #2d6a4f;
+            box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.15);
+        }
+        button[type="submit"] { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: #2d6a4f; 
+            color: #fff; 
+            border: none; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 0.95rem; 
+            margin-top: 10px;
+        }
+        button[type="submit"]:hover { 
+            background-color: #1b4332; 
+        }
+        .login-link { 
+            font-size: 0.85rem; 
+            margin-top: 20px; 
+            display: block; 
+            color: #555; 
+            text-decoration: none; 
+        }
+        .login-link a { 
+            color: #2d6a4f; 
+            font-weight: bold; 
+            text-decoration: none; 
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        #camera-section, #upload-section { 
+            margin-top: 15px; 
+            display: none; 
+            text-align: left; 
+        }
+        video { 
+            width: 100%; 
+            border-radius: 4px; 
+            background: #000; 
+        }
     </style>
 </head>
 <body>
     <div class="card">
+        <!-- Mary the Queen College Logo (Palitan ang filename kung kinakailangan) -->
+        <img src="logo.png" alt="School Logo" class="logo" onerror="this.style.display='none'">
+
         <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
         <p class="sub">Account Registration</p>
 
@@ -121,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label>Account Role</label>
                 <select name="role" id="roleSelect" required onchange="toggleFields()">
                     <option value="">Select Role</option>
-                    <option value="Student">Student (Borrower)</option>
+                    <option value="Student">Student</option>
                     <option value="Custodian">Custodian</option>
                 </select>
             </div>
@@ -146,11 +249,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="password" name="password" placeholder="Enter password" required>
             </div>
 
-            <!-- Live Selfie Section para sa Student/Borrower -->
+            <!-- Live Selfie Section para sa Student -->
             <div id="camera-section" class="form-group">
                 <label>Live Selfie Capture</label>
                 <video id="video" autoplay playsinline></video>
-                <button type="button" onclick="captureSelfie()" style="margin-top: 5px; background: #555;">Capture Selfie</button>
+                <button type="button" onclick="captureSelfie()" style="margin-top: 5px; padding: 8px; background: #555; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Capture Selfie</button>
                 <canvas id="canvas" style="display:none;"></canvas>
                 <input type="hidden" name="selfie_image" id="selfie_image">
             </div>
@@ -161,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="file" name="profile_picture" accept="image/*">
             </div>
 
-            <button type="submit" style="margin-top: 10px;">Register</button>
+            <button type="submit">Register</button>
         </form>
 
         <p class="login-link">Already have an account? <a href="login.php">Login here</a></p>

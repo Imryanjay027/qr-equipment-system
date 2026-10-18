@@ -6,12 +6,13 @@ error_reporting(E_ALL);
 
 session_start();
 
-// PHPMailer classes namespaces
+// Manual inclusion ng PHPMailer files
+require 'phpmailer/Exception.php';
+require 'phpmailer/PHPMailer.php';
+require 'phpmailer/SMTP.php';
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-
-// Kung naka-install ang PHPMailer via Composer o manual sa folder mo:
-require 'vendor/autoload.php'; // Palitan ito kung iba ang path ng PHPMailer files mo
 
 $host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
@@ -67,8 +68,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $mail->isSMTP();
                 $mail->Host       = 'smtp.gmail.com';
                 $mail->SMTPAuth   = true;
-                $mail->Username   = 'ryanjayleoligao64@gmail.com'; // Ang iyong Gmail
-                $mail->Password   = 'hlmbrhuobnhzuynk';       // Ang iyong App Password (tinanggal ang space)
+                $mail->Username   = 'ryanjayleoligao64@gmail.com';
+                $mail->Password   = 'hlmbrhuobnhzuynk';       // Ang iyong App Password
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = 587;
 
@@ -83,7 +84,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 $mail->send();
                 
-                // Mag-redirect sa verify_otp.php kapag na-send na
                 header("Location: verify_otp.php");
                 exit();
             } catch (Exception $e) {

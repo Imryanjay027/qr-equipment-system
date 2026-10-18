@@ -11,8 +11,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // Hanapin ang email sa database (pinalitan ang tbl_users ng users)
-        $sql = "SELECT * FROM users WHERE email = ? OR Email = ?";
+        // Ibinook-mark pabalik sa tbl_users para mag-match sa database table name
+        $sql = "SELECT * FROM tbl_users WHERE email = ? OR Email = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("ss", $email, $email);
         $stmt->execute();

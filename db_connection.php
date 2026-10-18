@@ -1,10 +1,15 @@
 <?php
-// Kunin ang mga koneksyon mula sa Coolify environment variables
-$host = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
+// Kunin ang mga koneksyon mula sa Coolify environment variables o gamitin ang localhost/gateway IP
+$host = getenv('DB_HOST') ?: '127.0.0.1';
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASSWORD') ?: '';
 $dbname = getenv('DB_NAME') ?: 'qrcode';
 $port = (int)(getenv('DB_PORT') ?: 3306);
+
+// Kung ang DB_HOST ay nakalagay sa mahabang container name at nagka-error, i-fallback sa 127.0.0.1 o sa IP ng server
+if ($host === 'mariadb-database-wfbyfhr4404k2y9u2spiv101') {
+    $host = '127.0.0.1'; 
+}
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 

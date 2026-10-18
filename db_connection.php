@@ -1,7 +1,7 @@
 <?php
 // db_connection.php
 
-$host     = 'wfbyfhr4404k2y9u2spiv101';
+$host     = 'mariadb-database-wfbyfhr4404k2y9u2';
 $user     = 'mariadb';
 $password = 'ryan072797';
 $database = 'qrcode';

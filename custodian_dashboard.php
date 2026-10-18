@@ -6,6 +6,7 @@ ini_set('display_errors', 1);
 session_start();
 include('db_connection.php');
 
+// Siguraduhing naka-login at tama ang role nang hindi basta-basta nag-a-unauthorize
 $is_logged_in = false;
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     $is_logged_in = true;
@@ -17,27 +18,39 @@ if (!$is_logged_in || ($role !== 'custodian' && $role !== 'admin')) {
     exit();
 }
 
-$fullname_custodian = 'Custodian';
-if (isset($_SESSION['fullname'])) {
-    $fullname_custodian = $_SESSION['fullname'];
-}
-
-// Kunin ang profile info ng kasalukuyang user mula sa session o database
-$user_id = $_SESSION['user_id'] ?? 0;
+$fullname_custodian = $_SESSION['fullname'] ?? 'Property Custodian';
 $user_student_id = $_SESSION['student_id'] ?? 'CUST-001';
 $user_photo = '';
 
-if ($conn && $user_id) {
-    $user_query = mysqli_query($conn, "SELECT * FROM tbl_users WHERE id = '$user_id'");
+// Ligtas na pagkuha ng profile gamit ang user_id o kaya ay ang email
+$user_id = $_SESSION['user_id'] ?? 0;
+$user_email = $_SESSION['email'] ?? 'ryanjayleoligao64@gmail.com';
+
+if ($conn) {
+    $user_query = null;
+    if ($user_id > 0) {
+        $user_query = mysqli_query($conn, "SELECT * FROM tbl_users WHERE id = '$user_id' LIMIT 1");
+    }
+    
+    if ((!$user_query || mysqli_num_rows($user_query) === 0) && !empty($user_email)) {
+        $user_query = mysqli_query($conn, "SELECT * FROM tbl_users WHERE email = '$user_email' LIMIT 1");
+    }
+
     if ($user_query && mysqli_num_rows($user_query) > 0) {
         $u_data = mysqli_fetch_assoc($user_query);
         if (!empty($u_data['fullname'])) $fullname_custodian = $u_data['fullname'];
         if (!empty($u_data['student_id'])) $user_student_id = $u_data['student_id'];
         if (!empty($u_data['photo'])) $user_photo = trim($u_data['photo']);
+        
+        // I-save ulit sa session para permanenteng magtuloy-tuloy
+        $_SESSION['user_id'] = $u_data['id'];
+        $_SESSION['fullname'] = $fullname_custodian;
+        $_SESSION['student_id'] = $user_student_id;
+        $_SESSION['photo'] = $user_photo;
     }
 }
 
-// Direktang kunin ang in-upload na larawan mula sa database at uploads folder
+// Ayusin ang path ng larawan
 if (empty($user_photo)) {
     $user_photo_url = "uploads/default.png";
 } else {

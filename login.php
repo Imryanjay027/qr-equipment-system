@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 
 session_start();
 
+// Coolify Database Connection
 $host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
 $password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
@@ -16,6 +17,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// 1. Siguraduhing naroon ang table
 $conn->query("CREATE TABLE IF NOT EXISTS system_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     fullname VARCHAR(255) NOT NULL,
@@ -26,26 +28,40 @@ $conn->query("CREATE TABLE IF NOT EXISTS system_users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
+// 2. Awtomatikong idagdag ang iyong account kung wala pa sa Coolify database na ito
+$check_admin = $conn->query("SELECT id FROM system_users WHERE email = 'ryanjayleoligao64@gmail.com' LIMIT 1");
+if ($check_admin->num_rows == 0) {
+    $conn->query("INSERT INTO system_users (fullname, username, email, password, role) 
+                  VALUES ('Ryan Jay Leoligao', 'ryan', 'ryanjayleoligao64@gmail.com', 'password123', 'admin')");
+}
+
 $error_msg = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_val = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($input_val)) {
-        $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
-        $stmt->bind_param("ss", $input_val, $input_val);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        try {
+            $stmt = $conn->prepare("SELECT id, fullname, role FROM system_users WHERE username = ? OR email = ? LIMIT 1");
+            if (!$stmt) {
+                throw new Exception($conn->error);
+            }
+            $stmt->bind_param("ss", $input_val, $input_val);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-        if ($result->num_rows > 0) {
-            $user = $result->fetch_assoc();
-            $_SESSION['temp_user_id'] = $user['id'];
-            $error_msg = "Tagumpay! Nakita ang account ID: " . $user['id'];
-        } else {
-            // Debugging info para malaman kung ano ang sinubukan i-search
-            $error_msg = "Walang nahanap para sa input na: <b>" . htmlspecialchars($input_val) . "</b>";
+            if ($result->num_rows > 0) {
+                $user = $result->fetch_assoc();
+                $_SESSION['temp_user_id'] = $user['id'];
+                $error_msg = "Tagumpay! Nakita ang account ID: " . $user['id'];
+                // Ilagay dito ang susunod na hakbang para sa OTP
+            } else {
+                $error_msg = "Walang nahanap para sa input na: <b>" . htmlspecialchars($input_val) . "</b>";
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            $error_msg = "Database Error: " . $e->getMessage();
         }
-        $stmt->close();
     } else {
         $error_msg = "Mangyaring ilagay ang iyong Email o ID Number.";
     }

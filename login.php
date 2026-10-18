@@ -6,6 +6,13 @@ error_reporting(E_ALL);
 
 session_start();
 
+// PHPMailer classes namespaces
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// Kung naka-install ang PHPMailer via Composer o manual sa folder mo:
+require 'vendor/autoload.php'; // Palitan ito kung iba ang path ng PHPMailer files mo
+
 $host = "wfbyfhr4404k2y9u2spiv101";
 $username = "root";
 $password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
@@ -53,18 +60,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $update_otp->execute();
             $update_otp->close();
 
-            // 3. Magpadala ng email gamit ang PHP Mail (o PHPMailer kung naka-install)
-            $to = $user['email'];
-            $subject = "QR-Based Equipment Monitoring System - OTP Code";
-            $message = "Hello " . $user['fullname'] . ",\n\nYour OTP verification code is: " . $otp . "\n\nUse this code to complete your login.";
-            $headers = "From: noreply@mqcqc-equipment-monitoring-system.araosds.cloud";
+            // 3. Magpadala ng email gamit ang PHPMailer at Gmail SMTP
+            $mail = new PHPMailer(true);
+            try {
+                // Server settings
+                $mail->isSMTP();
+                $mail->Host       = 'smtp.gmail.com';
+                $mail->SMTPAuth   = true;
+                $mail->Username   = 'ryanjayleoligao64@gmail.com'; // Ang iyong Gmail
+                $mail->Password   = 'hlmbrhuobnhzuynk';       // Ang iyong App Password (tinanggal ang space)
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = 587;
 
-            // Subukang mag-send gamit ang built-in mail function
-            @mail($to, $subject, $message, $headers);
+                // Recipients
+                $mail->setFrom('ryanjayleoligao64@gmail.com', 'QR Equipment Monitoring System');
+                $mail->addAddress($user['email'], $user['fullname']);
 
-            // Mag-redirect sa verify_otp.php
-            header("Location: verify_otp.php");
-            exit();
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = 'Your OTP Verification Code';
+                $mail->Body    = 'Hello <b>' . htmlspecialchars($user['fullname']) . '</b>,<br><br>Your OTP verification code is: <b>' . $otp . '</b><br><br>Use this code to complete your login.';
+
+                $mail->send();
+                
+                // Mag-redirect sa verify_otp.php kapag na-send na
+                header("Location: verify_otp.php");
+                exit();
+            } catch (Exception $e) {
+                $error_msg = "Hindi naipadala ang email. Mailer Error: {$mail->ErrorInfo}";
+            }
         } else {
             $error_msg = "Walang nahanap na account para sa input na ito.";
         }
@@ -110,7 +134,7 @@ $conn->close();
         <div class="system-subtitle">Account Login (OTP Authentication)</div>
 
         <?php if (!empty($error_msg)): ?>
-            <div class="error-alert"><?php echo htmlspecialchars($error_msg); ?></div>
+            <div class="error-alert"><?php echo $error_msg; ?></div>
         <?php endif; ?>
 
         <form action="" method="POST">
@@ -122,7 +146,7 @@ $conn->close();
         </form>
 
         <div class="register-link">
-            Don't have an account? <a href="register.php">Register here</a>
+            Don't have an account? <br><a href="register.php">Register here</a>
         </div>
     </div>
 </body>

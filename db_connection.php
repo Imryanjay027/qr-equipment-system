@@ -23,9 +23,19 @@ $conn->query("CREATE TABLE IF NOT EXISTS tbl_users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
-// Idagdag ang mga kolum kung sakaling lumang table na ang nandyan
-@$conn->query("ALTER TABLE tbl_users ADD COLUMN student_id VARCHAR(50)");
-@$conn->query("ALTER TABLE tbl_users ADD COLUMN course_year VARCHAR(100)");
-@$conn->query("ALTER TABLE tbl_users ADD COLUMN photo VARCHAR(255)");
-@$conn->query("ALTER TABLE tbl_users ADD COLUMN role VARCHAR(50) DEFAULT 'Student'");
+// Ligtas na pagdaragdag ng mga kolum gamit ang try-catch para maiwasan ang duplicate error
+$columns_to_add = [
+    "ALTER TABLE tbl_users ADD COLUMN student_id VARCHAR(50)",
+    "ALTER TABLE tbl_users ADD COLUMN course_year VARCHAR(100)",
+    "ALTER TABLE tbl_users ADD COLUMN photo VARCHAR(255)",
+    "ALTER TABLE tbl_users ADD COLUMN role VARCHAR(50) DEFAULT 'Student'"
+];
+
+foreach ($columns_to_add as $sql) {
+    try {
+        $conn->query($sql);
+    } catch (mysqli_sql_exception $e) {
+        // Huwag pansinin kung mayroon nang kolum
+    }
+}
 ?>

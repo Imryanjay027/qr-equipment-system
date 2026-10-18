@@ -14,25 +14,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $fullname = trim($_POST['fullname'] ?? '');
     $email = trim($_POST['email'] ?? '');
 
-    // SECURITY CHECK: Kung Custodian ang pinili, suriin kung umabot na sa 2 ang Custodian sa database
+    // SECURITY CHECK: Kung Custodian ang pinili, suriin kung umabot na sa 2 ang Custodian
     if ($role === 'Custodian') {
         $count_sql = "SELECT COUNT(*) as total FROM tbl_users WHERE role = 'Custodian'";
         $count_result = $conn->query($count_sql);
         $count_row = $count_result->fetch_assoc();
         
         if ($count_row['total'] >= 2) {
-            $error = "Paumanhin, naabot na ang maximum limit na 2 Custodian sa sistema. Hindi na maaaring mag-register bilang Custodian.";
-            $role = 'Student'; // Fallback para hindi mag-error ang flow
+            $error = "Paumanhin, naabot na ang maximum limit na 2 Custodian sa sistema.";
+            $role = 'Student';
         }
     }
 
     $course_year = ($role === 'Student') ? trim($_POST['course_year'] ?? '') : '';
-    $selfie_data = ($role === 'Student') ? ($_POST['selfie_image'] ?? '') : '';
     $filename = '';
+    $upload_folder = 'uploads/';
+
+    if (!is_dir($upload_folder)) {
+        mkdir($upload_folder, 0777, true);
+    }
 
     if (empty($error) && !empty($student_id) && !empty($fullname) && !empty($email)) {
-        // I-save ang selfie kung student at meron
-        if ($role === 'Student' && !empty($selfie_data)) {
+        
+        // 1. Kung Student, kunin ang base64 selfie mula sa webcam
+        if ($role === 'Student' && !empty($_POST['selfie_image'])) {
+            $selfie_data = $_POST['selfie_image'];
             $image_parts = explode(";base64,", $selfie_data);
             if (count($image_parts) == 2) {
                 $image_type_aux = explode("image/", $image_parts[0]);
@@ -40,12 +46,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $image_base64 = base64_decode($image_parts[1]);
                 
                 $filename = 'selfie_' . $student_id . '_' . time() . '.' . $image_type;
-                $upload_folder = 'uploads/';
-                if (!is_dir($upload_folder)) {
-                    mkdir($upload_folder, 0777, true);
-                }
                 file_put_contents($upload_folder . $filename, $image_base64);
             }
+        } 
+        // 2. Kung Custodian, tanggapin ang uploaded file mula sa form
+        elseif ($role === 'Custodian' && isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0) {
+            $file_ext = pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION);
+            $filename = 'custodian_' . $student_id . '_' . time() . '.' . $file_ext;
+            move_uploaded_file($_FILES['profile_pic']['tmp_name'], $upload_folder . $filename);
         }
 
         // Suriin kung may kapareho nang email o username
@@ -57,7 +65,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($check->num_rows > 0) {
             $error = "Ang Email o ID Number / Username na ito ay nakarehistro na.";
         } else {
-            $stmt = $conn->prepare("INSERT INTO tbl_users (role, username, student_id, fullname, course_year, email, selfie_image) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            // Gumamit ng 'photo' column ayon sa database estruktura mo
+            $stmt = $conn->prepare("INSERT INTO tbl_users (role, username, student_id, fullname, course_year, email, photo) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("sssssss", $role, $student_id, $student_id, $fullname, $course_year, $email, $filename);
             
             if ($stmt->execute()) {
@@ -147,7 +156,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
         <?php } ?>
 
-        <form method="POST" action="">
+        <form method="POST" action="" enctype="multipart/form-data">
             <div class="mb-3 text-start">
                 <label for="role" class="form-label fw-semibold text-secondary small">Account Role</label>
                 <select name="role" id="role" class="form-select" onchange="toggleRoleFields()">
@@ -195,6 +204,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <button type="button" id="retakeBtn" class="btn btn-outline-danger btn-sm px-4 fw-bold" style="display:none;">Retake Selfie</button>
             </div>
 
+            <!-- Custodian Profile Picture Upload Section (Custodian Only) -->
+            <div class="mb-3 text-start custodian-field" style="display: none;">
+                <label for="profile_pic" class="form-label fw-semibold text-secondary small">Custodian Profile Picture</label>
+                <input type="file" class="form-control" id="profile_pic" name="profile_pic" accept="image/*">
+            </div>
+
             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Submit</button>
         </form>
 
@@ -203,7 +218,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-    <!-- Webcam & Dynamic Role Toggle Script -->
+    <!-- Script para sa pagpapalit ng fields depende sa Role -->
     <script>
         const video = document.getElementById('videoElement');
         const canvas = document.getElementById('canvasElement');
@@ -214,6 +229,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         const cameraBox = document.getElementById('camera-box');
         const roleSelect = document.getElementById('role');
         const studentFields = document.querySelectorAll('.student-field');
+        const custodianFields = document.querySelectorAll('.custodian-field');
 
         let mediaStream = null;
 
@@ -221,9 +237,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const role = roleSelect.value;
             if (role === 'Custodian') {
                 studentFields.forEach(el => el.style.display = 'none');
+                custodianFields.forEach(el => el.style.display = 'block');
                 stopCamera();
             } else {
                 studentFields.forEach(el => el.style.display = 'block');
+                custodianFields.forEach(el => el.style.display = 'none');
                 startCamera();
             }
         }

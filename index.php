@@ -5,7 +5,17 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
-include('db_connection.php');
+
+// Direktang Database Connection para sa Coolify
+$host = "wfbyfhr4404k2y9u2spiv101";
+$username = "root";
+$password = "ryan072797";
+$database = "qrcode";
+
+$conn = new mysqli($host, $username, $password, $database);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
 
 // Ensure the custodian is logged in
 $is_logged_in = false;

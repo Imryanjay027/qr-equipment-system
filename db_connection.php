@@ -1,22 +1,17 @@
 <?php
-// Gamitin ang localhost o ang Docker bridge IP kung saan maaari silang mag-usap sa parehong makina
-$host = '172.17.0.1'; // Docker bridge gateway IP
+// Gamitin ang localhost o ang loopback kasama ang port kung saan nakikinig ang MariaDB sa host
+$host = '127.0.0.1';
 $user = 'root';
-$pass = ''; // Ilagay ang password kung meron sa MariaDB
+$pass = ''; // Ilagay ang Normal User Password mo sa Coolify kung meron
 $dbname = 'qrcode';
-$port = 3306;
+$port = 3306; // Palitan ito kung ibang port ang nakalagay sa Port Mappings sa Coolify (halimbawa 3307 o iba pa)
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
     $mysqli = mysqli_init();
-    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
-    
-    // Subukan muna ang 172.17.0.1, kung mag-fail, subukan ang localhost
-    if (!@$mysqli->real_connect($host, $user, $pass, $dbname, $port)) {
-        $host = '127.0.0.1';
-        $mysqli->real_connect($host, $user, $pass, $dbname, $port);
-    }
+    $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+    $mysqli->real_connect($host, $user, $pass, $dbname, $port);
     $conn = $mysqli;
 } catch (mysqli_sql_exception $e) {
     die("Connection failed: " . $e->getMessage());

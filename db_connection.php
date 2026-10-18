@@ -1,15 +1,15 @@
 <?php
-// Gamitin ang eksaktong pangalan mula sa Coolify Name field
-$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101'; // o yung buong text sa Name field sa screenshot
+// Gamitin ang IP address ng VPS server mo o ang localhost IP sa pamamagitan ng host.docker.internal kung suportado, 
+// o kaya ang pampublikong IP ng iyong VPS (halimbawa: '127.0.0.1' kung nasa parehong server, pero dahil hiwalay ang container, gamitin ang VPS IP o mariadb IP)
+$host = '127.0.0.1'; // O ang IP ng iyong VPS kung saan naka-port map ang MariaDB (hal. port 3306)
 $user = 'root';
-$pass = ''; // Kung may password kang nilagay sa Normal User Password sa Coolify, ilagay mo rito, kung wala, iwanang blangko
+$pass = ''; // Ilagay ang Normal User Password mo sa Coolify kung meron
 $dbname = 'qrcode';
-$port = 3306;
+$port = 3306; // Siguraduhing tugma sa port mapping sa Coolify
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
-    // Mag-set ng timeout para hindi bumagal o mag-hang ang page kung sakaling magtagal
     $mysqli = mysqli_init();
     $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
     $mysqli->real_connect($host, $user, $pass, $dbname, $port);

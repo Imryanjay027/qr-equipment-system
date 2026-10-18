@@ -10,7 +10,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// 1. Gumawa ng table kung wala pa
+// 1. Gumawa ng table kung wala pa na kumpleto ang kolum kasama ang password
 $conn->query("CREATE TABLE IF NOT EXISTS tbl_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     role VARCHAR(50) DEFAULT 'Student',
@@ -19,6 +19,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS tbl_users (
     fullname VARCHAR(150),
     course_year VARCHAR(100),
     email VARCHAR(150) UNIQUE,
+    password VARCHAR(255) NULL,
     photo VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
@@ -31,6 +32,7 @@ $columns = [
     "ALTER TABLE tbl_users ADD COLUMN fullname VARCHAR(150)",
     "ALTER TABLE tbl_users ADD COLUMN course_year VARCHAR(100)",
     "ALTER TABLE tbl_users ADD COLUMN email VARCHAR(150)",
+    "ALTER TABLE tbl_users ADD COLUMN password VARCHAR(255) NULL",
     "ALTER TABLE tbl_users ADD COLUMN photo VARCHAR(255)"
 ];
 

@@ -1,7 +1,7 @@
 <?php
 // db_connection.php
 
-$host     = '127.0.0.1'; // Gamitin ang loopback IP para sa parehong network namespace
+$host     = 'wfbyfhr4404k2y9u2spiv101'; // Ang Coolify service ID ng MariaDB
 $user     = 'mariadb';
 $password = 'ryan072797';
 $database = 'qrcode';

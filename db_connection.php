@@ -1,10 +1,10 @@
 <?php
-// Gamitin ang localhost o ang loopback kasama ang port kung saan nakikinig ang MariaDB sa host
-$host = '127.0.0.1';
+// Gamitin ang hostname na nakalagay sa iyong Coolify MariaDB resource
+$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
 $user = 'root';
-$pass = ''; // Ilagay ang Normal User Password mo sa Coolify kung meron
+$pass = ''; // Siguraduhing blangko o naka-match sa Normal User Password sa Coolify
 $dbname = 'qrcode';
-$port = 3306; // Palitan ito kung ibang port ang nakalagay sa Port Mappings sa Coolify (halimbawa 3307 o iba pa)
+$port = 3306;
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -14,7 +14,12 @@ try {
     $mysqli->real_connect($host, $user, $pass, $dbname, $port);
     $conn = $mysqli;
 } catch (mysqli_sql_exception $e) {
-    die("Connection failed: " . $e->getMessage());
+    // Kung sakaling mag-fail ang container name, subukan ang fallback sa environment o localhost
+    try {
+        $conn = new mysqli('localhost', $user, $pass, $dbname, $port);
+    } catch (\Throwable $ex) {
+        die("Connection failed completely. Error: " . $e->getMessage());
+    }
 }
 
 // Automatic creation ng tbl_users kung hindi pa ito umiiral

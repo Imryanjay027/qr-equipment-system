@@ -1,194 +1,100 @@
 <?php
-error_reporting(E_ALL);
-// Itago ang warnings sa display para hindi lumitaw sa itaas ng form, pero i-log pa rin kung kailangan
-ini_set('display_errors', 0);
-
-include 'db_connection.php';
+// register.php
 session_start();
+require_once 'db_connection.php'; // Siguraduhing tama ang path ng database connection mo
 
-$error = "";
-$success = "";
+// PHPMailer dependencies (kung ginagamit sa email verification)
+require_once 'PHPMailer.php';
+require_once 'SMTP.php';
+require_once 'Exception.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $role = trim($_POST['role'] ?? 'Student');
+$error = '';
+$success = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $role = $_POST['role'] ?? '';
+    $username = trim($_POST['username'] ?? '');
     $fullname = trim($_POST['fullname'] ?? '');
     $email = trim($_POST['email'] ?? '');
-    $username = trim($_POST['username'] ?? '');
-    $student_id = trim($_POST['student_id'] ?? '');
-    $course_year = trim($_POST['course_year'] ?? '');
-    
-    $photo_path = "";
+    $password = $_POST['password'] ?? '';
 
-    // Gamitin ang tamang absolute path gamit ang __DIR__ para sigurado sa Coolify container
-    $target_dir = __DIR__ . "/uploads/";
-    if (!file_exists($target_dir)) {
-        @mkdir($target_dir, 0777, true);
-    }
+    // PANPASAMANTALANG LIMIT CHECK (Ginawang 5 muna para sa testing, ibalik sa 2 pagkatapos)
+    if ($role === 'Custodian') {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_users WHERE role = 'Custodian'");
+        $stmt->execute();
+        $custodianCount = $stmt->fetchColumn();
 
-    // Handle photo upload based on role
-    if ($role === 'Student') {
-        $webcam_image = $_POST['webcam_image'] ?? '';
-        if (!empty($webcam_image)) {
-            $image_parts = explode(";base64,", $webcam_image);
-            if (count($image_parts) == 2) {
-                $image_base64 = base64_decode($image_parts[1]);
-                $file_name = "student_" . time() . "_" . mt_rand(1000, 9999) . ".jpg";
-                $photo_path = "uploads/" . $file_name; // Relative path para sa database
-                file_put_contents($target_dir . $file_name, $image_base64);
-            }
-        }
-    } else {
-        if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
-            $file_extension = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
-            $file_name = "custodian_" . time() . "_" . mt_rand(1000, 9999) . "." . $file_extension;
-            $photo_path = "uploads/" . $file_name; // Relative path para sa database
-            @move_uploaded_file($_FILES['photo']['tmp_name'], $target_dir . $file_name);
+        if ($custodianCount >= 5) { // Binago muna sa 5 para makapag-register
+            $error = "Maximum limit of 5 Custodian accounts reached.";
         }
     }
 
-    if (!empty($email) && !empty($fullname)) {
-        // Limit to maximum of 2 Custodians
-        if ($role === 'Custodian') {
-            $check_custodian = $conn->query("SELECT COUNT(*) as cnt FROM tbl_users WHERE role='Custodian'");
-            $c_row = $check_custodian->fetch_assoc();
-            if ($c_row['cnt'] >= 2) {
-                $error = "Maximum limit of 2 Custodian accounts reached.";
-            }
-        }
+    if (empty($error)) {
+        // I-check kung nag-eexist na ang email o username
+        $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ? OR username = ?");
+        $stmt->execute([$email, $username]);
+        if ($stmt->rowCount() > 0) {
+            $error = "Email or Username already exists.";
+        } else {
+            // Hash password para sa seguridad
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        if (empty($error)) {
-            $sql = "INSERT INTO tbl_users (role, username, student_id, fullname, course_year, email, photo) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-            if ($stmt) {
-                $stmt->bind_param("sssssss", $role, $username, $student_id, $fullname, $course_year, $email, $photo_path);
-                if ($stmt->execute()) {
-                    $success = "Registration successful! You can now log in.";
-                } else {
-                    $error = "Error executing query: " . $stmt->error;
-                }
-                $stmt->close();
+            // I-insert ang bagong user sa database
+            $insert = $pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
+            if ($insert->execute([$username, $fullname, $email, $hashedPassword, $role])) {
+                $success = "Registration successful! You can now log in.";
             } else {
-                $error = "Database prepare error: " . $conn->error;
+                $error = "Something went wrong. Please try again.";
             }
         }
-    } else {
-        $error = "Please fill in all required fields.";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Registration - QR-BASED EQUIPMENT MONITORING SYSTEM</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <title>Account Registration - QR-Based Equipment Monitoring System</title>
+    <!-- Ilagay ang CSS links o styles mo dito -->
 </head>
-<body class="bg-light py-5">
-    <div class="container" style="max-width: 600px;">
-        <div class="card shadow border-0 p-4">
-            <!-- Logo at Pamagat -->
-            <div class="text-center mb-4">
-                <img src="logo.jpg" alt="Logo" style="max-height: 80px;" class="mb-2">
-                <h6 class="text-success fw-bold">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h6>
-                <p class="text-muted small mb-0">Account Registration</p>
-            </div>
-            
-            <?php if (!empty($error)) { ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($error); ?></div>
-            <?php } ?>
-            <?php if (!empty($success)) { ?>
-                <div class="alert alert-success"><?= htmlspecialchars($success); ?></div>
-            <?php } ?>
+<body>
+    <div class="container">
+        <h2>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h2>
+        <p>Account Registration</p>
 
-            <form method="POST" enctype="multipart/form-data">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Account Role</label>
-                    <select name="role" id="role" class="form-select" onchange="toggleRoleFields()" required>
-                        <option value="Student">Student</option>
-                        <option value="Custodian">Custodian</option>
-                    </select>
-                </div>
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger" style="color: red; background: #f8d7da; padding: 10px;"><?php echo $error; ?></div>
+        <?php endif; ?>
 
-                <div class="mb-3 student-field">
-                    <label class="form-label fw-bold">ID Number / Username</label>
-                    <input type="text" name="username" class="form-control" placeholder="Enter ID Number">
-                </div>
+        <?php if (!empty($success)): ?>
+            <div class="alert alert-success" style="color: green; background: #d4edda; padding: 10px;"><?php echo $success; ?></div>
+        <?php endif; ?>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Full Name</label>
-                    <input type="text" name="fullname" class="form-control" placeholder="Enter your Full name" required>
-                </div>
+        <form action="register.php" method="POST">
+            <label>Account Role</label>
+            <select name="role" required>
+                <option value="Student">Student</option>
+                <option value="Custodian">Custodian</option>
+            </select>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Email Address</label>
-                    <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
-                </div>
+            <label>ID Number / Username</label>
+            <input type="text" name="username" placeholder="Enter ID Number" required>
 
-                <div class="mb-3 student-field">
-                    <label class="form-label fw-bold">Student ID</label>
-                    <input type="text" name="student_id" class="form-control" placeholder="Enter Student ID">
-                </div>
+            <label>Full Name</label>
+            <input type="text" name="fullname" placeholder="Enter your Full name" required>
 
-                <div class="mb-3 student-field">
-                    <label class="form-label fw-bold">Course & Year</label>
-                    <input type="text" name="course_year" class="form-control" placeholder="Enter Course & Year">
-                </div>
+            <label>Email Address</label>
+            <input type="email" name="email" placeholder="Enter your email" required>
 
-                <!-- Student Webcam Capture Section -->
-                <div class="mb-3 student-field" id="webcam-section">
-                    <label class="form-label fw-bold">Capture Photo via Webcam</label>
-                    <div id="my_camera" style="width:320px; height:240px; background:#ddd; margin-bottom:10px;"></div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="take_snapshot()">Take Snapshot</button>
-                    <input type="hidden" name="webcam_image" id="webcam_image">
-                    <div id="results" class="mt-2"></div>
-                </div>
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
 
-                <!-- Custodian File Upload Section -->
-                <div class="mb-3 custodian-field" id="file-section" style="display:none;">
-                    <label class="form-label fw-bold">Upload Profile Photo</label>
-                    <input type="file" name="photo" class="form-control" accept="image/*">
-                </div>
-
-                <button type="submit" class="btn btn-success w-100 py-2 fw-bold text-white">Submit</button>
-            </form>
-            <div class="text-center mt-3">
-                <p class="small text-muted">Already have an account? <a href="login.php">Login here</a></p>
-            </div>
-        </div>
+            <button type="submit">Register</button>
+        </form>
+        
+        <p>Already have an account? <a href="login.php">Login here</a></p>
     </div>
-
-    <!-- Webcamjs CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.26/webcam.min.js"></script>
-    <script>
-        Webcam.set({
-            width: 320,
-            height: 240,
-            image_format: 'jpeg',
-            jpeg_quality: 90
-        });
-        Webcam.attach('#my_camera');
-
-        function take_snapshot() {
-            Webcam.snap(function(data_uri) {
-                document.getElementById('results').innerHTML = '<img src="'+data_uri+'" class="img-thumbnail" style="max-height:150px;"/>';
-                document.getElementById('webcam_image').value = data_uri;
-            });
-        }
-
-        function toggleRoleFields() {
-            let role = document.getElementById('role').value;
-            let studentFields = document.querySelectorAll('.student-field');
-            let custodianField = document.getElementById('file-section');
-
-            if (role === 'Custodian') {
-                studentFields.forEach(el => el.style.display = 'none');
-                custodianField.style.display = 'block';
-            } else {
-                studentFields.forEach(el => el.style.display = 'block');
-                custodianField.style.display = 'none';
-            }
-        }
-    </script>
 </body>
 </html>

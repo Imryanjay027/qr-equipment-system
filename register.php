@@ -63,13 +63,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->rowCount() > 0) {
             $error = "Email or Username already exists.";
         } else {
-            // Mag-generate ng random placeholder password para sa database dahil OTP-based ang login
+            // Mag-generate ng random placeholder password
             $randomPassword = bin2hex(random_bytes(16));
             $hashedPassword = password_hash($randomPassword, PASSWORD_DEFAULT);
 
             $insert = $pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
             if ($insert->execute([$username, $fullname, $email, $hashedPassword, $role])) {
-                $success = "Registration successful! You can now log in via OTP.";
+                // I-save ang email sa session at i-redirect sa OTP verification page
+                $_SESSION['pending_otp_email'] = $email;
+                
+                // KUNG MAY SPECIFIC OTP GENERATION CODE KA KANILA O SA VERIFY PAGE, DITO RIN PWEDE
+                header("Location: verify_otp.php");
+                exit;
             } else {
                 $error = "Something went wrong. Please try again.";
             }
@@ -111,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         h3 { 
             margin: 5px 0 0 0; 
-            color: #2d6a4f; /* Green font color */
+            color: #2d6a4f; 
             font-size: 1.15rem; 
             font-weight: bold;
         }
@@ -263,7 +268,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit">Register</button>
         </form>
 
-        <p class="login-link">Already have an account? <a href="login.php">Login here</a></p>
+        <!-- Pinalitan ang link papunta sa verify_otp.php sa halip na login.php -->
+        <p class="login-link">Already have an account? <a href="verify_otp.php">Login via OTP here</a></p>
     </div>
 
     <script>

@@ -29,46 +29,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!file_exists($target_dir)) {
                     @mkdir($target_dir, 0777, true);
                 }
-                
-                // Subukan munang i-set ang permission kung sakaling nabitin
                 @chmod($target_dir, 0777);
 
                 $photo_filename = 'student_' . time() . '.png';
                 $destination = $target_dir . $photo_filename;
                 
-                // Gamitin ang @ para maiwasan ang fatal warning sakaling mag-permission denied pa rin, pero i-check
                 @file_put_contents($destination, $image_base64);
                 @chmod($destination, 0666);
             }
         }
 
-        // Susubukan nating i-insert gamit ang 'fullname' at 'full_name' para sigurado sa anong column ang meron sa live db
         $inserted = false;
         $db_error = '';
 
-        // Subukan muna natin ang query gamit ang 'full_name' at 'fullname' sabay
-        $stmt = $conn->prepare("INSERT INTO tbl_users (full_name, fullname, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?, ?)");
-        if ($stmt) {
-            $stmt->bind_param("ssssss", $full_name, $full_name, $email, $role, $photo_filename, $academic_info);
-            if ($stmt->execute()) {
-                $inserted = true;
-            } else {
-                $db_error = $stmt->error;
-            }
+        // Robust try-catch para awtomatikong sumakto sa kung anong column ang meron sa live DB
+        try {
+            $stmt = $conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
+            $stmt->execute();
             $stmt->close();
-        }
-
-        // Kung nag-fail dahil sa column discrepancy, subukan natin ang 'fullname' lamang o 'full_name' lamang
-        if (!$inserted) {
-            $stmt2 = $conn->prepare("INSERT INTO tbl_users (fullname, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
-            if ($stmt2) {
+            $inserted = true;
+        } catch (mysqli_sql_exception $e) {
+            try {
+                $stmt2 = $conn->prepare("INSERT INTO tbl_users (fullname, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
                 $stmt2->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
-                if ($stmt2->execute()) {
-                    $inserted = true;
-                } else {
-                    $db_error = $stmt2->error;
-                }
+                $stmt2->execute();
                 $stmt2->close();
+                $inserted = true;
+            } catch (mysqli_sql_exception $e2) {
+                $db_error = $e2->getMessage();
             }
         }
 

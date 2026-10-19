@@ -6,25 +6,19 @@ ini_set('display_errors', 1);
 session_start();
 include('db_connection.php');
 
-$message = '';
-$status = '';
+$message = '';$status = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $full_name = trim($_POST['full_name'] ?? '');
-    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-    $role = $_POST['role'] ?? 'student';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'] ?? '');$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+    $role =$_POST['role'] ?? 'student';
     $academic_info = trim($_POST['academic_info'] ?? '');
-    $image_data = $_POST['image_data'] ?? '';
+    $image_data =$_POST['image_data'] ?? '';
 
-    if ($email && !empty($full_name)) {
-        $photo_filename = '';
+    if ($email && !empty($full_name)) {$photo_filename = '';
 
         // Live selfie para sa Student
         if ($role === 'student' && !empty($image_data)) {
             $image_parts = explode(";base64,", $image_data);
-            if (count($image_parts) == 2) {
-                $image_base64 = base64_decode($image_parts[1]);
-                $target_dir = __DIR__ . "/uploads/";
+            if (count($image_parts) == 2) {$image_base64 = base64_decode($image_parts[1]);$target_dir = __DIR__ . "/uploads/";
                 
                 if (!file_exists($target_dir)) {
                     @mkdir($target_dir, 0777, true);
@@ -32,9 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 @chmod($target_dir, 0777);
 
                 $photo_filename = 'student_' . time() . '.png';
-                $destination = $target_dir . $photo_filename;
+                $destination = $target_dir .$photo_filename;
                 
-                @file_put_contents($destination, $image_base64);
+                @file_put_contents($destination,$image_base64);
                 @chmod($destination, 0666);
             }
         }
@@ -42,27 +36,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inserted = false;
         $db_error = '';
 
-        // Robust try-catch para awtomatikong sumakto sa kung anong column ang meron sa live DB
+        // Multi-level fallback para sa iba't ibang posibleng column names sa live database
         try {
-            $stmt = $conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
-            $stmt->execute();
-            $stmt->close();
-            $inserted = true;
+            $stmt =$conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssss", $full_name,$email, $role,$photo_filename, $academic_info);$stmt->execute();
+            $stmt->close();$inserted = true;
         } catch (mysqli_sql_exception $e) {
             try {
-                $stmt2 = $conn->prepare("INSERT INTO tbl_users (fullname, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
-                $stmt2->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
-                $stmt2->execute();
-                $stmt2->close();
-                $inserted = true;
+                $stmt2 =$conn->prepare("INSERT INTO tbl_users (fullname, email, role, photo, course_year) VALUES (?, ?, ?, ?, ?)");
+                $stmt2->bind_param("sssss", $full_name,$email, $role,$photo_filename, $academic_info);$stmt2->execute();
+                $stmt2->close();$inserted = true;
             } catch (mysqli_sql_exception $e2) {
-                $db_error = $e2->getMessage();
+                try {
+                    $stmt3 =$conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo) VALUES (?, ?, ?, ?)");
+                    $stmt3->bind_param("ssss", $full_name, $email,$role, $photo_filename);$stmt3->execute();
+                    $stmt3->close();$inserted = true;
+                } catch (mysqli_sql_exception $e3) {
+                    $db_error =$e3->getMessage();
+                }
             }
         }
 
-        if ($inserted) {
-            $message = "Registration successful! You can now log in.";
+        if ($inserted) {$message = "Registration successful! You can now log in.";
             $status = "success";
         } else {
             $message = "Database error: " . $db_error;
@@ -300,23 +295,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 if (imageDataInput) {
-                    imageDataInput.value = canvas.toDataURL('image/png');
-                }
-
-                stopCamera();
-
-                video.style.display = 'none';
-                canvas.style.display = 'block';
-                
-                captureBtn.textContent = "Selfie Captured!";
-                captureBtn.disabled = true;
-                captureBtn.style.backgroundColor = "#6c757d";
-            }
-        });
-    }
-
-    handleRoleChange();
-</script>
-
-</body>
-</html>
+                    imageData

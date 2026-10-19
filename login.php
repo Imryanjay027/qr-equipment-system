@@ -49,9 +49,6 @@ function sendOTP($toEmail, $otpCode) {
     return ($httpCode == 201);
 }
 
-// ==========================================
-// FORM HANDLING LOGIC
-// ==========================================
 $message = '';
 $status = '';
 
@@ -62,13 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($email) {
             $otp = sprintf("%06d", mt_rand(1, 999999));
             
-            // I-save ang Session Variable na kailangan ng verify_otp.php mo
             $_SESSION['otp'] = $otp;
             $_SESSION['login_email'] = $email;
-            $_SESSION['otp_expiration'] = time() + (5 * 60); // Valid 5 minutes
+            $_SESSION['otp_expiration'] = time() + (5 * 60);
 
             if (sendOTP($email, $otp)) {
-                // Pagka-send ng email, direct REDIRECT sa verify_otp.php!
                 header("Location: verify_otp.php");
                 exit();
             } else {
@@ -90,94 +85,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - MQCQC Equipment Monitoring System</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background-color: #f8f9fa; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-        }
-        .login-card { 
-            background: white; 
-            padding: 40px 30px; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
-            width: 100%; 
-            max-width: 450px; 
-            text-align: center;
-        }
-        .login-card img {
-            width: 80px;
-            height: 80px;
-            object-fit: contain;
-            margin-bottom: 10px;
-        }
-        .login-card h3 { 
-            margin: 10px 0 5px 0; 
-            color: #212529; 
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .login-card p.subtitle { 
-            color: #6c757d; 
-            font-size: 13px; 
-            margin-bottom: 25px; 
-        }
-        .form-group { 
-            margin-bottom: 20px; 
-            text-align: left; 
-        }
-        .form-group label { 
-            display: block; 
-            margin-bottom: 8px; 
-            color: #212529; 
-            font-weight: 600;
-            font-size: 14px; 
-        }
-        .form-group input { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #ced4da; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-            font-size: 14px;
-        }
-        .btn { 
-            width: 100%; 
-            padding: 12px; 
-            background-color: #2e7d32; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-size: 16px; 
-            font-weight: 600;
-            transition: background-color 0.2s;
-        }
-        .btn:hover { 
-            background-color: #1b5e20; 
-        }
-        .register-link {
-            margin-top: 20px;
-            font-size: 13px;
-            color: #6c757d;
-        }
-        .register-link a {
-            color: #2e7d32;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-        .alert { 
-            padding: 10px; 
-            margin-bottom: 20px; 
-            border-radius: 6px; 
-            font-size: 14px; 
-        }
+        body { font-family: Arial, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 450px; text-align: center; }
+        .login-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
+        .login-card h3 { margin: 10px 0 5px 0; color: #212529; font-size: 18px; font-weight: bold; }
+        .login-card p.subtitle { color: #6c757d; font-size: 13px; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; color: #212529; font-weight: 600; font-size: 14px; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        .btn { width: 100%; padding: 12px; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background-color 0.2s; }
+        .btn:hover { background-color: #1b5e20; }
+        .register-link { margin-top: 20px; font-size: 13px; color: #6c757d; }
+        .register-link a { color: #2e7d32; text-decoration: none; font-weight: 600; }
+        .register-link a:hover { text-decoration: underline; }
+        .alert { padding: 10px; margin-bottom: 20px; border-radius: 6px; font-size: 14px; }
         .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
 </head>
@@ -185,14 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="login-card">
     <img src="logo.jpg" alt="MQCQC Logo">
-
     <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
     <p class="subtitle">Account Login (OTP Authentication)</p>
 
     <?php if (!empty($message)): ?>
-        <div class="alert alert-<?php echo $status; ?>">
-            <?php echo htmlspecialchars($message); ?>
-        </div>
+        <div class="alert alert-<?php echo $status; ?>"><?php echo htmlspecialchars($message); ?></div>
     <?php endif; ?>
 
     <form method="POST" action="login.php">
@@ -204,9 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit" class="btn">Send OTP</button>
     </form>
 
-    <div class="register-link">
-        Don't have an account? <a href="register.php">Register here</a>
-    </div>
+    <div class="register-link">Don't have an account? <a href="register.php">Register here</a></div>
 </div>
 
 </body>

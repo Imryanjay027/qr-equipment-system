@@ -1,9 +1,9 @@
 <?php
-$host = '127.0.0.1'; // Gagamitin ang IP sa loob ng container network
+$host = '127.0.0.1';
 $port = 3306;
 $user = 'root';
-$pass = 'ILAGAY_ANG_PASSWORD_MULA_SA_SCREEN'; // Ang password na nakita mo sa Coolify[cite: 4]
-$dbname = 'qrcode'; // Ang initial database mula sa Coolify[cite: 4]
+$pass = 'ryan072797'; // Ang password ng iyong database
+$dbname = 'qrcode';   // Ang database name mula sa Coolify
 
 $conn = @new mysqli($host, $user, $pass, $dbname, $port);
 

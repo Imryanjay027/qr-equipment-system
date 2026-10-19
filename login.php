@@ -5,13 +5,22 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// DATABASE CONFIGURATION (Coolify / Docker Compatible)
+// COOLIFY ENVIRONMENT DATABASE CONNECTION
 // ==========================================
-// Kung hiwalay ang container ng MySQL sa Coolify, palitan ang '127.0.0.1' ng pangalan ng service (hal. 'mysql' o 'db')
-$host = getenv('DB_HOST') ?: '127.0.0.1'; 
-$username = getenv('DB_USER') ?: 'root';
-$password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
-$database = getenv('DB_NAME') ?: 'qrcode';
+$host = getenv('DB_HOST') ?: (getenv('MYSQL_HOST') ?: '127.0.0.1');
+$username = getenv('DB_USER') ?: (getenv('MYSQL_USER') ?: 'root');
+
+// Awtomatikong hahanapin ang password mula sa iba't ibang Coolify environment variables
+$password = "";
+if (getenv('DB_PASS') !== false && getenv('DB_PASS') !== '') {
+    $password = getenv('DB_PASS');
+} elseif (getenv('MYSQL_PASSWORD') !== false && getenv('MYSQL_PASSWORD') !== '') {
+    $password = getenv('MYSQL_PASSWORD');
+} elseif (getenv('MYSQL_ROOT_PASSWORD') !== false && getenv('MYSQL_ROOT_PASSWORD') !== '') {
+    $password = getenv('MYSQL_ROOT_PASSWORD');
+}
+
+$database = getenv('DB_NAME') ?: (getenv('MYSQL_DATABASE') ?: 'qrcode');
 
 $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {

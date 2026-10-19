@@ -4,6 +4,22 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
+
+// Siguraduhing dumaan at nag-verify via OTP o regular login
+$is_logged_in = false;
+if ((isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) || 
+    (isset($_SESSION['custodian_logged_in']) && $_SESSION['custodian_logged_in'] === true)) {
+    $is_logged_in = true;
+}
+
+// Default role kung galing sa OTP login
+$role = strtolower(trim($_SESSION['role'] ?? 'custodian'));
+
+if (!$is_logged_in || ($role !== 'custodian' && $role !== 'admin')) {
+    header("Location: login.php");
+    exit();
+}
+
 include('db_connection.php');
 
 // Awtomatikong gumawa ng 'uploads' folder kung wala pa sa server
@@ -12,25 +28,19 @@ if (!file_exists($target_dir)) {
     mkdir($target_dir, 0777, true);
 }
 
-$is_logged_in = false;
-if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    $is_logged_in = true;
-}
-
-$role = strtolower(trim($_SESSION['role'] ?? ''));
-if (!$is_logged_in || ($role !== 'custodian' && $role !== 'admin')) {
-    header("Location: borrower_login.php");
-    exit();
-}
-
 $user_id = $_SESSION['user_id'] ?? 9; // Default ID para kay Ryan Jay Leoligao (CUST-001)
 
-// Kunin ang records ng user mula sa database
-$stmt = $conn->prepare("SELECT * FROM tbl_users WHERE id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
+// Kunin ang records ng user mula sa database kung may connection
+$user = null;
+if (isset($conn) && $conn) {
+    $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE id = ?");
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+    }
+}
 
 // Force fallback o kunin ang photo mula sa database kung available
 $photo = !empty($user['photo']) ? $user['photo'] : 'ryan.jpg';

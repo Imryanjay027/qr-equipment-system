@@ -33,28 +33,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             }
         }
 
+        // Dynamically kuhanin ang mga existing columns sa live database table para iwas Unknown Column error
+        $table_columns = [];
+        $res =$conn->query("SHOW COLUMNS FROM tbl_users");
+        if ($res) {
+            while ($row =$res->fetch_assoc()) {
+                $table_columns[] =$row['Field'];
+            }
+        }
+
+        // Piliin ang tamang pangalan ng column para sa pangalan base sa kung ano ang meron sa DB
+        $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname',$table_columns) ? 'fullname' : '');
+        
+        // Piliin ang tamang pangalan ng column para sa academic info
+        $acad_col = in_array('academic_info', $table_columns) ? 'academic_info' : (in_array('course_year',$table_columns) ? 'course_year' : '');
+
         $inserted = false;
         $db_error = '';
 
-        // Multi-level fallback para sa iba't ibang posibleng column names sa live database
-        try {
-            $stmt =$conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $full_name,$email, $role,$photo_filename, $academic_info);$stmt->execute();
-            $stmt->close();$inserted = true;
-        } catch (mysqli_sql_exception $e) {
-            try {
-                $stmt2 =$conn->prepare("INSERT INTO tbl_users (fullname, email, role, photo, course_year) VALUES (?, ?, ?, ?, ?)");
-                $stmt2->bind_param("sssss", $full_name,$email, $role,$photo_filename, $academic_info);$stmt2->execute();
-                $stmt2->close();$inserted = true;
-            } catch (mysqli_sql_exception $e2) {
-                try {
-                    $stmt3 =$conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo) VALUES (?, ?, ?, ?)");
-                    $stmt3->bind_param("ssss", $full_name, $email,$role, $photo_filename);$stmt3->execute();
-                    $stmt3->close();$inserted = true;
-                } catch (mysqli_sql_exception $e3) {
-                    $db_error =$e3->getMessage();
-                }
+        if (!empty($name_col)) {
+            // Buuin ang query nang dinamiko batay sa available columns
+            $cols = [$name_col, 'email', 'role', 'photo'];
+            $vals = [$full_name, $email,$role, $photo_filename];$types = "ssss";
+
+            if (!empty($acad_col) &&$role === 'student') {
+                $cols[] =$acad_col;
+                $vals[] =$academic_info;
+                $types .= "s";
             }
+
+            $placeholders = implode(',', array_fill(0, count(names:$cols), '?'));
+            $col_string = implode(',',$cols);
+
+            $sql = "INSERT INTO tbl_users ($col_string) VALUES ($placeholders)";
+            $stmt = $conn->prepare($sql);
+
+            if ($stmt) {
+                // Dynamic binding ng parameters
+                $stmt->bind_param($types, ...$vals);
+                if ($stmt->execute()) {$inserted = true;
+                } else {
+                    $db_error =$stmt->error;
+                }
+                $stmt->close();
+            } else {
+                $db_error =$conn->error;
+            }
+        } else {
+            $db_error = "Walang nahanap na name column (`full_name` o `fullname`) sa database table.";
         }
 
         if ($inserted) {$message = "Registration successful! You can now log in.";
@@ -138,8 +164,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             </select>
         </div>
 
-        <!-- Student Specific Section (Live Selfie & Academic Info) -->
-        <div id="studentSection" class="conditional-section">
+        <!-- Student Specific Section (Live Selfie & Academic Info) - Naka-hide by default para hindi lumitaw sa Faculty -->
+        <div id="studentSection" class="conditional-section" style="display: none;">
             <div class="form-group">
                 <label>Live Selfie Capture (Student Only)</label>
                 <div class="camera-box" id="cameraBox">
@@ -295,4 +321,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
 
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 if (imageDataInput) {
-                    imageData
+                    imageDataInput.value = canvas.toDataURL('image/png');
+                }
+
+                stopCamera();
+
+                video.style.display = 'none';
+                canvas.style.display = 'block';
+                
+                captureBtn.textContent = "Selfie Captured!";
+                captureBtn.disabled = true;
+                captureBtn.style.backgroundColor = "#6c757d";
+            }
+        });
+    }
+
+    // Siguraduhing ma-evaluate ang role pagka-load ng page
+    handleRoleChange();
+</script>
+
+</body>
+</html>

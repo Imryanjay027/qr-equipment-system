@@ -5,21 +5,25 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// DIREKTANG ILAGAY ANG COOLIFY DATABASE HOST
+// KUKUNIN ANG MGA ENVIRONMENT VARIABLES NG COOLIFY
 // ==========================================
-// TINGNAN SA COOLIFY DASHBOARD: 
-// Kung ano ang nakalagay na Internal URL/Host ng Database mo (hal. 'coolify-mysql-xxxx' o IP address), 
-// ilagay mo rito sa loob ng single quotes sa ibaba:
-$host = "127.0.0.1";     // <- KUNG HINDI '127.0.0.1', PALITAN NG EKSAKTONG HOSTNAME MULA SA COOLIFY
-$username = "root";      // Database username
-$password = "";          // Database password (kung mayroon)
-$database = "qrcode";    // Database name
-$port = 3306;            // Port
+$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
-$conn = new mysqli($host, $username, $password, $database, $port);
+// Kung sakaling ang host ay 'localhost' o '127.0.0.1' pero nag-re-refuse, subukan nating basahin ang docker service name kung meron
+$conn = @new mysqli($host, $username, $password, $database, (int)$port);
+
+// Fallback kung sakaling nabigo ang unang koneksyon at gumagamit ng standard docker bridge IP kung kinakailangan
+if ($conn->connect_error) {
+    // Subukan natin ang alternative host kung sakaling 'localhost' ang nasalo
+    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
+}
 
 if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+    die("Database Connection Failed: " . $conn->connect_error . " (Host: $host, Port: $port, User: $username)");
 }
 
 // Kung naka-login na, i-redirect batay sa role

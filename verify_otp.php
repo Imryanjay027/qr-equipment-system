@@ -4,32 +4,56 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Kung walang inaasahang OTP process, ibalik sa login.php
+if (!isset($_SESSION['otp_code']) || !isset($_SESSION['temp_user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
 $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $entered_otp = trim($_POST['otp'] ?? '');
-    
-    if (isset($_SESSION['otp_code']) && isset($_SESSION['otp_expiry'])) {
-        if (time() > $_SESSION['otp_expiry']) {
-            $error = "OTP code has expired. Please log in again.";
-        } elseif (intval($entered_otp) === intval($_SESSION['otp_code'])) {
-            // Success: I-set ang user session papuntang borrower dashboard
-            $_SESSION['user_id'] = $_SESSION['temp_user_id'] ?? 1;
-            $_SESSION['role'] = $_SESSION['temp_role'] ?? 'student';
-            $_SESSION['full_name'] = $_SESSION['temp_full_name'] ?? 'Ryan Jay Leoligao';
-            $_SESSION['student_id'] = $_SESSION['temp_student_id'] ?? '903324454';
-            $_SESSION['course_year'] = $_SESSION['temp_course_year'] ?? 'BSIT-3B';
-            
-            // Linisin ang temporary session
-            unset($_SESSION['otp_code'], $_SESSION['otp_expiry']);
-            
-            header("Location: borrower.php");
+    $user_otp = trim($_POST['otp'] ?? '');
+
+    // Suriin kung expired na ang OTP (5 minutes limit)
+    if (time() > $_SESSION['otp_expiry']) {
+        $error = "Expired na ang OTP. Mangyaring mag-login ulit para makatanggap ng bago.";
+        unset($_SESSION['otp_code'], $_SESSION['otp_expiry'], $_SESSION['temp_user_id']);
+    } 
+    // Suriin kung tama ang inilagay na OTP
+    else if ($user_otp == $_SESSION['otp_code']) {
+        
+        // 1. ILIPAT ANG TEMP SESSION SA PERMANENT LOGIN SESSION (Lahat ng standard flags)
+        $_SESSION['user_id']      = $_SESSION['temp_user_id'];
+        $_SESSION['user']         = $_SESSION['temp_user_id']; // For dashboards looking for 'user'
+        $_SESSION['logged_in']    = true;                      // For flags looking for 'logged_in'
+        $_SESSION['is_logged_in'] = true;
+        
+        $_SESSION['role']         = strtolower(trim($_SESSION['temp_role'])); // 'custodian' o 'borrower'
+        $_SESSION['full_name']    = $_SESSION['temp_full_name'];
+        $_SESSION['student_id']   = $_SESSION['temp_student_id'];
+
+        // 2. LINISIN ANG TEMP OTP SESSION
+        unset($_SESSION['otp_code']);
+        unset($_SESSION['otp_expiry']);
+        unset($_SESSION['temp_user_id']);
+        unset($_SESSION['temp_role']);
+        unset($_SESSION['temp_full_name']);
+        unset($_SESSION['temp_student_id']);
+
+        // 3. DYNAMIC REDIRECTION BATAY SA ROLE
+        $role = strtolower(trim($_SESSION['role']));
+
+        if ($role === 'custodian') {
+            header("Location: custodian_dashboard.php");
             exit();
         } else {
-            $error = "Invalid OTP code. Please try again.";
+            header("Location: borrower.php");
+            exit();
         }
+
     } else {
-        $error = "No OTP request found. Please log in again.";
+        $error = "Mali ang OTP code na inilagay mo. Pakisubukan ulit.";
     }
 }
 ?>
@@ -53,9 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-5">
-                <div class="otp-card text-center">
-                    <h4 class="fw-bold text-success mb-2">Enter OTP</h4>
-                    <p class="text-muted small mb-4">Enter the 6-digit OTP sent to your email via Brevo</p>
+                <div class="otp-card">
+                    <div class="text-center mb-4">
+                        <h4 class="fw-bold text-success">OTP Verification</h4>
+                        <p class="text-muted small">Inilagay namin ang 6-digit code sa iyong email. Pakilagay sa ibaba:</p>
+                    </div>
 
                     <?php if (!empty($error)): ?>
                         <div class="alert alert-danger py-2 small" role="alert">
@@ -65,15 +91,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <form action="verify_otp.php" method="POST">
                         <div class="mb-3">
-                            <input type="text" class="form-control text-center fs-4 tracking-wide" id="otp" name="otp" required placeholder="------" maxlength="6" autofocus>
+                            <label for="otp" class="form-label fw-semibold">Enter 6-Digit OTP</label>
+                            <input type="text" class="form-control text-center fs-4 fw-bold" id="otp" name="otp" maxlength="6" required placeholder="000000">
                         </div>
                         <div class="d-grid mb-3">
-                            <button type="submit" class="btn btn-custom fw-bold py-2">Verify OTP</button>
+                            <button type="submit" class="btn btn-custom fw-bold py-2">Verify & Login</button>
                         </div>
                     </form>
 
-                    <div class="mt-3">
-                        <p class="small text-muted">Back to <a href="login.php" class="text-success fw-bold text-decoration-none">Login</a></p>
+                    <div class="text-center mt-3">
+                        <a href="login.php" class="text-secondary small text-decoration-none">← Bumalik sa Login</a>
                     </div>
                 </div>
             </div>

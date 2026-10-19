@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ";
                                 $mail->send();
                             } catch (Exception $e) {
-                                // Ipagpatuloy ang pag-redirect kahit may aberya
+                                // Ipagpatuloy ang pag-redirect kahit may isyu sa network
                             }
                         }
                     }

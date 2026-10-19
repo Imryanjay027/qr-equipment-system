@@ -1,162 +1,129 @@
 <?php
+session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-include 'db_connection.php';
-session_start();
-
-$error = "";
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email'] ?? '');
-
-    if (!empty($email)) {
-        // Hanapin ang email sa database
-        $sql = "SELECT * FROM tbl_users WHERE email = ? OR Email = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ss", $email, $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($row = $result->fetch_assoc()) {
-            // Gumawa ng 6-digit OTP
-            $otp = rand(100000, 999999);
-            
-            // I-save sa session ang OTP at temporary user data
-            $_SESSION['otp'] = $otp;
-            $_SESSION['otp_expiry'] = time() + 300; // 5 minutes expiration
-            $_SESSION['temp_user_id'] = $row['id'];
-            $_SESSION['temp_user_role'] = $row['role'] ?? 'Student';
-            $_SESSION['temp_email'] = $email;
-
-            // PHPMailer Loading gamit ang Absolute Path (__DIR__)
-            require_once __DIR__ . '/phpmailer/PHPMailer.php';
-            require_once __DIR__ . '/phpmailer/SMTP.php';
-            require_once __DIR__ . '/phpmailer/Exception.php';
-
-            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-            try {
-                // Server settings para sa Gmail SMTP
-                $mail->isSMTP();
-                $mail->Host       = 'smtp.gmail.com';
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'ryanjayleoligao64@gmail.com';
-                $mail->Password   = 'pjldvtgclahzzggj'; // App Password nang walang space
-                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = 587;
-
-                // Recipients
-                $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC System');
-                $mail->addAddress($email);
-
-                // I-embed ang logo.jpg para lumabas bilang school logo sa email body
-                $mail->addEmbeddedImage('logo.jpg', 'school_logo');
-
-                // Content (HTML Template na may updated na buong title sa email)
-                $mail->isHTML(true);
-                $mail->Subject = 'Your Login OTP Code - MQCQC System';
-                $mail->Body    = '
-                <div style="background-color: #f4f6f9; padding: 20px; font-family: Arial, sans-serif;">
-                    <div style="max-width: 500px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                        
-                        <!-- Embedded School Logo -->
-                        <img src="cid:school_logo" alt="MQCQC Logo" style="width: 90px; height: auto; margin-bottom: 15px;">
-                        
-                        <h2 style="color: #1a365d; margin: 0; font-size: 20px;">Mary The Queen College of Quezon City</h2>
-                        <p style="color: #666666; font-size: 13px; font-weight: bold; text-transform: uppercase; margin-top: 5px; margin-bottom: 20px;">QR - BASED SCHOOL EQUIPMENT BORROWING, RETURN, AND CONDITION MONITORING SYSTEM</p>
-                        
-                        <hr style="border: none; border-top: 1px solid #eeeeee; margin: 20px 0;">
-                        
-                        <p style="text-align: left; color: #333333; font-size: 14px; margin-bottom: 5px;">Hello,</p>
-                        <p style="text-align: left; color: #333333; font-size: 14px; margin-top: 0;">Here is your 6-digit OTP code for logging in:</p>
-                        
-                        <!-- OTP Display Box -->
-                        <div style="background-color: #f8f9fa; border-radius: 6px; padding: 15px; margin: 20px 0; display: inline-block; width: 80%; border: 1px solid #ddd;">
-                            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1a365d;">' . $otp . '</span>
-                        </div>
-                        
-                        <p style="color: #888888; font-size: 12px; margin-top: 30px;">It will expire in 5 minutes.</p>
-                    </div>
-                </div>';
-
-                if ($mail->send()) {
-                    header("Location: verify_otp.php");
-                    exit();
-                }
-            } catch (Exception $e) {
-                $error = "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
-            }
-        } else {
-            $error = "Email address not found in our database.";
-        }
-    } else {
-        $error = "Please enter your registered email.";
-    }
+// I-check kung nakapag-login at kung student ang role
+if (!isset($_SESSION['user_id']) || strtolower(trim($_SESSION['role'] ?? '')) !== 'student') {
+    header("Location: login.php");
+    exit();
 }
+
+// Alamin kung aling tab ang pinili
+$tab = $_GET['tab'] ?? 'active';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Mary The Queen College of Quezon City</title>
+    <title>Mary The Queen College - Borrower's Portal</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { 
-            background-color: #f4f7f6; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-card { 
-            border: none; 
-            border-radius: 12px; 
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); 
-        }
-        .btn-primary { 
-            background-color: #0d6efd; 
-            border: none; 
-        }
-        .btn-primary:hover { 
-            background-color: #0b5ed7; 
-        }
+        body { background-color: #f4f7f6; font-family: Arial, sans-serif; }
+        .navbar-custom { background-color: #198754; }
+        .profile-card { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; margin-top: 30px; border-left: 6px solid #198754; }
+        .table-custom th { background-color: #198754; color: white; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="card login-card p-4 bg-white">
-                    <div class="text-center mb-4">
-                        <img src="logo.jpg" alt="Logo" class="mb-2" style="max-height: 70px;">
-                        <h4 class="fw-bold text-primary mb-1" style="font-size: 15px;">"QR - BASED SCHOOL EQUIPMENT BORROWING, RETURN, AND CONDITION MONITORING SYSTEM"</h4>
-                        <p class="text-muted small">Enter your registered email to log in</p>
-                    </div>
+    <!-- Green Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold fs-6 text-white" href="#">MARY THE QUEEN COLLEGE - BORROWER'S PORTAL</a>
+            <div class="d-flex align-items-center">
+                <a href="index.php" class="btn btn-light btn-sm fw-bold text-success me-2">Back to your dashboard</a>
+                <a href="logout.php" class="btn btn-danger btn-sm fw-bold">Logout</a>
+            </div>
+        </div>
+    </nav>
 
-                    <?php if (!empty($error)) { ?>
-                        <div class="alert alert-danger py-2 text-center small" role="alert">
-                            <?= htmlspecialchars($error); ?>
-                        </div>
-                    <?php } ?>
-
-                    <form method="POST" action="">
-                        <div class="mb-3">
-                            <label for="email" class="form-label fw-semibold text-secondary small">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required autofocus>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Send OTP</button>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <p class="small text-muted mb-0">Don't have an account? <a href="register.php" class="text-decoration-none fw-bold">Register</a></p>
-                    </div>
+    <div class="container py-4">
+        <!-- Profile Card Section with QR Code -->
+        <div class="profile-card d-flex flex-wrap align-items-center justify-content-between">
+            <div class="d-flex align-items-center mb-3 mb-md-0">
+                <div class="rounded-circle bg-secondary text-white d-flex justify-content-center align-items-center me-4" style="width: 75px; height: 75px; font-size: 32px;">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div>
+                    <h4 class="fw-bold mb-1" style="color: #1a365d;"><?= htmlspecialchars($_SESSION['full_name'] ?? 'Ryan Jay Leoligao'); ?></h4>
+                    <p class="text-muted mb-0 small">Student ID: <?= htmlspecialchars($_SESSION['student_id'] ?? '903324454'); ?></p>
+                    <p class="text-muted mb-0 small">Course / Year: <?= htmlspecialchars($_SESSION['course_year'] ?? 'BSIT-3B'); ?></p>
+                </div>
+            </div>
+            <div class="text-center">
+                <span class="text-muted small d-block mb-1 fw-bold">Your QR Code</span>
+                <div class="p-1 bg-white border rounded shadow-sm d-inline-block">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=<?= urlencode($_SESSION['student_id'] ?? '903324454'); ?>" alt="Student QR Code" style="width: 90px; height: 90px;">
                 </div>
             </div>
         </div>
+
+        <!-- Tab Navigation Buttons -->
+        <div class="mt-4 mb-3">
+            <a href="borrower.php?tab=active" class="btn <?= $tab === 'active' ? 'btn-success' : 'btn-secondary'; ?> btn-sm fw-bold px-3 text-decoration-none">My Borrowed Equipment</a>
+            
+            <a href="borrower.php?tab=history" class="btn <?= $tab === 'history' ? 'btn-success' : 'btn-secondary'; ?> btn-sm fw-bold px-3 text-white text-decoration-none" <?= $tab !== 'history' ? 'style="background-color: #adb5bd; border: none;"' : ''; ?>>Returned Items History / Remarks</a>
+        </div>
+
+        <?php if ($tab === 'active'): ?>
+            <!-- TAB 1: Active Borrowed Equipment -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0 table-custom text-center align-middle">
+                        <thead>
+                            <tr>
+                                <th class="py-3">Student ID</th>
+                                <th class="py-3">Equipment Name</th>
+                                <th class="py-3">Borrow Date / Due Date</th>
+                                <th class="py-3">Status / Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="4" class="py-4 text-muted">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Borrow Action Section - Nakaturo na sa registration.php -->
+            <div class="card shadow-sm border-0 p-4 text-center bg-white">
+                <p class="text-muted mb-2 small fw-bold">Need to borrow an item?</p>
+                <div>
+                    <a href="registration.php" class="btn btn-success px-4 py-2 fw-bold shadow-sm text-decoration-none">Borrow an Item</a>
+                </div>
+            </div>
+
+        <?php elseif ($tab === 'history'): ?>
+            <!-- TAB 2: Returned Items History / Remarks -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0 table-custom text-center align-middle">
+                        <thead>
+                            <tr>
+                                <th class="py-3">Equipment Name</th>
+                                <th class="py-3">Borrow Date</th>
+                                <th class="py-3">Return Date</th>
+                                <th class="py-3">Equipment Status (Good / Damaged / Replaced)</th>
+                                <th class="py-3">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="py-4 text-muted">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <?php endif; ?>
+
     </div>
 
 </body>

@@ -32,12 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['temp_course_year'] = 'BSIT-3B';
 
         // 3. Pagpapadala ng OTP gamit ang Brevo API (cURL)
-        $brevo_api_key = "xkeysib-ILAGAY_ANG_IYONG_BREVO_API_KEY_DITO"; // Palitan ito ng iyong Brevo API Key
+        $brevo_api_key = "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"; 
         
         $email_data = [
             "sender" => [
                 "name" => "MQCQC Equipment System",
-                "email" => "no-reply@yourdomain.com" // Palitan ng iyong verified sender email sa Brevo
+                "email" => "no-reply@yourdomain.com" // Siguraduhing ito ay verified sender email sa iyong Brevo account
             ],
             "to" => [
                 [
@@ -68,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: verify_otp.php");
             exit();
         } else {
-            // I-display ang eksaktong tugon galing sa Brevo para makita natin ang dahilan
             $error = "Brevo Error (HTTP $http_code): " . ($curl_error ? $curl_error : $response);
         }
     } else {

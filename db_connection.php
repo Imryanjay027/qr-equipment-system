@@ -1,7 +1,7 @@
 <?php
 $host = '172.17.0.1';
 $port = 3306;
-$user = 'root'; // Subukan ang 'root' o ang username mula sa Coolify DB settings
+$user = 'root'; // Subukan palitan ito ng Normal User kung iba ang nakalagay sa Coolify DB settings mo
 $pass = 'ryan072797';
 $dbname = 'qrcode';
 

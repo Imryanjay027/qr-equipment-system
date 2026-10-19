@@ -81,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sender_email = 'ryanjayleoligao64@gmail.com';
                     $sender_app_password = 'ppcj vkux nvje nrhu';
 
-                    // Direktang pag-require ng PHPMailer source files (walang vendor folder na kailangan)
-                    $phpmailer_path = 'PHPMailer/src/';
+                    // Tumutugma na ngayon sa eksaktong 'phpmailer/' folder mo sa GitHub
+                    $phpmailer_path = 'phpmailer/';
                     if (file_exists($phpmailer_path . 'PHPMailer.php') && file_exists($phpmailer_path . 'SMTP.php') && file_exists($phpmailer_path . 'Exception.php')) {
                         require_once $phpmailer_path . 'Exception.php';
                         require_once $phpmailer_path . 'PHPMailer.php';
@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $error = "Mailer Error: " . $mail->ErrorInfo;
                         }
                     } else {
-                        $error = "PHPMailer source files folder (PHPMailer/src/) not found on server.";
+                        $error = "PHPMailer files not found inside 'phpmailer/' folder.";
                     }
                 }
             } else {

@@ -1,212 +1,128 @@
 <?php
 session_start();
-include 'db_connection.php';
 
-$error_msg = "";
-$success_msg = "";
+// ==========================================
+// BREVO EMAIL FUNCTION (REST API / cURL)
+// ==========================================
+function sendOTP($toEmail, $otpCode) {
+    // Ang na-generate mong Brevo API Key
+    $apiKey = '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';
 
-if (isset($_POST['send_otp'])) {
-    $identifier = trim($_POST['identifier']);
+    $url = 'https://api.brevo.com/v3/smtp/email';
 
-    if (!empty($identifier)) {
-        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("s", $identifier);
-            $stmt->execute();
-            $result = $stmt->get_result();
+    $data = array(
+        'sender' => array(
+            'name' => 'MQCQC Equipment System',
+            'email' => 'ryanjayleoligao64@gmail.com' // Ang iyong rehistradong email sa Brevo
+        ),
+        'to' => array(
+            array(
+                'email' => $toEmail
+            )
+        ),
+        'subject' => 'Your Login OTP Code - MQCQC System',
+        'htmlContent' => "
+            <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; max-width: 500px;'>
+                <h2 style='color: #2e7d32;'>MQCQC Equipment Monitoring System</h2>
+                <p>Hello,</p>
+                <p>Ang iyong One-Time Password (OTP) para sa pag-login ay:</p>
+                <h1 style='color: #1b5e20; letter-spacing: 4px; background-color: #f4f4f4; padding: 10px; display: inline-block; border-radius: 4px;'>{$otpCode}</h1>
+                <p>Mangyaring i-input ang code na ito sa login page. Huwag itong ibahagi kanino man.</p>
+                <br>
+                <small style='color: #777;'>Ito ay awtomatikong mensahe mula sa MQCQC System.</small>
+            </div>
+        "
+    );
 
-            if ($result && $result->num_rows > 0) {
-                $user = $result->fetch_assoc();
-                $email = $user['email'];
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'accept: application/json',
+        'api-key: ' . $apiKey,
+        'content-type: application/json'
+    ));
 
-                $otp = rand(100000, 999999);
-                $_SESSION['otp'] = $otp;
-                $_SESSION['email'] = $email;
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-                // Gamitin ang native mail() o mail command para iwasan ang PHPMailer library bugs sa Docker container
-                $to = $email;
-                $subject = "Your Login OTP Code - QR Equipment System";
-                $message = "Ang iyong OTP code para sa login ay: " . $otp;
-                $headers = "From: noreply@equipment-system.local\r\n" .
-                           "Reply-To: noreply@equipment-system.local\r\n" .
-                           "X-Mailer: PHP/" . phpversion();
+    // HTTP 201 Created ay nangangahulugang matagumpay na naipadala ang email
+    return ($httpCode == 201);
+}
 
-                // Subukang i-send gamit ang native mail function
-                if (@mail($to, $subject, $message, $headers)) {
-                    header("Location: verify_otp.php");
-                    exit();
-                } else {
-                    // Fallback kung sakaling walang mail server sa container, diretso muna sa verification para makapag-test kaagad
-                    $_SESSION['otp_debug'] = $otp; // Para makita mo kung sakaling walang mail agent
-                    header("Location: verify_otp.php");
-                    exit();
-                }
+// ==========================================
+// LOGIN & OTP HANDLING LOGIC
+// ==========================================
+
+// Halimbawa ng pag-handle ng OTP submission/request
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action']) && $_POST['action'] === 'request_otp') {
+        $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+        
+        if ($email) {
+            // Generates 6-digit random OTP
+            $otp = sprintf("%06d", mt_rand(1, 999999));
+            
+            $_SESSION['otp'] = $otp;
+            $_SESSION['otp_email'] = $email;
+            $_SESSION['otp_expiration'] = time() + (5 * 60); // Valid for 5 minutes
+
+            if (sendOTP($email, $otp)) {
+                $message = "Matagumpay na naisend ang OTP sa iyong email!";
+                $status = "success";
             } else {
-                $error_msg = "Walang nahanap na account para sa Email na ito.";
+                $message = "Nagkaroon ng problema sa pagpapadala ng OTP. Pakisubukan ulit.";
+                $status = "error";
             }
-            $stmt->close();
         } else {
-            $error_msg = "Database query error: " . $conn->error;
+            $message = "Mangyaring maglagay ng tamang email address.";
+            $status = "error";
         }
-    } else {
-        $error_msg = "Mangyaring ilagay ang iyong Email address.";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR-Based Equipment Monitoring System - Login</title>
+    <title>Login - MQCQC Equipment Monitoring System</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-
-        body {
-            background-color: #f4f6f9;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .login-container {
-            background: #ffffff;
-            width: 100%;
-            max-width: 480px;
-            padding: 40px 35px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            text-align: center;
-        }
-
-        .logo {
-            width: 90px;
-            height: auto;
-            margin-bottom: 20px;
-        }
-
-        .system-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 6px;
-            letter-spacing: 0.5px;
-        }
-
-        .system-subtitle {
-            font-size: 13px;
-            color: #7f8c8d;
-            margin-bottom: 25px;
-        }
-
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #842029;
-            border: 1px solid #f5c2c7;
-            padding: 12px 15px;
-            border-radius: 6px;
-            font-size: 13.5px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .form-group {
-            text-align: left;
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 13.5px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 8px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 11px 14px;
-            border: 1px solid #cccccc;
-            border-radius: 6px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .form-control:focus {
-            border-color: #2d6a4f;
-        }
-
-        .btn-submit {
-            width: 100%;
-            background-color: #2d6a4f;
-            color: #ffffff;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .btn-submit:hover {
-            background-color: #21513c;
-        }
-
-        .register-link {
-            margin-top: 25px;
-            font-size: 13.5px;
-            color: #555555;
-        }
-
-        .register-link a {
-            color: #2d6a4f;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .register-link a:hover {
-            text-decoration: underline;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .login-card h2 { margin-bottom: 20px; color: #2e7d32; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #333; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 10px; background-color: #2e7d32; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn:hover { background-color: #1b5e20; }
+        .alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; }
+        .alert-success { background-color: #d4edda; color: #155724; }
+        .alert-error { background-color: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
 
-<div class="login-container">
-    <!-- Logo -->
-    <img src="logo.jpg" alt="MQCQC Logo" class="logo" onerror="this.src='logo.png';">
+<div class="login-card">
+    <h2>MQCQC System Login</h2>
 
-    <h2 class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h2>
-    <p class="system-subtitle">Account Login (OTP Authentication)</p>
-
-    <!-- Error Message Alert Box -->
-    <?php if (!empty($error_msg)): ?>
-        <div class="alert-danger">
-            <?= htmlspecialchars($error_msg); ?>
+    <?php if (isset($message)): ?>
+        <div class="alert alert-<?php echo $status; ?>">
+            <?php echo $message; ?>
         </div>
     <?php endif; ?>
 
     <form method="POST" action="login.php">
+        <input type="hidden" name="action" value="request_otp">
         <div class="form-group">
-            <label for="identifier">Email Address</label>
-            <input type="email" id="identifier" name="identifier" class="form-control" placeholder="Enter your Email" required>
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required placeholder="Enter your registered email">
         </div>
-
-        <button type="submit" name="send_otp" class="btn-submit">
-            Send OTP
-        </button>
+        <button type="submit" class="btn">Send OTP</button>
     </form>
-
-    <div class="register-link">
-        Don't have an account? <a href="register.php">Register here</a>
-    </div>
 </div>
 
 </body>

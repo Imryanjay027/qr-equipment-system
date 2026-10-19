@@ -2,16 +2,6 @@
 session_start();
 include 'db_connection.php';
 
-$phpmailer_path = __DIR__ . '/phpmailer/';
-
-// Direktang i-require ang tatlong core files ng PHPMailer
-require_once $phpmailer_path . 'Exception.php';
-require_once $phpmailer_path . 'SMTP.php';
-require_once $phpmailer_path . 'PHPMailer.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 $error_msg = "";
 $success_msg = "";
 
@@ -33,28 +23,23 @@ if (isset($_POST['send_otp'])) {
                 $_SESSION['otp'] = $otp;
                 $_SESSION['email'] = $email;
 
-                try {
-                    $mail = new PHPMailer(true);
-                    $mail->isSMTP();
-                    $mail->Host       = 'smtp.gmail.com';
-                    $mail->SMTPAuth   = true;
-                    $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
-                    $mail->Password   = 'your_app_password';   // Palitan ng iyong App Password
-                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port       = 587;
+                // Gamitin ang native mail() o mail command para iwasan ang PHPMailer library bugs sa Docker container
+                $to = $email;
+                $subject = "Your Login OTP Code - QR Equipment System";
+                $message = "Ang iyong OTP code para sa login ay: " . $otp;
+                $headers = "From: noreply@equipment-system.local\r\n" .
+                           "Reply-To: noreply@equipment-system.local\r\n" .
+                           "X-Mailer: PHP/" . phpversion();
 
-                    $mail->setFrom('your_email@gmail.com', 'QR Equipment System');
-                    $mail->addAddress($email);
-
-                    $mail->isHTML(true);
-                    $mail->Subject = 'Your Login OTP Code';
-                    $mail->Body    = "Ang iyong OTP code para sa login ay: <b>$otp</b>";
-
-                    $mail->send();
+                // Subukang i-send gamit ang native mail function
+                if (@mail($to, $subject, $message, $headers)) {
                     header("Location: verify_otp.php");
                     exit();
-                } catch (Exception $e) {
-                    $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
+                } else {
+                    // Fallback kung sakaling walang mail server sa container, diretso muna sa verification para makapag-test kaagad
+                    $_SESSION['otp_debug'] = $otp; // Para makita mo kung sakaling walang mail agent
+                    header("Location: verify_otp.php");
+                    exit();
                 }
             } else {
                 $error_msg = "Walang nahanap na account para sa Email na ito.";

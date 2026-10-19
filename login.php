@@ -5,12 +5,13 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// MGA DETALYE NG DATABASE (Baguhin kung kinakailangan)
+// DATABASE CONFIGURATION (Coolify / Docker Compatible)
 // ==========================================
-$host = "localhost";       // O ang database host / service name sa Coolify
-$username = "root";        // Ang iyong database username (karaniwang 'root')
-$password = "";            // ILAGAY ANG PASSWORD DITO KUNG MAYROON (Hal. "secret123" kung hiningi sa paggawa ng DB)
-$database = "qrcode";      // Ang pangalan ng database mo batay sa error
+// Kung hiwalay ang container ng MySQL sa Coolify, palitan ang '127.0.0.1' ng pangalan ng service (hal. 'mysql' o 'db')
+$host = getenv('DB_HOST') ?: '127.0.0.1'; 
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
+$database = getenv('DB_NAME') ?: 'qrcode';
 
 $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {

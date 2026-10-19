@@ -1,5 +1,7 @@
 <?php
+// login.php
 session_start();
+include 'db_connection.php'; // Siguraduhing tama ang pangalan ng connection file mo
 
 // ==========================================
 // BREVO API EMAIL FUNCTION (cURL)
@@ -57,19 +59,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
         
         if ($email) {
-            $otp = sprintf("%06d", mt_rand(1, 999999));
-            
-            $_SESSION['otp'] = $otp;
-            $_SESSION['login_email'] = $email;
-            $_SESSION['otp_expiration'] = time() + (5 * 60);
+            // I-check muna sa database kung rehistrado ang email at kunin ang role
+            $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR Email = ?");
+            $stmt->bind_param("ss", $email, $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-            if (sendOTP($email, $otp)) {
-                header("Location: verify_otp.php");
-                exit();
+            if ($row = $result->fetch_assoc()) {
+                $otp = sprintf("%06d", mt_rand(1, 999999));
+                
+                // I-save ang mga detalye sa session para magamit sa verify_otp.php
+                $_SESSION['otp'] = $otp;
+                $_SESSION['login_email'] = $email;
+                $_SESSION['temp_email'] = $email;
+                $_SESSION['temp_user_id'] = $row['id'];
+                $_SESSION['temp_user_role'] = $row['role'] ?? 'student';
+                $_SESSION['otp_expiration'] = time() + (5 * 60);
+
+                if (sendOTP($email, $otp)) {
+                    header("Location: verify_otp.php");
+                    exit();
+                } else {
+                    $message = "Nagkaroon ng problema sa pagpapadala ng OTP. Subukan ulit.";
+                    $status = "error";
+                }
             } else {
-                $message = "Nagkaroon ng problema sa pagpapadala ng OTP. Subukan ulit.";
+                $message = "Ang email na ito ay hindi pa rehistrado sa sistema.";
                 $status = "error";
             }
+            $stmt->close();
         } else {
             $message = "Mangyaring maglagay ng tamang email address.";
             $status = "error";

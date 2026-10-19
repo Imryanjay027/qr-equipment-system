@@ -7,7 +7,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// PHPMailer core files gamit ang absolute path para siguraduhing mahanap sa server
+// PHPMailer core files gamit ang absolute path at tamang capitalization para sa Linux/Coolify
 require_once __DIR__ . '/phpmailer/Exception.php';
 require_once __DIR__ . '/phpmailer/SMTP.php';
 require_once __DIR__ . '/phpmailer/PHPMailer.php';

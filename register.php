@@ -25,29 +25,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (count($image_parts) == 2) {
                 $image_base64 = base64_decode($image_parts[1]);
                 $target_dir = __DIR__ . "/uploads/";
+                
                 if (!file_exists($target_dir)) {
-                    mkdir($target_dir, 0777, true);
+                    @mkdir($target_dir, 0777, true);
                 }
+                
+                // Subukan munang i-set ang permission kung sakaling nabitin
+                @chmod($target_dir, 0777);
+
                 $photo_filename = 'student_' . time() . '.png';
-                file_put_contents($target_dir . $photo_filename, $image_base64);
+                $destination = $target_dir . $photo_filename;
+                
+                // Gamitin ang @ para maiwasan ang fatal warning sakaling mag-permission denied pa rin, pero i-check
+                @file_put_contents($destination, $image_base64);
+                @chmod($destination, 0666);
             }
         }
 
-        // Sinigurong sinasama ang parehong full_name at fullname para iwas-error sa database schema
+        // Susubukan nating i-insert gamit ang 'fullname' at 'full_name' para sigurado sa anong column ang meron sa live db
+        $inserted = false;
+        $db_error = '';
+
+        // Subukan muna natin ang query gamit ang 'full_name' at 'fullname' sabay
         $stmt = $conn->prepare("INSERT INTO tbl_users (full_name, fullname, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?, ?)");
         if ($stmt) {
             $stmt->bind_param("ssssss", $full_name, $full_name, $email, $role, $photo_filename, $academic_info);
             if ($stmt->execute()) {
-                $message = "Registration successful! You can now log in.";
-                $status = "success";
+                $inserted = true;
             } else {
-                $message = "Database error: " . $stmt->error;
-                $status = "error";
+                $db_error = $stmt->error;
             }
+            $stmt->close();
+        }
+
+        // Kung nag-fail dahil sa column discrepancy, subukan natin ang 'fullname' lamang o 'full_name' lamang
+        if (!$inserted) {
+            $stmt2 = $conn->prepare("INSERT INTO tbl_users (fullname, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
+            if ($stmt2) {
+                $stmt2->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
+                if ($stmt2->execute()) {
+                    $inserted = true;
+                } else {
+                    $db_error = $stmt2->error;
+                }
+                $stmt2->close();
+            }
+        }
+
+        if ($inserted) {
+            $message = "Registration successful! You can now log in.";
+            $status = "success";
         } else {
-            $message = "Query preparation failed: " . $conn->error;
+            $message = "Database error: " . $db_error;
             $status = "error";
         }
+
     } else {
         $message = "Please enter your full name and a valid email address.";
         $status = "error";

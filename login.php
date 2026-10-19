@@ -5,12 +5,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// DIREKTANG ILAGAY ANG MGA DETALYE MULA SA COOLIFY
+// LOCAL CONTAINER DATABASE CONNECTION
 // ==========================================
-$host = "mysql";       // Palitan ito ng pangalan ng database service mo sa Coolify (hal. 'mysql', 'db', o 'mariadb')
-$username = "root";    // Database username
-$password = "";        // ILAGAY ANG PASSWORD DITO kung may password ang root sa Coolify (hal. "secret123"). Kung wala, iwanang blanko "" pero siguraduhing tama ang $host.
-$database = "qrcode";  // Pangalan ng database
+$host = "127.0.0.1";       // Dahil ang MySQL ay nasa loob din ng parehong container
+$username = "root";        // Database username
+$password = "";            // ILAGAY ANG PASSWORD DITO (Hal. "password123") kung mayroon. Kung wala, subukang i-blank muna.
+$database = "qrcode";      // Pangalan ng database mo
 
 $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {
@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Kunin ang totoong data mula sa database
             $_SESSION['temp_user_id'] = $user['id'];
-            $_SESSION['temp_role'] = strtolower(trim($_SESSION['role'])); // 'student' o 'custodian'
+            $_SESSION['temp_role'] = strtolower(trim($user['role'])); // 'student' o 'custodian'
             $_SESSION['temp_full_name'] = $user['full_name'];
             $_SESSION['temp_student_id'] = $user['student_id'] ?? '';
             $_SESSION['temp_course_year'] = $user['course_year'] ?? '';

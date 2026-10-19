@@ -1,53 +1,59 @@
 <?php
-// verify_otp.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+include 'db_connection.php';
 session_start();
 
-// Kung walang temporary session ng email, ibalik sa login page
-if (!isset($_SESSION['temp_email']) || !isset($_SESSION['otp'])) {
-    header("Location: login.php");
-    exit();
-}
-
-$error_msg = "";
+$error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $otp_code = trim($_POST['otp_code'] ?? '');
-
-    if (!empty($otp_code)) {
-        if (intval($otp_code) === intval($_SESSION['otp'])) {
-            $role = strtolower(trim($_SESSION['temp_user_role'] ?? 'student'));
+    $entered_otp = trim($_POST['otp'] ?? '');
+    
+    if (isset($_SESSION['otp'], $_SESSION['otp_expiry']) && time() <= $_SESSION['otp_expiry']) {
+        if ($entered_otp == $_SESSION['otp']) {
             
-            $_SESSION['logged_in'] = true;
-            $_SESSION['user_id'] = $_SESSION['temp_user_id'];
-            $_SESSION['email'] = $_SESSION['temp_email'];
-            $_SESSION['role'] = $role;
-
-            // Linisin ang temporary session values
-            unset($_SESSION['otp']);
-            unset($_SESSION['otp_expiration']);
-            unset($_SESSION['temp_email']);
-            unset($_SESSION['temp_user_id']);
-            unset($_SESSION['temp_user_role']);
-
-            // Dynamic Redirection batay sa Role sa Database
-            if ($role === 'custodian' || $role === 'property custodian') {
-                $_SESSION['custodian_logged_in'] = true;
-                header("Location: custodian_dashboard.php");
-                exit();
-            } else {
-                $_SESSION['student_logged_in'] = true;
-                header("Location: borrower.php");
-                exit();
+            $user_id = $_SESSION['temp_user_id'] ?? '';
+            
+            if (!empty($user_id)) {
+                $sql = "SELECT * FROM tbl_users WHERE id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("i", $user_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                if ($row = $result->fetch_assoc()) {
+                    // Itakda ang permanenteng session flag para hindi ma-log out tuwing magre-refresh
+                    $_SESSION['logged_in'] = true;
+                    
+                    $_SESSION['user_id'] = $row['id'];
+                    $_SESSION['email'] = $row['email'] ?? $row['Email'];
+                    $_SESSION['fullname'] = $row['fullname'] ?? $row['name'] ?? '';
+                    $_SESSION['student_id'] = $row['student_id'] ?? $row['username'] ?? '';
+                    $_SESSION['course_year'] = $row['course_year'] ?? '';
+                    $_SESSION['role'] = $row['role'] ?? 'Student';
+                    $_SESSION['photo'] = $row['photo'] ?? '';
+                    
+                    // Linisin ang temporary session variables
+                    unset($_SESSION['otp'], $_SESSION['otp_expiry'], $_SESSION['temp_user_id'], $_SESSION['temp_user_role'], $_SESSION['temp_email']);
+                    
+                    // Tamang pag-redirect batay sa database role
+                    $role = strtolower(trim($row['role'] ?? ''));
+                    if ($role === 'custodian') {
+                        header("Location: custodian_dashboard.php");
+                        exit();
+                    } else {
+                        header("Location: borrower.php");
+                        exit();
+                    }
+                }
             }
 
         } else {
-            $error_msg = "Mali ang OTP code. Pakitingnan muli ang iyong email.";
+            $error = "Invalid OTP code. Please try again.";
         }
     } else {
-        $error_msg = "Mangyaring ilagay ang OTP code.";
+        $error = "OTP code has expired. Please log in again.";
     }
 }
 ?>
@@ -56,45 +62,60 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify OTP - MQCQC Equipment Monitoring System</title>
+    <title>Verify OTP - Mary The Queen College of Quezon City</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .login-card { background: white; padding: 40px 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 420px; text-align: center; }
-        .login-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
-        .login-card h3 { margin: 10px 0 5px 0; color: #212529; font-size: 18px; font-weight: bold; }
-        .login-card p.subtitle { color: #6c757d; font-size: 13px; margin-bottom: 25px; }
-        .form-group { margin-bottom: 20px; text-align: left; }
-        .form-group label { display: block; margin-bottom: 8px; color: #212529; font-weight: 600; font-size: 14px; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 14px; text-align: center; letter-spacing: 3px; font-size: 18px; }
-        .btn { width: 100%; padding: 12px; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background-color 0.2s; }
-        .btn:hover { background-color: #1b5e20; }
-        .alert { padding: 10px; margin-bottom: 20px; border-radius: 6px; font-size: 14px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        body {
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .verify-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
     </style>
 </head>
-<body>
+<body class="d-flex align-items-center justify-content-center vh-100">
 
-<div class="login-card">
-    <img src="logo.jpg" alt="MQCQC Logo" onerror="this.src='uploads/default.png'">
-    <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
-    <p class="subtitle">Enter One-Time Password (OTP)</p>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card verify-card p-4 bg-white">
+                    <div class="text-center mb-4">
+                        <img src="logo.jpg" alt="Logo" class="mb-2" style="max-height: 70px;">
+                        <h4 class="fw-bold text-primary mb-1">Mary The Queen College of Quezon City</h4>
+                        <p class="text-muted small">Enter the 6-digit OTP sent to your email</p>
+                    </div>
 
-    <!-- Pansamantalang Debug para makita kung anong role ang binabasa mula sa database -->
-    <div style="background: #e2f0cb; padding: 8px; margin-bottom: 15px; border-radius: 5px; font-size: 12px; color: #2e7d32; font-weight: bold;">
-        DEBUG ROLE: [<?php echo htmlspecialchars($_SESSION['temp_user_role'] ?? 'wala'); ?>]
-    </div>
+                    <?php if (!empty($error)) { ?>
+                        <div class="alert alert-danger py-2 text-center small" role="alert">
+                            <?= htmlspecialchars($error); ?>
+                        </div>
+                    <?php } ?>
 
-    <?php if (!empty($error_msg)): ?>
-        <div class="alert"><?php echo htmlspecialchars($error_msg); ?></div>
-    <?php endif; ?>
+                    <form method="POST" action="">
+                        <div class="mb-4">
+                            <label for="otp" class="form-label fw-semibold text-secondary small">OTP Code</label>
+                            <input type="text" class="form-control text-center tracking-widest" id="otp" name="otp" placeholder="------" maxlength="6" required autofocus>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Verify OTP</button>
+                    </form>
 
-    <form method="POST" action="verify_otp.php">
-        <div class="form-group">
-            <label for="otp_code">OTP Verification Code</label>
-            <input type="text" id="otp_code" name="otp_code" required placeholder="6-Digit OTP" maxlength="6" autocomplete="off">
+                    <div class="text-center mt-3">
+                        <p class="small text-muted mb-0">Back to <a href="logout.php" class="text-decoration-none fw-bold">Login</a></p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <button type="submit" class="btn">Verify & Proceed</button>
-    </form>
-</div>
+    </div>
 
 </body>
 </html>

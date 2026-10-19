@@ -5,12 +5,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// LOCAL CONTAINER DATABASE CONNECTION
+// COOLIFY DATABASE SERVICE CONNECTION
 // ==========================================
-$host = "127.0.0.1";       // Dahil ang MySQL ay nasa loob din ng parehong container
-$username = "root";        // Database username
-$password = "";            // ILAGAY ANG PASSWORD DITO (Hal. "password123") kung mayroon. Kung wala, subukang i-blank muna.
-$database = "qrcode";      // Pangalan ng database mo
+$host = "db";          // Subukan ang 'db', o ang mismong pangalan ng database service mo sa Coolify
+$username = "root";    // Database username
+$password = "";        // Palitan kung may password ang database mo sa Coolify
+$database = "qrcode";  // Pangalan ng database
 
 $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {

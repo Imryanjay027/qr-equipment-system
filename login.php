@@ -4,81 +4,67 @@ include 'db_connection.php';
 
 $phpmailer_path = __DIR__ . '/phpmailer/';
 
-// Safe inclusion ng core files
-if (file_exists($phpmailer_path . 'Exception.php')) require_once $phpmailer_path . 'Exception.php';
-if (file_exists($phpmailer_path . 'PHPMailer.php')) require_once $phpmailer_path . 'PHPMailer.php';
+// Direktang i-require ang tatlong core files ng PHPMailer
+require_once $phpmailer_path . 'Exception.php';
+require_once $phpmailer_path . 'SMTP.php';
+require_once $phpmailer_path . 'PHPMailer.php';
 
-// Fallback sakaling kulang o hindi mabasa ang SMTP class file sa server
-if (!class_exists('PHPMailer\PHPMailer\SMTP')) {
-    namespace PHPMailer\PHPMailer {
-        class SMTP {
-            public $do_debug = 0;
-            public function connect($host, $port = null, $timeout = 30, $options = []) { return true; }
-            public function authenticate($username, $password, $authtype = '', $realm = '', $workstation = '', $oauth = null) { return true; }
-            public function sendmail($header, $body) { return true; }
-            public function quit($close_connection = true) { return true; }
-            public function disconnect() { return true; }
-            public function connected() { return true; }
-        }
-    }
-}
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-// Bumalik sa Global scope para sa main logic
-namespace {
-    $error_msg = "";
-    $success_msg = "";
+$error_msg = "";
+$success_msg = "";
 
-    if (isset($_POST['send_otp'])) {
-        $identifier = trim($_POST['identifier']);
+if (isset($_POST['send_otp'])) {
+    $identifier = trim($_POST['identifier']);
 
-        if (!empty($identifier)) {
-            $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
-            if ($stmt) {
-                $stmt->bind_param("s", $identifier);
-                $stmt->execute();
-                $result = $stmt->get_result();
+    if (!empty($identifier)) {
+        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $identifier);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-                if ($result && $result->num_rows > 0) {
-                    $user = $result->fetch_assoc();
-                    $email = $user['email'];
+            if ($result && $result->num_rows > 0) {
+                $user = $result->fetch_assoc();
+                $email = $user['email'];
 
-                    $otp = rand(100000, 999999);
-                    $_SESSION['otp'] = $otp;
-                    $_SESSION['email'] = $email;
+                $otp = rand(100000, 999999);
+                $_SESSION['otp'] = $otp;
+                $_SESSION['email'] = $email;
 
-                    try {
-                        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                        $mail->isSMTP();
-                        $mail->Host       = 'smtp.gmail.com';
-                        $mail->SMTPAuth   = true;
-                        $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
-                        $mail->Password   = 'your_app_password';   // Palitan ng iyong App Password
-                        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                        $mail->Port       = 587;
+                try {
+                    $mail = new PHPMailer(true);
+                    $mail->isSMTP();
+                    $mail->Host       = 'smtp.gmail.com';
+                    $mail->SMTPAuth   = true;
+                    $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
+                    $mail->Password   = 'your_app_password';   // Palitan ng iyong App Password
+                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port       = 587;
 
-                        $mail->setFrom('your_email@gmail.com', 'QR Equipment System');
-                        $mail->addAddress($email);
+                    $mail->setFrom('your_email@gmail.com', 'QR Equipment System');
+                    $mail->addAddress($email);
 
-                        $mail->isHTML(true);
-                        $mail->Subject = 'Your Login OTP Code';
-                        $mail->Body    = "Ang iyong OTP code para sa login ay: <b>$otp</b>";
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Your Login OTP Code';
+                    $mail->Body    = "Ang iyong OTP code para sa login ay: <b>$otp</b>";
 
-                        $mail->send();
-                        header("Location: verify_otp.php");
-                        exit();
-                    } catch (\Exception $e) {
-                        $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
-                    }
-                } else {
-                    $error_msg = "Walang nahanap na account para sa Email na ito.";
+                    $mail->send();
+                    header("Location: verify_otp.php");
+                    exit();
+                } catch (Exception $e) {
+                    $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
                 }
-                $stmt->close();
             } else {
-                $error_msg = "Database query error: " . $conn->error;
+                $error_msg = "Walang nahanap na account para sa Email na ito.";
             }
+            $stmt->close();
         } else {
-            $error_msg = "Mangyaring ilagay ang iyong Email address.";
+            $error_msg = "Database query error: " . $conn->error;
         }
+    } else {
+        $error_msg = "Mangyaring ilagay ang iyong Email address.";
     }
 }
 ?>

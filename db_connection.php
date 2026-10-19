@@ -1,9 +1,10 @@
 <?php
-$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101'; // Ang host name mula sa Coolify
+// Babasahin nito ang nilagay mo sa Environment Variables sa Coolify
+$host = getenv('DB_HOST') ?: '172.17.0.1';
 $port = 3306;
 $user = 'root';
-$pass = 'ryan072797'; // Ang password mo
-$dbname = 'qrcode';   // Ang database name mula sa Coolify
+$pass = 'ryan072797';
+$dbname = 'qrcode';
 
 $conn = @new mysqli($host, $user, $pass, $dbname, $port);
 

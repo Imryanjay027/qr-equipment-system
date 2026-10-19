@@ -2,18 +2,16 @@
 session_start();
 
 // ==========================================
-// BREVO EMAIL FUNCTION (REST API / cURL)
+// BREVO API EMAIL FUNCTION (cURL)
 // ==========================================
 function sendOTP($toEmail, $otpCode) {
-    // Ang na-generate mong Brevo API Key
     $apiKey = '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';
-
     $url = 'https://api.brevo.com/v3/smtp/email';
 
     $data = array(
         'sender' => array(
             'name' => 'MQCQC Equipment System',
-            'email' => 'ryanjayleoligao64@gmail.com' // Ang iyong rehistradong email sa Brevo
+            'email' => 'ryanjayleoligao64@gmail.com'
         ),
         'to' => array(
             array(
@@ -29,7 +27,7 @@ function sendOTP($toEmail, $otpCode) {
                 <h1 style='color: #1b5e20; letter-spacing: 4px; background-color: #f4f4f4; padding: 10px; display: inline-block; border-radius: 4px;'>{$otpCode}</h1>
                 <p>Mangyaring i-input ang code na ito sa login page. Huwag itong ibahagi kanino man.</p>
                 <br>
-                <small style='color: #777;'>Ito ay awtomatikong mensahe mula sa MQCQC System.</small>
+                <small style='color: #777;'>Awtomatikong mensahe mula sa MQCQC System.</small>
             </div>
         "
     );
@@ -48,21 +46,20 @@ function sendOTP($toEmail, $otpCode) {
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    // HTTP 201 Created ay nangangahulugang matagumpay na naipadala ang email
     return ($httpCode == 201);
 }
 
 // ==========================================
-// LOGIN & OTP HANDLING LOGIC
+// FORM HANDLING
 // ==========================================
+$message = '';
+$status = '';
 
-// Halimbawa ng pag-handle ng OTP submission/request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'request_otp') {
         $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
         
         if ($email) {
-            // Generates 6-digit random OTP
             $otp = sprintf("%06d", mt_rand(1, 999999));
             
             $_SESSION['otp'] = $otp;
@@ -73,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "Matagumpay na naisend ang OTP sa iyong email!";
                 $status = "success";
             } else {
-                $message = "Nagkaroon ng problema sa pagpapadala ng OTP. Pakisubukan ulit.";
+                $message = "Nagkaroon ng problema sa pagpapadala ng OTP. Subukan ulit.";
                 $status = "error";
             }
         } else {
@@ -109,9 +106,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="login-card">
     <h2>MQCQC System Login</h2>
 
-    <?php if (isset($message)): ?>
+    <?php if (!empty($message)): ?>
         <div class="alert alert-<?php echo $status; ?>">
-            <?php echo $message; ?>
+            <?php echo htmlspecialchars($message); ?>
         </div>
     <?php endif; ?>
 

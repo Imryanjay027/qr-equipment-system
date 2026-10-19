@@ -50,7 +50,7 @@ function sendOTP($toEmail, $otpCode) {
 }
 
 // ==========================================
-// FORM HANDLING
+// FORM HANDLING LOGIC
 // ==========================================
 $message = '';
 $status = '';

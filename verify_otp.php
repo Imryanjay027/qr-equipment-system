@@ -6,7 +6,7 @@ error_reporting(E_ALL);
 
 session_start();
 
-if (!isset($_SESSION['login_email']) || !isset($_SESSION['otp'])) {
+if (!isset($_SESSION['temp_email']) || !isset($_SESSION['otp'])) {
     header("Location: login.php");
     exit();
 }
@@ -18,13 +18,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!empty($otp_code)) {
         if (intval($otp_code) === intval($_SESSION['otp'])) {
-            $_SESSION['custodian_logged_in'] = true;
-            $_SESSION['logged_in'] = true;
+            // Kunin ang role mula sa session na isinave sa login.php
+            $role = strtolower($_SESSION['temp_user_role'] ?? 'student');
             
-            unset($_SESSION['otp']);
+            $_SESSION['logged_in'] = true;
+            $_SESSION['user_id'] = $_SESSION['temp_user_id'];
+            $_SESSION['email'] = $_SESSION['temp_email'];
+            $_SESSION['role'] = $role;
 
-            header("Location: custodian_dashboard.php");
-            exit();
+            // Linisin ang temporary session variables
+            unset($_SESSION['otp']);
+            unset($_SESSION['temp_email']);
+            unset($_SESSION['temp_user_id']);
+            unset($_SESSION['temp_user_role']);
+
+            // Dynamic Redirection batay sa Role
+            if ($role === 'custodian' || $role === 'property custodian') {
+                $_SESSION['custodian_logged_in'] = true;
+                header("Location: custodian_dashboard.php");
+                exit();
+            } else {
+                $_SESSION['student_logged_in'] = true;
+                header("Location: borrower.php");
+                exit();
+            }
+
         } else {
             $error_msg = "Mali ang OTP code. Pakitingnan muli ang iyong Gmail.";
         }

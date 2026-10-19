@@ -1,16 +1,9 @@
 <?php
-// I-on ang error reporting para makita kung sakaling may iba pang kulang
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
-
-// Siguraduhing tama ang path ng db_connection.php mo
-if (file_exists('db_connection.php')) {
-    require_once 'db_connection.php';
-} else {
-    die("Error: Hindi makita ang db_connection.php file.");
-}
+require_once 'db_connection.php';
 
 $error = '';
 
@@ -18,8 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // === PALITAN ANG 'users' SA IBABA NG TUNAY NA PANGALAN NG TABLE MO SA DATABASE (HAL. accounts, tbl_users, etc.) ===
+        // Sinusubukan nitong hanapin ang email sa 'users', kung wala, susubukan sa 'accounts'
         $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+        if (!$stmt) {
+            $stmt = $conn->prepare("SELECT * FROM accounts WHERE email = ?");
+        }
         
         if ($stmt) {
             $stmt->bind_param("s", $email);
@@ -31,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['otp'] = $otp;
                 $_SESSION['login_email'] = $email;
 
-                // Mag-redirect papuntang verify_otp.php
                 header("Location: verify_otp.php");
                 exit();
             } else {
@@ -39,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $stmt->close();
         } else {
-            $error = "Database query error: " . $conn->error;
+            $error = "Database table error: Pakitiyak na tama ang pangalan ng table sa database.";
         }
     } else {
         $error = "Mangyaring ilagay ang iyong email address.";
@@ -51,65 +46,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR-Based Equipment Monitoring System - Login</title>
+    <title>Login - QR-Based Equipment Monitoring System</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .login-card {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 15px;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        .btn-submit {
-            width: 100%;
-            padding: 10px;
-            background-color: #1b5e20;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn-submit:hover {
-            background-color: #2e7d32;
-        }
-        .error-msg {
-            color: #d32f2f;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn-submit { width: 100%; padding: 10px; background-color: #1b5e20; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .error-msg { color: #d32f2f; margin-bottom: 15px; font-size: 14px; }
     </style>
 </head>
 <body>
-
     <div class="login-card">
         <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
         <p style="font-size: 14px; color: #666;">Account Login (OTP Authentication)</p>
@@ -125,11 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <button type="submit" class="btn-submit">Send OTP</button>
         </form>
-
-        <p style="margin-top: 20px; font-size: 13px; color: #666;">
-            Don't have an account? <a href="register.php" style="color: #1b5e20; text-decoration: none;">Register here</a>
-        </p>
     </div>
-
 </body>
 </html>

@@ -1,16 +1,18 @@
 <?php
-$host = '127.0.0.1';          // Pinalitan mula 'localhost' patungong IP para sa Docker/Coolify
-$user = 'root';               // Ang iyong database username
-$pass = 'ILAGAY_ANG_PASSWORD'; // Palitan ng tamang password ng database mo
-$dbname = 'PANGALAN_NG_DB';   // Palitan ng tamang pangalan ng database mo
+// Subukan nating i-explicit ang port 3306
+$host = '127.0.0.1';
+$port = 3306;
+$user = 'root';
+$pass = ''; // Subukan muna ang walang password kung ito ay local container
+$dbname = 'qrequipment_db'; // Palitan ng aktwal na pangalan ng database mo kung iba
 
-$conn = new mysqli($host, $user, $pass, $dbname);
+// Gamitin ang port sa mysqli constructor
+$conn = @new mysqli($host, $user, $pass, $dbname, $port);
 
-// Suriin kung may error sa koneksyon
 if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+    // Kung nag-fail ang 127.0.0.1, subukan ang socket o ibang paraan
+    die("Database Connection Failed: " . $conn->connect_error . " <br>Tiyakin na naka-start ang MySQL/MariaDB service at tama ang pangalan ng database.");
 }
 
-// Set charset para ligtas sa special characters
 $conn->set_charset("utf8mb4");
 ?>

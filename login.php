@@ -83,18 +83,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $phpmailer_path = 'phpmailer/';
                     if (file_exists($phpmailer_path . 'PHPMailer.php') && file_exists($phpmailer_path . 'SMTP.php') && file_exists($phpmailer_path . 'Exception.php')) {
+                        // Kailangan munang i-require nang manual bago gamitin ang klase para hindi mag-error ang SMTP lookup
                         require_once $phpmailer_path . 'Exception.php';
-                        require_once $phpmailer_path . 'PHPMailer.php';
                         require_once $phpmailer_path . 'SMTP.php';
+                        require_once $phpmailer_path . 'PHPMailer.php';
 
                         try {
-                            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+                            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
                             $mail->isSMTP();
                             $mail->Host       = 'smtp.gmail.com';
                             $mail->SMTPAuth   = true;
                             $mail->Username   = $sender_email;
                             $mail->Password   = $sender_app_password;
-                            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
                             $mail->Port       = 587;
 
                             $mail->SMTPOptions = array(

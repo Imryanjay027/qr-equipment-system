@@ -1,7 +1,7 @@
 <?php
-$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101'; // Ang eksaktong host mula sa Coolify URL mo
+$host = '172.17.0.1';
 $port = 3306;
-$user = 'root';
+$user = 'root'; // Subukan ang 'root' o ang username mula sa Coolify DB settings
 $pass = 'ryan072797';
 $dbname = 'qrcode';
 

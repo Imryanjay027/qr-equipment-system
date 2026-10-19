@@ -28,14 +28,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['temp_user_role'] = $db_role;
             $_SESSION['otp_expiration'] = time() + (5 * 60);
 
-            // BREVO API INTEGRATION KASAMA ANG API KEY MO
+            // BREVO API INTEGRATION
             $apiKey = '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'; 
             $url = 'https://api.brevo.com/v3/smtp/email';
 
             $data = [
                 'sender' => [
                     'name' => 'MQCQC Equipment System',
-                    'email' => 'no-reply@mqcqc.edu.ph' // Palitan ito kung ibang email ang verified sa Brevo mo
+                    'email' => 'ryanjayleoligao64@gmail.com'
                 ],
                 'to' => [
                     ['email' => $email]
@@ -57,6 +57,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
+
+            // Kung may error sa Brevo API, ipapakita rito para madali nating makita
+            if ($httpCode !== 201 && $httpCode !== 200) {
+                echo "<div style='background:#f8d7da; color:#721c24; padding:20px; font-family:sans-serif; text-align:center;'>";
+                echo "<h3>Brevo API Error (HTTP Code: $httpCode)</h3>";
+                echo "<pre style='text-align:left; display:inline-block;'>" . htmlspecialchars($response) . "</pre>";
+                echo "</div>";
+                exit;
+            }
 
             header("Location: verify_otp.php");
             exit();

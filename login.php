@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_role'] = $user['role'];
 
                     $sender_email = 'ryanjayleoligao64@gmail.com';
-                    $sender_app_password = 'qscu ziqv qtdq injz';
+                    $sender_app_password = 'ppcj vkux nvje nrhu';
 
                     $autoload_path = 'vendor/autoload.php';
                     if (file_exists($autoload_path)) {
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ";
                                 $mail->send();
                             } catch (Exception $e) {
-                                // Ipagpatuloy ang pag-redirect kahit may isyu sa network
+                                // Ipagpatuloy ang pag-redirect kahit may aberya
                             }
                         }
                     }

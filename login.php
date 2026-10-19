@@ -22,9 +22,7 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// ==========================================
-// AUTO-CREATE USERS TABLE & DEFAULT ACCOUNTS
-// ==========================================
+// Auto-create users table & default accounts kung wala pa
 $conn->query("CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -35,7 +33,6 @@ $conn->query("CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
-// Magdagdag ng default test accounts kung wala pa
 $check_user = $conn->query("SELECT COUNT(*) as count FROM users");
 if ($check_user) {
     $row = $check_user->fetch_assoc();
@@ -43,17 +40,6 @@ if ($check_user) {
         $conn->query("INSERT INTO users (full_name, email, student_id, course_year, role) VALUES 
         ('System Custodian', 'custodian@mqcqc.edu.ph', 'CUST001', 'Staff', 'custodian'),
         ('Test Borrower', 'ryanjayleoligao64@gmail.com', '2026-00001', 'BSIT 3rd Year', 'borrower')");
-    }
-}
-
-// Kung naka-login na, i-redirect batay sa role
-if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
-    if (strtolower(trim($_SESSION['role'])) === 'custodian') {
-        header("Location: custodian_dashboard.php");
-        exit();
-    } else {
-        header("Location: borrower.php");
-        exit();
     }
 }
 

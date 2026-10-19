@@ -7,10 +7,17 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// PHPMailer core files gamit ang absolute path at tamang capitalization para sa Linux/Coolify
-require_once __DIR__ . '/phpmailer/Exception.php';
-require_once __DIR__ . '/phpmailer/SMTP.php';
-require_once __DIR__ . '/phpmailer/PHPMailer.php';
+// PHPMailer core files gamit ang absolute path
+$phpmailer_path = __DIR__ . '/phpmailer/';
+
+require_once $phpmailer_path . 'Exception.php';
+require_once $phpmailer_path . 'SMTP.php';
+require_once $phpmailer_path . 'PHPMailer.php';
+
+// Safety check para masigurong laging loaded ang SMTP class sa Linux/Coolify
+if (!class_exists('PHPMailer\PHPMailer\SMTP')) {
+    include_once $phpmailer_path . 'SMTP.php';
+}
 
 $error_msg = "";
 $success_msg = "";
@@ -40,8 +47,8 @@ if (isset($_POST['send_otp'])) {
                     $mail->isSMTP();
                     $mail->Host       = 'smtp.gmail.com';
                     $mail->SMTPAuth   = true;
-                    $mail->Username   = 'your_email@gmail.com'; // Iyong Gmail
-                    $mail->Password   = 'your_app_password';   // Iyong App Password
+                    $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
+                    $mail->Password   = 'your_app_password';   // Palitan ng iyong App Password
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port       = 587;
 

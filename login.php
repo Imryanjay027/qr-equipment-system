@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_role'] = $user['role'];
 
                     $sender_email = 'ryanjayleoligao64@gmail.com';
-                    $sender_app_password = 'jusc txaa dikf grvz';
+                    $sender_app_password = 'qscu ziqv qtdq injz';
 
                     $autoload_path = 'vendor/autoload.php';
                     if (file_exists($autoload_path)) {
@@ -95,7 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
                                 $mail->Port       = 587;
 
-                                // Dagdag para maiwasan ang SSL blockage ng hosting server
                                 $mail->SMTPOptions = array(
                                     'ssl' => array(
                                         'verify_peer' => false,
@@ -120,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ";
                                 $mail->send();
                             } catch (Exception $e) {
-                                // Ipagpatuloy ang pag-redirect kahit magkaroon ng isyu sa mailer
+                                // Ipagpatuloy ang pag-redirect kahit may aberya
                             }
                         }
                     }

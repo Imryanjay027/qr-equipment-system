@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($email && !empty($full_name)) {
         $photo_filename = '';
 
-        // Tanging Student lamang ang may live selfie capture
+        // Live selfie para sa Student
         if ($role === 'student' && !empty($image_data)) {
             $image_parts = explode(";base64,", $image_data);
             if (count($image_parts) == 2) {
@@ -37,10 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt) {
             $stmt->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
             if ($stmt->execute()) {
-                $message = "Matagumpay ang pagrehistro! Maaari ka nang mag-login.";
+                $message = "Registration successful! You can now log in.";
                 $status = "success";
             } else {
-                $message = "May error sa database: " . $stmt->error;
+                $message = "Database error: " . $stmt->error;
                 $status = "error";
             }
         } else {
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = "error";
         }
     } else {
-        $message = "Mangyaring punan ang buong pangalan at tamang email address.";
+        $message = "Please enter your full name and a valid email address.";
         $status = "error";
     }
 }
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="alert alert-<?php echo $status; ?>"><?php echo htmlspecialchars($message); ?></div>
     <?php endif; ?>
 
-    <form method="POST" action="register.php" id="registerForm" onsubmit="return validateForm()">
+    <form method="POST" action="register.php" id="registerForm">
         <div class="form-group">
             <label for="full_name">Full Name</label>
             <input type="text" id="full_name" name="full_name" required placeholder="Enter your full name">
@@ -147,29 +147,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <input type="hidden" name="image_data" id="imageData">
-        <button type="submit" class="btn">Register</button>
+        <button type="button" class="btn" onclick="handleRegisterClick()">Register</button>
     </form>
 
     <div class="register-link">Already have an account? <a href="login.php">Login via OTP here</a></div>
 </div>
 
-<!-- Terms & Conditions Modal Pop-up -->
+<!-- Translated Terms & Conditions Modal Pop-up -->
 <div id="termsModal" class="modal">
     <div class="modal-content">
         <h4>Terms & Conditions (Equipment Borrowing)</h4>
-        <p>Sa pamamagitan ng pagpaparehistro bilang Student sa <strong>MQCQC Equipment Monitoring System</strong>, ikaw ay sumasang-ayon sa patakaran ng paaralan:</p>
-        <p><em>"Kung sakaling ang anumang kagamitang hiniram ay masira, mawala, o magkaroon ng depekto habang nasa ilalim ng iyong pangangasiwa, ikaw ay obligadong mag-replace o mag-ayos nito ng isang kagamitang may eksaktong klase, kalidad, at uri (exact replacement)."</em></p>
+        <p>By registering as a Student in the <strong>MQCQC Equipment Monitoring System</strong>, you agree to comply with the school's policy:</p>
+        <p><em>"In the event that any borrowed equipment is damaged, lost, or rendered defective while under your care and responsibility, you are strictly required to replace or repair it with an item of the exact same specification, make, and quality (exact replacement)."</em></p>
         
         <div class="terms-checkbox">
             <input type="checkbox" id="agreeTerms" onchange="toggleAgree()">
-            <label for="agreeTerms">Nabasa ko at sumasang-ayon ako sa Terms & Conditions na ito.</label>
+            <label for="agreeTerms">I have read and agree to the Terms & Conditions.</label>
         </div>
 
-        <button type="button" class="btn" id="proceedBtn" disabled style="opacity: 0.5;" onclick="closeModal()">Proceed & Register</button>
+        <button type="button" class="btn" id="proceedBtn" disabled style="opacity: 0.5;" onclick="submitForm()">Proceed & Register</button>
     </div>
 </div>
 
 <script>
+    const registerForm = document.getElementById('registerForm');
     const roleSelect = document.getElementById('role');
     const studentSection = document.getElementById('studentSection');
     
@@ -186,7 +187,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const termsModal = document.getElementById('termsModal');
     const agreeTerms = document.getElementById('agreeTerms');
     const proceedBtn = document.getElementById('proceedBtn');
-    let termsAccepted = false;
 
     function handleRoleChange() {
         const selectedRole = roleSelect.value;
@@ -195,15 +195,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             studentSection.style.display = 'block';
             academicInfoInput.required = true;
             startCamera();
-            // Ipakita ang terms modal kapag student ang pinili
-            if (!termsAccepted) {
-                termsModal.style.display = 'flex';
-            }
         } else {
             studentSection.style.display = 'none';
             academicInfoInput.required = false;
             stopCamera();
-            termsModal.style.display = 'none';
         }
     }
 
@@ -217,6 +212,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    function handleRegisterClick() {
+        const fullName = document.getElementById('full_name').value.trim();
+        const email = document.getElementById('email').value.trim();
+
+        if (!fullName || !email) {
+            alert("Please fill out your Full Name and Email Address first.");
+            return;
+        }
+
+        if (roleSelect.value === 'student' && academicInfoInput.required && !academicInfoInput.value.trim()) {
+            alert("Please fill out your " + academicLabel.textContent + ".");
+            return;
+        }
+
+        // Kapag Student ang role, ipakita ang Terms & Conditions modal bago mag-submit
+        if (roleSelect.value === 'student') {
+            termsModal.style.display = 'flex';
+        } else {
+            registerForm.submit();
+        }
+    }
+
     function toggleAgree() {
         if (agreeTerms.checked) {
             proceedBtn.disabled = false;
@@ -227,17 +244,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    function closeModal() {
-        termsAccepted = true;
+    function submitForm() {
         termsModal.style.display = 'none';
-    }
-
-    function validateForm() {
-        if (roleSelect.value === 'student' && !termsAccepted) {
-            termsModal.style.display = 'flex';
-            return false;
-        }
-        return true;
+        registerForm.submit();
     }
 
     function startCamera() {

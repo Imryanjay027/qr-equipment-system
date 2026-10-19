@@ -7,15 +7,12 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// Explicitly require PHPMailer files in exact order with absolute paths
-require_once __DIR__ . '/phpmailer/Exception.php';
-require_once __DIR__ . '/phpmailer/SMTP.php';
-require_once __DIR__ . '/phpmailer/PHPMailer.php';
+// PHPMailer core files gamit ang absolute paths
+$phpmailer_path = __DIR__ . '/phpmailer/';
 
-// Force class registration if missing in memory
-if (!class_exists('PHPMailer\PHPMailer\SMTP')) {
-    require_once __DIR__ . '/phpmailer/SMTP.php';
-}
+require_once $phpmailer_path . 'Exception.php';
+require_once $phpmailer_path . 'SMTP.php';
+require_once $phpmailer_path . 'PHPMailer.php';
 
 $error_msg = "";
 $success_msg = "";
@@ -24,6 +21,7 @@ if (isset($_POST['send_otp'])) {
     $identifier = trim($_POST['identifier']);
 
     if (!empty($identifier)) {
+        // Hahanapin ang user sa tbl_users gamit ang email
         $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("s", $identifier);

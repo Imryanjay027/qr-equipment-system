@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email_data = [
             "sender" => [
                 "name" => "MQCQC Equipment System",
-                "email" => "no-reply@yourdomain.com" // Siguraduhing ito ay verified sender email sa iyong Brevo account
+                "email" => "ryanjayleoligao64@gmail.com" // Ginamit na ang iyong verified Brevo email
             ],
             "to" => [
                 [

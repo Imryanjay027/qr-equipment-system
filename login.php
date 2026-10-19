@@ -7,7 +7,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// PHPMailer core files (Tamang sequence para hindi mag-error ang Class SMTP)
+// PHPMailer core files (Tamang sequence)
 require 'phpmailer/Exception.php';
 require 'phpmailer/SMTP.php';
 require 'phpmailer/PHPMailer.php';
@@ -19,8 +19,8 @@ if (isset($_POST['send_otp'])) {
     $identifier = trim($_POST['identifier']);
 
     if (!empty($identifier)) {
-        // Hanapin ang user sa database gamit ang Email o ID Number
-        $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? OR id_number = ? LIMIT 1");
+        // Hahanapin ang user sa tbl_users gamit ang Email o ID Number
+        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR id_number = ? LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("ss", $identifier, $identifier);
             $stmt->execute();

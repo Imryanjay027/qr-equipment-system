@@ -81,57 +81,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sender_email = 'ryanjayleoligao64@gmail.com';
                     $sender_app_password = 'ppcj vkux nvje nrhu';
 
-                    $autoload_path = 'vendor/autoload.php';
-                    if (file_exists($autoload_path)) {
-                        require_once $autoload_path;
-                        if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-                            try {
-                                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                                $mail->isSMTP();
-                                $mail->Host       = 'smtp.gmail.com';
-                                $mail->SMTPAuth   = true;
-                                $mail->Username   = $sender_email;
-                                $mail->Password   = $sender_app_password;
-                                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                                $mail->Port       = 587;
+                    // Direktang pag-require ng PHPMailer source files (walang vendor folder na kailangan)
+                    $phpmailer_path = 'PHPMailer/src/';
+                    if (file_exists($phpmailer_path . 'PHPMailer.php') && file_exists($phpmailer_path . 'SMTP.php') && file_exists($phpmailer_path . 'Exception.php')) {
+                        require_once $phpmailer_path . 'Exception.php';
+                        require_once $phpmailer_path . 'PHPMailer.php';
+                        require_once $phpmailer_path . 'SMTP.php';
 
-                                $mail->SMTPOptions = array(
-                                    'ssl' => array(
-                                        'verify_peer' => false,
-                                        'verify_peer_name' => false,
-                                        'allow_self_signed' => true
-                                    )
-                                );
+                        try {
+                            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                            $mail->isSMTP();
+                            $mail->Host       = 'smtp.gmail.com';
+                            $mail->SMTPAuth   = true;
+                            $mail->Username   = $sender_email;
+                            $mail->Password   = $sender_app_password;
+                            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                            $mail->Port       = 587;
 
-                                $mail->setFrom($sender_email, 'Equipment Monitoring System');
-                                $mail->addAddress($email);
+                            $mail->SMTPOptions = array(
+                                'ssl' => array(
+                                    'verify_peer' => false,
+                                    'verify_peer_name' => false,
+                                    'allow_self_signed' => true
+                                )
+                            );
 
-                                $mail->isHTML(true);
-                                $mail->Subject = 'Your Login OTP - Equipment Monitoring System';
-                                $mail->Body    = "
-                                    <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
-                                        <h2 style='color: #2e7d32;'>Equipment Monitoring System</h2>
-                                        <p>Hello,</p>
-                                        <p>Your One-Time Password (OTP) for logging in is:</p>
-                                        <h1 style='color: #2e7d32; letter-spacing: 5px;'>{$otp}</h1>
-                                        <p>This code is valid for single use only. Do not share this code with anyone.</p>
-                                    </div>
-                                ";
-                                $mail->send();
-                                
-                                // Kung matagumpay na naipadala, saka mag-redirect
-                                header("Location: verify_otp.php");
-                                exit();
+                            $mail->setFrom($sender_email, 'Equipment Monitoring System');
+                            $mail->addAddress($email);
 
-                            } catch (Exception $e) {
-                                // Ipapakita sa screen ang eksaktong error kung bakit hindi pumasok
-                                $error = "Mailer Error: " . $mail->ErrorInfo;
-                            }
-                        } else {
-                            $error = "PHPMailer class not found.";
+                            $mail->isHTML(true);
+                            $mail->Subject = 'Your Login OTP - Equipment Monitoring System';
+                            $mail->Body    = "
+                                <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
+                                    <h2 style='color: #2e7d32;'>Equipment Monitoring System</h2>
+                                    <p>Hello,</p>
+                                    <p>Your One-Time Password (OTP) for logging in is:</p>
+                                    <h1 style='color: #2e7d32; letter-spacing: 5px;'>{$otp}</h1>
+                                    <p>This code is valid for single use only. Do not share this code with anyone.</p>
+                                </div>
+                            ";
+                            $mail->send();
+
+                            header("Location: verify_otp.php");
+                            exit();
+
+                        } catch (Exception $e) {
+                            $error = "Mailer Error: " . $mail->ErrorInfo;
                         }
                     } else {
-                        $error = "Vendor autoload.php not found.";
+                        $error = "PHPMailer source files folder (PHPMailer/src/) not found on server.";
                     }
                 }
             } else {

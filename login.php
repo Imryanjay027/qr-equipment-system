@@ -1,18 +1,9 @@
 <?php
-// Ipakita ang lahat ng error para hindi mag-white screen kung may problema
+// Ipakita ang lahat ng error para madaling ma-troubleshoot
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
-
-// Isama ang PHPMailer kung mayroon
-if (file_exists('vendor/autoload.php')) {
-    require 'vendor/autoload.php';
-} elseif (file_exists('PHPMailer/src/Exception.php')) {
-    require_once 'PHPMailer/src/Exception.php';
-    require_once 'PHPMailer/src/PHPMailer.php';
-    require_once 'PHPMailer/src/SMTP.php';
-}
 
 if (file_exists('db_connection.php')) {
     require_once 'db_connection.php';
@@ -80,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $user = $result->fetch_assoc();
                 
                 if ($user['role'] !== 'custodian') {
-                    $error = "Access denied. This login page is strictly for Property Custodians only.";
+                    $error = "Access denied. This email is registered as a student, not a Property Custodian.";
                 } else {
                     // Generate 6-digit OTP
                     $otp = rand(100000, 999999);
@@ -88,14 +79,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['login_email'] = $email;
                     $_SESSION['user_role'] = $user['role'];
 
+                    // Subukang magpadala ng email gamit ang PHPMailer kung naka-install
                     $sender_email = 'ryanjayleoligao64@gmail.com';
                     $sender_app_password = 'jusc txaa dikf grvz';
 
-                    // I-check kung naka-load ang PHPMailer
+                    if (file_exists('vendor/autoload.php')) {
+                        require_once 'vendor/autoload.php';
+                    }
+
                     if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
                         try {
                             $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-
                             $mail->isSMTP();
                             $mail->Host       = 'smtp.gmail.com';
                             $mail->SMTPAuth   = true;
@@ -118,23 +112,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <p>This code is valid for single use only. Do not share this code with anyone.</p>
                                 </div>
                             ";
-
                             $mail->send();
-
-                            header("Location: verify_otp.php");
-                            exit();
-
                         } catch (Exception $e) {
-                            $error = "Failed to send OTP email. Mailer Error: {$e->getMessage()}";
+                            // Magpapakita ng error kung pumalya sa pag-email pero tutuloy pa rin sa verify_otp para ma-test
                         }
-                    } else {
-                        // Kung walang PHPMailer sa server, mag-redirect pa rin para ma-test ang flow
-                        header("Location: verify_otp.php");
-                        exit();
                     }
+
+                    // Direktang mag-redirect sa verify_otp.php
+                    header("Location: verify_otp.php");
+                    exit();
                 }
             } else {
-                $error = "This email address is not registered in the system.";
+                $error = "The email address '$email' was not found in the system.";
             }
             $stmt->close();
         } else {

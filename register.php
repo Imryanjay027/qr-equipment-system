@@ -33,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             }
         }
 
+        // Awtomatikong gumawa ng username mula sa email para hindi mag-error ang NOT NULL constraint
+        $username = strtolower(explode('@',$email)[0]) . '_' . rand(100, 999);
+
         // Kunin ang tunay na columns ng tbl_users sa live database
         $table_columns = [];
         $res =$conn->query("SHOW COLUMNS FROM tbl_users");
@@ -54,6 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
         if (!empty($name_col)) {
             $cols = [$name_col, 'email', 'role', 'photo'];
             $vals = [$full_name, $email,$role, $photo_filename];$types = "ssss";
+
+            // Isama ang username kung mayroon nitong column sa database
+            if (in_array('username', $table_columns)) {$cols[] = 'username';
+                $vals[] =$username;
+                $types .= "s";
+            }
 
             if (!empty($acad_col) &&$role === 'student') {
                 $cols[] =$acad_col;
@@ -279,4 +288,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             proceedBtn.style.opacity = "1";
         } else {
             proceedBtn.disabled = true;
-            proceedBtn.style
+            proceedBtn.style.opacity = "0.5";
+        }
+    }
+
+    function submitForm() {
+        termsModal.style.display = 'none';
+        registerForm.submit();
+    }
+
+    function startCamera() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                .then(stream => {
+                    mediaStream = stream;
+                    if (video) video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Camera access error: ", err);
+                });
+        }
+    }
+
+    function stopCamera() {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream = null;
+        }
+    }
+
+    if (captureBtn) {
+        captureBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (video && canvas) {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                if (imageDataInput) {
+                    imageDataInput.value = canvas.toDataURL('image/png');
+                }
+
+                stopCamera();
+
+                video.style.display = 'none';
+                canvas.style.display = 'block';
+                
+                captureBtn.textContent = "Selfie Captured!";
+                captureBtn.disabled = true;
+                captureBtn.style.backgroundColor = "#6c757d";
+            }
+        });
+    }
+
+    handleRoleChange();
+</script>
+
+</body>
+</html>

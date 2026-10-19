@@ -1,326 +1,155 @@
 <?php
+// register.php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
+include('db_connection.php');
 
-// Database connection parameters
-$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101';
-$db   = 'qrcode';
-$user = 'root';
-$pass = 'wfbyfhr4404k2y9u2spiv101';
-$charset = 'utf8mb4';
-
-if (file_exists('db_connection.php')) {
-    require_once 'db_connection.php';
-} elseif (file_exists('config.php')) {
-    require_once 'config.php';
-}
-
-if (!isset($pdo) || $pdo === null) {
-    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-    $options = [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false,
-    ];
-    try {
-        $pdo = new PDO($dsn, $user, $pass, $options);
-    } catch (PDOException $e) {
-        $env_host = getenv('DB_HOST') ?: 'localhost';
-        $env_db   = getenv('DB_NAME') ?: 'qrcode';
-        $env_user = getenv('DB_USER') ?: 'root';
-        $env_pass = getenv('DB_PASS') ?: '';
-        
-        try {
-            $pdo = new PDO("mysql:host=$env_host;dbname=$env_db;charset=$charset", $env_user, $env_pass, $options);
-        } catch (PDOException $ex) {
-            die("Database Connection Failed: " . $ex->getMessage());
-        }
-    }
-}
-
-$error = '';
-$success = '';
+$message = '';
+$status = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $role = $_POST['role'] ?? '';
-    $username = trim($_POST['username'] ?? '');
-    $fullname = trim($_POST['fullname'] ?? '');
-    $email = trim($_POST['email'] ?? '');
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+    $image_data = $_POST['image_data'] ?? '';
 
-    // PANSAMANTALANG LIMIT CHECK (Binago sa 5 para sa client test)
-    if ($role === 'Custodian') {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_users WHERE role = 'Custodian'");
-        $stmt->execute();
-        $custodianCount = $stmt->fetchColumn();
-
-        if ($custodianCount >= 5) { // Ibalik sa 2 pagkatapos ng testing
-            $error = "Maximum limit of 5 Custodian accounts reached.";
-        }
-    }
-
-    if (empty($error)) {
-        $stmt = $pdo->prepare("SELECT * FROM tbl_users WHERE email = ? OR username = ?");
-        $stmt->execute([$email, $username]);
-        if ($stmt->rowCount() > 0) {
-            $error = "Email or Username already exists.";
-        } else {
-            // Mag-generate ng random placeholder password
-            $randomPassword = bin2hex(random_bytes(16));
-            $hashedPassword = password_hash($randomPassword, PASSWORD_DEFAULT);
-
-            $insert = $pdo->prepare("INSERT INTO tbl_users (username, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)");
-            if ($insert->execute([$username, $fullname, $email, $hashedPassword, $role])) {
-                // I-save ang email sa session at i-redirect sa OTP verification page
-                $_SESSION['pending_otp_email'] = $email;
-                
-                // KUNG MAY SPECIFIC OTP GENERATION CODE KA KANILA O SA VERIFY PAGE, DITO RIN PWEDE
-                header("Location: verify_otp.php");
-                exit;
-            } else {
-                $error = "Something went wrong. Please try again.";
+    if ($email) {
+        $photo_filename = '';
+        if (!empty($image_data)) {
+            // I-process ang base64 image galing sa canvas capture
+            $image_parts = explode(";base64,", $image_data);
+            if (count($image_parts) == 2) {
+                $image_base64 = base64_decode($image_parts[1]);
+                $target_dir = __DIR__ . "/uploads/";
+                if (!file_exists($target_dir)) {
+                    mkdir($target_dir, 0777, true);
+                }
+                $photo_filename = 'user_' . time() . '.png';
+                file_put_contents($target_dir . $photo_filename, $image_base64);
             }
         }
+
+        // I-save sa database (Siguraduhing tugma sa istruktura ng tbl_users mo)
+        $stmt = $conn->prepare("INSERT INTO tbl_users (email, photo, role) VALUES (?, ?, 'borrower')");
+        if ($stmt) {
+            $stmt->bind_param("ss", $email, $photo_filename);
+            if ($stmt->execute()) {
+                $message = "Matagumpay ang pagrehistro! Maaari ka nang mag-login.";
+                $status = "success";
+            } else {
+                $message = "May error sa database: " . $stmt->error;
+                $status = "error";
+            }
+        }
+    } else {
+        $message = "Mangyaring maglagay ng tamang email address.";
+        $status = "error";
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Registration - QR-Based Equipment Monitoring System</title>
+    <title>Register - QR-Based Equipment Monitoring System</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background-color: #f4f6f9; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            margin: 0; 
-        }
-        .card { 
-            background: #fff; 
-            padding: 30px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-            width: 100%; 
-            max-width: 450px; 
-            text-align: center; 
-        }
-        .logo { 
-            width: 90px; 
-            height: auto; 
-            margin-bottom: 10px; 
-            display: inline-block;
-        }
-        h3 { 
-            margin: 5px 0 0 0; 
-            color: #2d6a4f; 
-            font-size: 1.15rem; 
-            font-weight: bold;
-        }
-        p.sub { 
-            font-size: 0.85rem; 
-            color: #666; 
-            margin-top: 5px;
-            margin-bottom: 20px; 
-        }
-        .alert { 
-            padding: 12px; 
-            border-radius: 4px; 
-            font-size: 0.85rem; 
-            margin-bottom: 20px; 
-            text-align: left; 
-        }
-        .alert-danger { 
-            background-color: #f8d7da; 
-            color: #721c24; 
-            border: 1px solid #f5c6cb; 
-        }
-        .alert-success { 
-            background-color: #d4edda; 
-            color: #155724; 
-            border: 1px solid #c3e6cb; 
-        }
-        .form-group { 
-            text-align: left; 
-            margin-bottom: 15px; 
-        }
-        label { 
-            font-size: 0.85rem; 
-            font-weight: bold; 
-            color: #222; 
-            display: block; 
-            margin-bottom: 6px; 
-        }
-        input, select { 
-            width: 100%; 
-            padding: 10px 12px; 
-            border: 1px solid #ced4da; 
-            border-radius: 4px; 
-            box-sizing: border-box; 
-            font-size: 0.9rem; 
-            outline: none;
-        }
-        input:focus, select:focus {
-            border-color: #2d6a4f;
-            box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.15);
-        }
-        button[type="submit"] { 
-            width: 100%; 
-            padding: 12px; 
-            background-color: #2d6a4f; 
-            color: #fff; 
-            border: none; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 0.95rem; 
-            margin-top: 10px;
-        }
-        button[type="submit"]:hover { 
-            background-color: #1b4332; 
-        }
-        .login-link { 
-            font-size: 0.85rem; 
-            margin-top: 20px; 
-            display: block; 
-            color: #555; 
-            text-decoration: none; 
-        }
-        .login-link a { 
-            color: #2d6a4f; 
-            font-weight: bold; 
-            text-decoration: none; 
-        }
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-        #camera-section, #upload-section { 
-            margin-top: 15px; 
-            display: none; 
-            text-align: left; 
-        }
-        video { 
-            width: 100%; 
-            border-radius: 4px; 
-            background: #000; 
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .register-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 480px; text-align: center; }
+        .form-group { text-align: left; margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #222; font-size: 13px; }
+        .form-group input[type="email"] { width: 100%; padding: 11px 14px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; outline: none; }
+        .camera-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto 15px auto; background: #000; border-radius: 6px; overflow: hidden; }
+        video, canvas { width: 100%; height: auto; display: block; }
+        canvas { display: none; }
+        .btn { background-color: #2d6a4f; color: white; padding: 11px; border: none; border-radius: 4px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 600; margin-bottom: 10px; }
+        .btn:hover { background-color: #1b4332; }
+        .btn-capture { background-color: #495057; }
+        .btn-capture:hover { background-color: #343a40; }
+        .alert { padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; text-align: left; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .login-link { margin-top: 15px; font-size: 13px; color: #555; }
+        .login-link a { color: #2d6a4f; text-decoration: none; font-weight: 600; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <!-- Mary the Queen College Logo -->
-        <img src="logo.jpg" alt="School Logo" class="logo">
 
-        <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
-        <p class="sub">Account Registration</p>
+<div class="register-card">
+    <h3>Register Account</h3>
+    <p style="font-size: 13px; color: #666; margin-bottom: 20px;">QR-Based Equipment Monitoring System</p>
 
-        <?php if (!empty($error)): ?>
-            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
+    <?php if (!empty($message)): ?>
+        <div class="alert alert-<?php echo $status; ?>"><?php echo htmlspecialchars($message); ?></div>
+    <?php endif; ?>
 
-        <?php if (!empty($success)): ?>
-            <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
-        <?php endif; ?>
+    <form method="POST" action="" id="registerForm">
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required placeholder="Enter your email">
+        </div>
 
-        <form action="register.php" method="POST" enctype="multipart/form-data">
-            <div class="form-group">
-                <label>Account Role</label>
-                <select name="role" id="roleSelect" required onchange="toggleFields()">
-                    <option value="">Select Role</option>
-                    <option value="Student">Student</option>
-                    <option value="Custodian">Custodian</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>ID Number / Username</label>
-                <input type="text" name="username" placeholder="Enter ID Number" required>
-            </div>
-
-            <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" name="fullname" placeholder="Enter your Full name" required>
-            </div>
-
-            <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" name="email" placeholder="Enter your email" required>
-            </div>
-
-            <!-- Live Selfie Section para sa Student -->
-            <div id="camera-section" class="form-group">
-                <label>Live Selfie Capture</label>
+        <div class="form-group">
+            <label>Live Selfie Capture</label>
+            <div class="camera-container">
                 <video id="video" autoplay playsinline></video>
-                <button type="button" onclick="captureSelfie()" style="margin-top: 5px; padding: 8px; background: #555; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Capture Selfie</button>
-                <canvas id="canvas" style="display:none;"></canvas>
-                <input type="hidden" name="selfie_image" id="selfie_image">
+                <canvas id="canvas"></canvas>
             </div>
+            <button type="button" id="captureBtn" class="btn btn-capture">Capture Selfie</button>
+        </div>
 
-            <!-- Upload Picture Section para sa Custodian -->
-            <div id="upload-section" class="form-group">
-                <label>Upload Profile Picture</label>
-                <input type="file" name="profile_picture" accept="image/*">
-            </div>
+        <input type="hidden" name="image_data" id="imageData">
+        <button type="submit" class="btn">Register</button>
+    </form>
 
-            <button type="submit">Register</button>
-        </form>
+    <div class="login-link">Already have an account? <a href="login.php">Login via OTP here</a></div>
+</div>
 
-        <!-- Pinalitan ang link papunta sa verify_otp.php sa halip na login.php -->
-        <p class="login-link">Already have an account? <a href="verify_otp.php">Login via OTP here</a></p>
-    </div>
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const imageDataInput = document.getElementById('imageData');
+    let mediaStream = null;
 
-    <script>
-        function toggleFields() {
-            const role = document.getElementById('roleSelect').value;
-            const cameraSection = document.getElementById('camera-section');
-            const uploadSection = document.getElementById('upload-section');
+    // Paganahin ang camera sa pagbukas ng page
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+            mediaStream = stream;
+            video.srcObject = stream;
+        })
+        .catch(err => {
+            console.error("Hindi ma-access ang camera: ", err);
+            alert("Hindi ma-access ang iyong camera. Mangyaring suriin ang mga pahintulot.");
+        });
 
-            if (role === 'Student') {
-                cameraSection.style.display = 'block';
-                uploadSection.style.display = 'none';
-                startCamera();
-            } else if (role === 'Custodian') {
-                cameraSection.style.display = 'none';
-                uploadSection.style.display = 'block';
-                stopCamera();
-            } else {
-                cameraSection.style.display = 'none';
-                uploadSection.style.display = 'none';
-                stopCamera();
-            }
+    // Kapag-click ang Capture Selfie
+    captureBtn.addEventListener('click', function() {
+        const context = canvas.getContext('2d');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+
+        // Kopyahin ang kasalukuyang frame mula sa video papunta sa canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // I-convert ang canvas sa Base64 data URL
+        const dataURL = canvas.toDataURL('image/png');
+        imageDataInput.value = dataURL;
+
+        // Ihinto ang lahat ng media tracks ng camera para tumigil ito
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
         }
 
-        let videoStream = null;
-        function startCamera() {
-            const video = document.getElementById('video');
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    videoStream = stream;
-                    video.srcObject = stream;
-                })
-                .catch(err => console.error("Camera error: ", err));
-        }
+        // Itago ang video stream at ipakita ang nakuha at naka-freeze na litrato sa canvas
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+        captureBtn.textContent = "Selfie Captured!";
+        captureBtn.disabled = true;
+        captureBtn.style.backgroundColor = "#6c757d";
+    });
+</script>
 
-        function stopCamera() {
-            if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
-            }
-        }
-
-        function captureSelfie() {
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/png');
-            document.getElementById('selfie_image').value = dataURL;
-            alert("Selfie captured successfully!");
-        }
-    </script>
 </body>
 </html>

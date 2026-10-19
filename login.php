@@ -1,5 +1,5 @@
 <?php
-// 1. I-on ang output buffering para hindi magkaroon ng "Headers already sent" error sa redirection
+// I-on ang output buffering para maiwasan ang mga header redirection errors
 ob_start();
 
 error_reporting(E_ALL);
@@ -7,13 +7,25 @@ ini_set('display_errors', 1);
 
 session_start();
 
+// Isama ang PHPMailer classes
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+if (file_exists('vendor/autoload.php')) {
+    require 'vendor/autoload.php';
+} elseif (file_exists('PHPMailer/src/Exception.php')) {
+    require 'PHPMailer/src/Exception.php';
+    require 'PHPMailer/src/PHPMailer.php';
+    require 'PHPMailer/src/SMTP.php';
+}
+
 if (file_exists('db_connection.php')) {
     require_once 'db_connection.php';
 } else {
     die("Error: db_connection.php file not found.");
 }
 
-// 2. Siguraduhing nandiyan ang app_users table at may role column
+// 1. Siguraduhing nandiyan ang app_users table at may role column
 $conn->query("CREATE TABLE IF NOT EXISTS app_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -26,14 +38,16 @@ if ($check_column && $check_column->num_rows == 0) {
     $conn->query("ALTER TABLE app_users ADD COLUMN role VARCHAR(50) DEFAULT 'student'");
 }
 
-// 3. Mahigpit na Whitelist para sa 2 Custodian lamang
+// 2. Mahigpit na Whitelist para sa 2 Custodian lamang (Ikaw at si Ma'am Prudence)
 $allowed_custodians = [
     'ryanjayleoligao64@gmail.com',
     'banaresprudence13@gmail.com'
 ];
 
+// I-reset muna ang ibang lumang custodians para kayong dalawa lang ang totoo
 $conn->query("UPDATE app_users SET role = 'student' WHERE role = 'custodian' AND email NOT IN ('ryanjayleoligao64@gmail.com', 'banaresprudence13@gmail.com')");
 
+// I-register o i-update ang dalawang opisyal na custodian
 foreach ($allowed_custodians as $c_email) {
     $check_user = $conn->prepare("SELECT id FROM app_users WHERE email = ?");
     $check_user->bind_param("s", $c_email);
@@ -73,52 +87,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($user['role'] !== 'custodian') {
                     $error = "Access denied. This login page is strictly for Property Custodians only.";
                 } else {
+                    // Generate 6-digit OTP
                     $otp = rand(100000, 999999);
                     $_SESSION['otp'] = $otp;
                     $_SESSION['login_email'] = $email;
                     $_SESSION['user_role'] = $user['role'];
 
+                    // --- CONFIGURATION NG GMAIL SMTP ---
                     $sender_email = 'ryanjayleoligao64@gmail.com';
                     $sender_app_password = 'jusc txaa dikf grvz';
 
-                    if (file_exists('vendor/autoload.php')) {
-                        require_once 'vendor/autoload.php';
+                    $mail = new PHPMailer(true);
+
+                    try {
+                        // Server settings
+                        $mail->isSMTP();
+                        $mail->Host       = 'smtp.gmail.com';
+                        $mail->SMTPAuth   = true;
+                        $mail->Username   = $sender_email;
+                        $mail->Password   = $sender_app_password;
+                        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                        $mail->Port       = 587;
+
+                        // Recipients
+                        $mail->setFrom($sender_email, 'Equipment Monitoring System');
+                        $mail->addAddress($email);
+
+                        // Content
+                        $mail->isHTML(true);
+                        $mail->Subject = 'Your Login OTP - Equipment Monitoring System';
+                        $mail->Body    = "
+                            <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
+                                <h2 style='color: #2e7d32;'>Equipment Monitoring System</h2>
+                                <p>Hello,</p>
+                                <p>Your One-Time Password (OTP) for logging in is:</p>
+                                <h1 style='color: #2e7d32; letter-spacing: 5px;'>{$otp}</h1>
+                                <p>This code is valid for single use only. Do not share this code with anyone.</p>
+                            </div>
+                        ";
+
+                        $mail->send();
+
+                        // Redirect sa verify_otp.php kapag matagumpay na naipadala ang email
+                        header("Location: verify_otp.php");
+                        exit();
+
+                    } catch (Exception $e) {
+                        $error = "Failed to send OTP email. Mailer Error: {$mail->ErrorInfo}";
                     }
-
-                    if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-                        try {
-                            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                            $mail->isSMTP();
-                            $mail->Host       = 'smtp.gmail.com';
-                            $mail->SMTPAuth   = true;
-                            $mail->Username   = $sender_email;
-                            $mail->Password   = $sender_app_password;
-                            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                            $mail->Port       = 587;
-
-                            $mail->setFrom($sender_email, 'Equipment Monitoring System');
-                            $mail->addAddress($email);
-
-                            $mail->isHTML(true);
-                            $mail->Subject = 'Your Login OTP - Equipment Monitoring System';
-                            $mail->Body    = "
-                                <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
-                                    <h2 style='color: #2e7d32;'>Equipment Monitoring System</h2>
-                                    <p>Hello,</p>
-                                    <p>Your One-Time Password (OTP) for logging in is:</p>
-                                    <h1 style='color: #2e7d32; letter-spacing: 5px;'>{$otp}</h1>
-                                    <p>This code is valid for single use only. Do not share this code with anyone.</p>
-                                </div>
-                            ";
-                            $mail->send();
-                        } catch (Exception $e) {
-                            // Itutuloy pa rin ang pag-redirect kahit may aberya sa email para hindi ma-stuck
-                        }
-                    }
-
-                    // Direktang mag-redirect sa verify_otp.php
-                    header("Location: verify_otp.php");
-                    exit();
                 }
             } else {
                 $error = "This email address is not registered in the system.";

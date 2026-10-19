@@ -1,131 +1,153 @@
 <?php
-// login.php
+session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-session_start();
-include('db_connection.php');
-
-$message = ''; 
-$status = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-
-    if ($email) {
-        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR Email = ?");
-        $stmt->bind_param("ss", $email, $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($row = $result->fetch_assoc()) {
-            $otp = sprintf("%06d", mt_rand(1, 999999));
-            $db_role = strtolower(trim($row['role'] ?? 'student'));
-
-            $_SESSION['otp'] = $otp;
-            $_SESSION['temp_email'] = $email;
-            $_SESSION['temp_user_id'] = $row['id'];
-            $_SESSION['temp_user_role'] = $db_role;
-            $_SESSION['otp_expiration'] = time() + (5 * 60);
-
-            // BREVO API INTEGRATION
-            $apiKey = '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'; 
-            $url = 'https://api.brevo.com/v3/smtp/email';
-
-            $data = [
-                'sender' => [
-                    'name' => 'MQCQC Equipment System',
-                    'email' => 'ryanjayleoligao64@gmail.com'
-                ],
-                'to' => [
-                    ['email' => $email]
-                ],
-                'subject' => 'Your Login OTP Code - MQCQC System',
-                'htmlContent' => "<h3>Your One-Time Password (OTP) is: <b>{$otp}</b></h3><p>This code will expire in 5 minutes.</p>"
-            ];
-
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'accept: application/json',
-                'api-key: ' . $apiKey,
-                'content-type: application/json'
-            ]);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            // Kung may error sa Brevo API, ipapakita rito para madali nating makita
-            if ($httpCode !== 201 && $httpCode !== 200) {
-                echo "<div style='background:#f8d7da; color:#721c24; padding:20px; font-family:sans-serif; text-align:center;'>";
-                echo "<h3>Brevo API Error (HTTP Code: $httpCode)</h3>";
-                echo "<pre style='text-align:left; display:inline-block;'>" . htmlspecialchars($response) . "</pre>";
-                echo "</div>";
-                exit;
-            }
-
-            header("Location: verify_otp.php");
-            exit();
-
-        } else {
-            $message = "Email address not found in our database. Please register first.";
-            $status = "error";
-        }
-        $stmt->close();
-    } else {
-        $message = "Please enter a valid email address.";
-        $status = "error";
-    }
+// I-check kung nakapag-login at kung student ang role
+if (!isset($_SESSION['user_id']) || strtolower(trim($_SESSION['role'] ?? '')) !== 'student') {
+    header("Location: login.php");
+    exit();
 }
+
+// Alamin kung aling tab ang pinili (active, history, o borrow)
+$tab = $_GET['tab'] ?? 'active';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login via OTP - MQCQC Equipment Monitoring System</title>
+    <title>Mary The Queen College - Borrower's Portal</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .login-card { background: white; padding: 40px 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 420px; text-align: center; }
-        .login-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
-        .login-card h3 { margin: 10px 0 5px 0; color: #212529; font-size: 18px; font-weight: bold; }
-        .login-card p.subtitle { color: #6c757d; font-size: 13px; margin-bottom: 25px; }
-        .form-group { margin-bottom: 20px; text-align: left; }
-        .form-group label { display: block; margin-bottom: 8px; color: #212529; font-weight: 600; font-size: 14px; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        .btn { width: 100%; padding: 12px; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background-color 0.2s; }
-        .btn:hover { background-color: #1b5e20; }
-        .register-link { margin-top: 20px; font-size: 13px; color: #6c757d; }
-        .register-link a { color: #2e7d32; text-decoration: none; font-weight: 600; }
-        .register-link a:hover { text-decoration: underline; }
-        .alert { padding: 10px; margin-bottom: 20px; border-radius: 6px; font-size: 14px; }
-        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        body { background-color: #f4f7f6; font-family: Arial, sans-serif; }
+        .navbar-custom { background-color: #198754; }
+        .profile-card { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; margin-top: 30px; border-left: 6px solid #198754; }
+        .table-custom th { background-color: #198754; color: white; }
     </style>
 </head>
 <body>
 
-<div class="login-card">
-    <img src="logo.jpg" alt="MQCQC Logo" onerror="this.src='uploads/default.png'">
-    <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
-    <p class="subtitle">Login via One-Time Password (OTP)</p>
-
-    <?php if (!empty($message)): ?>
-        <div class="alert alert-<?php echo $status; ?>"><?php echo htmlspecialchars($message); ?></div>
-    <?php endif; ?>
-
-    <form method="POST" action="login.php">
-        <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" required placeholder="Enter your registered email">
+    <!-- Green Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold fs-6 text-white" href="#">MARY THE QUEEN COLLEGE - BORROWER'S PORTAL</a>
+            <div class="d-flex align-items-center">
+                <a href="index.php" class="btn btn-light btn-sm fw-bold text-success me-2">Back to your dashboard</a>
+                <a href="logout.php" class="btn btn-danger btn-sm fw-bold">Logout</a>
+            </div>
         </div>
-        <button type="submit" class="btn">Send OTP Code</button>
-    </form>
+    </nav>
 
-    <div class="register-link">Don't have an account? <a href="register.php">Register here</a></div>
-</div>
+    <div class="container py-4">
+        <!-- Profile Card Section with QR Code -->
+        <div class="profile-card d-flex flex-wrap align-items-center justify-content-between">
+            <div class="d-flex align-items-center mb-3 mb-md-0">
+                <div class="rounded-circle bg-secondary text-white d-flex justify-content-center align-items-center me-4" style="width: 75px; height: 75px; font-size: 32px;">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div>
+                    <h4 class="fw-bold mb-1" style="color: #1a365d;"><?= htmlspecialchars($_SESSION['full_name'] ?? 'Ryan Jay Leoligao'); ?></h4>
+                    <p class="text-muted mb-0 small">Student ID: <?= htmlspecialchars($_SESSION['student_id'] ?? '903324454'); ?></p>
+                    <p class="text-muted mb-0 small">Course / Year: <?= htmlspecialchars($_SESSION['course_year'] ?? 'BSIT-3B'); ?></p>
+                </div>
+            </div>
+            <div class="text-center">
+                <span class="text-muted small d-block mb-1 fw-bold">Your QR Code</span>
+                <div class="p-1 bg-white border rounded shadow-sm d-inline-block">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=<?= urlencode($_SESSION['student_id'] ?? '903324454'); ?>" alt="Student QR Code" style="width: 90px; height: 90px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation Buttons -->
+        <div class="mt-4 mb-3">
+            <a href="borrower.php?tab=active" class="btn <?= $tab === 'active' ? 'btn-success' : 'btn-secondary'; ?> btn-sm fw-bold px-3 text-decoration-none">My Borrowed Equipment</a>
+            
+            <a href="borrower.php?tab=history" class="btn <?= $tab === 'history' ? 'btn-success' : 'btn-secondary'; ?> btn-sm fw-bold px-3 text-white text-decoration-none" <?= $tab !== 'history' ? 'style="background-color: #adb5bd; border: none;"' : ''; ?>>Returned Items History / Remarks</a>
+        </div>
+
+        <?php if ($tab === 'active'): ?>
+            <!-- TAB 1: Active Borrowed Equipment -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0 table-custom text-center align-middle">
+                        <thead>
+                            <tr>
+                                <th class="py-3">Student ID</th>
+                                <th class="py-3">Equipment Name</th>
+                                <th class="py-3">Borrow Date / Due Date</th>
+                                <th class="py-3">Status / Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="4" class="py-4 text-muted">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Borrow Action Section -->
+            <div class="card shadow-sm border-0 p-4 text-center bg-white">
+                <p class="text-muted mb-2 small fw-bold">Need to borrow an item?</p>
+                <div>
+                    <!-- Naka-link na ngayon sa loob ng parehong file sa pamamagitan ng tab parameter -->
+                    <a href="borrower.php?tab=borrow" class="btn btn-success px-4 py-2 fw-bold shadow-sm text-decoration-none">Borrow an Item</a>
+                </div>
+            </div>
+
+        <?php elseif ($tab === 'history'): ?>
+            <!-- TAB 2: Returned Items History / Remarks -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0 table-custom text-center align-middle">
+                        <thead>
+                            <tr>
+                                <th class="py-3">Equipment Name</th>
+                                <th class="py-3">Borrow Date</th>
+                                <th class="py-3">Return Date</th>
+                                <th class="py-3">Equipment Status (Good / Damaged / Replaced)</th>
+                                <th class="py-3">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="py-4 text-muted">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        <?php elseif ($tab === 'borrow'): ?>
+            <!-- TAB 3: Borrow Item Form Section (Nasa loob na ng borrower.php) -->
+            <div class="card shadow-sm border-0 p-4 bg-white">
+                <h4 class="text-success fw-bold mb-3">Borrow Equipment Form</h4>
+                <form action="process_borrow.php" method="POST">
+                    <div class="mb-3">
+                        <label for="equipment" class="form-label fw-semibold">Select Equipment</label>
+                        <select class="form-select" id="equipment" name="equipment_id" required>
+                            <option value="">-- Piliin ang kagamitan na hiramin --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="due_date" class="form-label fw-semibold">Expected Return Date</label>
+                        <input type="date" class="form-control" id="due_date" name="due_date" required>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="borrower.php?tab=active" class="btn btn-secondary px-4 fw-bold">Back</a>
+                        <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm">Submit Request</button>
+                    </div>
+                </form>
+            </div>
+        <?php endif; ?>
+
+    </div>
 
 </body>
 </html>

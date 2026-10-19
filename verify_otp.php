@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 
 session_start();
 
+// Ginamit natin ang 'temp_email' para magtugma sa login.php
 if (!isset($_SESSION['temp_email']) || !isset($_SESSION['otp'])) {
     header("Location: login.php");
     exit();
@@ -18,7 +19,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!empty($otp_code)) {
         if (intval($otp_code) === intval($_SESSION['otp'])) {
-            // Kunin ang role mula sa session na isinave sa login.php
             $role = strtolower($_SESSION['temp_user_role'] ?? 'student');
             
             $_SESSION['logged_in'] = true;
@@ -26,13 +26,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['email'] = $_SESSION['temp_email'];
             $_SESSION['role'] = $role;
 
-            // Linisin ang temporary session variables
+            // Linisin ang temporary session
             unset($_SESSION['otp']);
+            unset($_SESSION['otp_expiry']);
             unset($_SESSION['temp_email']);
             unset($_SESSION['temp_user_id']);
             unset($_SESSION['temp_user_role']);
 
-            // Dynamic Redirection batay sa Role
+            // Redirection batay sa role
             if ($role === 'custodian' || $role === 'property custodian') {
                 $_SESSION['custodian_logged_in'] = true;
                 header("Location: custodian_dashboard.php");

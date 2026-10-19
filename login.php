@@ -2,53 +2,71 @@
 session_start();
 include 'db_connection.php';
 
-// 1. PHPMailer Namespaces
+// PHPMailer Namespaces
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// 2. I-require ang PHPMailer sa tamang pagkakasunod-sunod
+// PHPMailer core files (Tamang sequence para hindi mag-error ang Class SMTP)
 require 'phpmailer/Exception.php';
 require 'phpmailer/SMTP.php';
 require 'phpmailer/PHPMailer.php';
 
-$msg = "";
-$error = "";
+$error_msg = "";
+$success_msg = "";
 
-// Process Send OTP
 if (isset($_POST['send_otp'])) {
-    $email = trim($_POST['email']);
+    $identifier = trim($_POST['identifier']);
 
-    if (!empty($email)) {
-        $otp = rand(100000, 999999);
-        $_SESSION['otp'] = $otp;
-        $_SESSION['email'] = $email;
+    if (!empty($identifier)) {
+        // Hanapin ang user sa database gamit ang Email o ID Number
+        $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? OR id_number = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("ss", $identifier, $identifier);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-        $mail = new PHPMailer(true);
+            if ($result && $result->num_rows > 0) {
+                $user = $result->fetch_assoc();
+                $email = $user['email'];
 
-        try {
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
-            $mail->Password   = 'your_app_password';   // Palitan ng iyong Google App Password
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
+                $otp = rand(100000, 999999);
+                $_SESSION['otp'] = $otp;
+                $_SESSION['email'] = $email;
 
-            $mail->setFrom('your_email@gmail.com', 'QR Equipment System');
-            $mail->addAddress($email);
+                $mail = new PHPMailer(true);
 
-            $mail->isHTML(true);
-            $mail->Subject = 'Your Login OTP Code';
-            $mail->Body    = "Ang iyong OTP code para sa pag-login ay: <b>$otp</b>";
+                try {
+                    $mail->isSMTP();
+                    $mail->Host       = 'smtp.gmail.com';
+                    $mail->SMTPAuth   = true;
+                    $mail->Username   = 'your_email@gmail.com'; // Iyong Gmail
+                    $mail->Password   = 'your_app_password';   // Iyong App Password
+                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port       = 587;
 
-            $mail->send();
-            $msg = "Naipadala na ang OTP sa iyong email!";
-        } catch (Exception $e) {
-            $error = "Hindi maipadala ang email. Error: {$mail->ErrorInfo}";
+                    $mail->setFrom('your_email@gmail.com', 'QR Equipment System');
+                    $mail->addAddress($email);
+
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Your Login OTP Code';
+                    $mail->Body    = "Ang iyong OTP code para sa login ay: <b>$otp</b>";
+
+                    $mail->send();
+                    header("Location: verify_otp.php");
+                    exit();
+                } catch (Exception $e) {
+                    $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
+                }
+            } else {
+                $error_msg = "Walang nahanap na account para sa Email o ID na ito.";
+            }
+            $stmt->close();
+        } else {
+            $error_msg = "Database query error: " . $conn->error;
         }
     } else {
-        $error = "Mangyaring ilagay ang iyong email address.";
+        $error_msg = "Mangyaring ilagay ang iyong Email o ID Number.";
     }
 }
 ?>
@@ -57,44 +75,62 @@ if (isset($_POST['send_otp'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - QR Equipment System</title>
+    <title>QR-Based Equipment Monitoring System - Login</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         body {
-            background-color: #0d6efd;
-            height: 100vh;
+            background-color: #f4f6f9;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .login-card {
+        .login-container {
             background: #ffffff;
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
             padding: 40px 35px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
             text-align: center;
         }
 
-        .title {
-            color: #0d6efd;
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 6px;
+        .logo {
+            width: 90px;
+            height: auto;
+            margin-bottom: 20px;
         }
 
-        .subtitle {
-            color: #6c757d;
-            font-size: 14px;
-            margin-bottom: 30px;
+        .system-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .system-subtitle {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-size: 13.5px;
+            margin-bottom: 20px;
+            text-align: center;
         }
 
         .form-group {
@@ -104,96 +140,89 @@ if (isset($_POST['send_otp'])) {
 
         .form-group label {
             display: block;
-            font-size: 14px;
-            color: #212529;
+            font-size: 13.5px;
+            font-weight: bold;
+            color: #333;
             margin-bottom: 8px;
         }
 
         .form-control {
             width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            font-size: 15px;
+            padding: 11px 14px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 14px;
             outline: none;
             transition: border-color 0.2s;
         }
 
         .form-control:focus {
-            border-color: #0d6efd;
+            border-color: #2d6a4f;
         }
 
-        .btn-send {
+        .btn-submit {
             width: 100%;
-            background-color: #0d6efd;
+            background-color: #2d6a4f;
             color: #ffffff;
             border: none;
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
             cursor: pointer;
             transition: background-color 0.2s;
         }
 
-        .btn-send:hover {
-            background-color: #0b5ed7;
+        .btn-submit:hover {
+            background-color: #21513c;
         }
 
-        .alert {
-            padding: 10px 15px;
-            font-size: 14px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .alert-success {
-            background-color: #d1e7dd;
-            color: #0f5132;
-        }
-
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #842029;
-        }
-
-        .footer-text {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-            color: #6c757d;
+        .register-link {
+            margin-top: 25px;
             font-size: 13px;
+            color: #555555;
+        }
+
+        .register-link a {
+            color: #2d6a4f;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
 
-<div class="login-card">
-    <h1 class="title">QR Equipment System</h1>
-    <p class="subtitle">Equipment Borrowing, Return & Monitoring</p>
+<div class="login-container">
+    <!-- Logo -->
+    <img src="logo.jpg" alt="MQCQC Logo" class="logo" onerror="this.src='logo.png';">
 
-    <?php if (!empty($msg)): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($msg); ?></div>
-    <?php endif; ?>
+    <h2 class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h2>
+    <p class="system-subtitle">Account Login (OTP Authentication)</p>
 
-    <?php if (!empty($error)): ?>
-        <div class="alert alert-danger"><?= htmlspecialchars($error); ?></div>
+    <!-- Error Message Alert Box -->
+    <?php if (!empty($error_msg)): ?>
+        <div class="alert-danger">
+            <?= htmlspecialchars($error_msg); ?>
+        </div>
     <?php endif; ?>
 
     <form method="POST" action="login.php">
         <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" required>
+            <label for="identifier">Email Address or ID Number</label>
+            <input type="text" id="identifier" name="identifier" class="form-control" placeholder="Enter your Email or ID Number" required>
         </div>
 
-        <button type="submit" name="send_otp" class="btn-send">
-            Send OTP Code
+        <button type="submit" name="send_otp" class="btn-submit">
+            Send OTP
         </button>
     </form>
 
-    <div class="footer-text">
-        &copy; Mary the Queen College of Quezon City
+    <div class="register-link">
+        Don't have an account? <a href="register.php">Register here</a>
     </div>
 </div>
 

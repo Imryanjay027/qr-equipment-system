@@ -81,7 +81,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sender_email = 'ryanjayleoligao64@gmail.com';
                     $sender_app_password = 'ppcj vkux nvje nrhu';
 
-                    // Tumutugma na ngayon sa eksaktong 'phpmailer/' folder mo sa GitHub
                     $phpmailer_path = 'phpmailer/';
                     if (file_exists($phpmailer_path . 'PHPMailer.php') && file_exists($phpmailer_path . 'SMTP.php') && file_exists($phpmailer_path . 'Exception.php')) {
                         require_once $phpmailer_path . 'Exception.php';
@@ -89,13 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         require_once $phpmailer_path . 'SMTP.php';
 
                         try {
-                            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
                             $mail->isSMTP();
                             $mail->Host       = 'smtp.gmail.com';
                             $mail->SMTPAuth   = true;
                             $mail->Username   = $sender_email;
                             $mail->Password   = $sender_app_password;
-                            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
                             $mail->Port       = 587;
 
                             $mail->SMTPOptions = array(

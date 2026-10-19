@@ -4,10 +4,10 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Ilagay dito ang tamang database credentials (itama ang password kung kinakailangan)
+// Kumonekta gamit ang Coolify environment variables o default values
 $host = getenv('DB_HOST') ?: 'localhost';
 $username = getenv('DB_USER') ?: 'root';
-$password = getenv('DB_PASS') ?: 'ILAGAY_MO_DITO_ANG_PASSWORD'; // Ilagay ang password ng root o ng MySQL mo kung meron
+$password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : ''; // Walang password kung blank
 $database = getenv('DB_NAME') ?: 'qrcode'; // 'qrcode' ang database name batay sa error mo
 
 $conn = new mysqli($host, $username, $password, $database);

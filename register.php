@@ -19,8 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($email && !empty($full_name)) {
         $photo_filename = '';
 
-        // Tanging Custodian lamang ang pwedeng mag-upload/mag-capture ng picture
-        if ($role === 'custodian' && !empty($image_data)) {
+        // Tanging Student lamang ang may live selfie capture
+        if ($role === 'student' && !empty($image_data)) {
             $image_parts = explode(";base64,", $image_data);
             if (count($image_parts) == 2) {
                 $image_base64 = base64_decode($image_parts[1]);
@@ -28,12 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!file_exists($target_dir)) {
                     mkdir($target_dir, 0777, true);
                 }
-                $photo_filename = 'custodian_' . time() . '.png';
+                $photo_filename = 'student_' . time() . '.png';
                 file_put_contents($target_dir . $photo_filename, $image_base64);
             }
         }
 
-        // I-save sa database (Siguraduhing may mga column na full_name, email, role, photo, academic_info sa tbl_users mo)
         $stmt = $conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
         if ($stmt) {
             $stmt->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
@@ -69,12 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-group { margin-bottom: 20px; text-align: left; }
         .form-group label { display: block; margin-bottom: 8px; color: #212529; font-weight: 600; font-size: 14px; }
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        .camera-box { width: 100%; background-color: #000; border-radius: 6px; overflow: hidden; margin-bottom: 10px; position: relative; display: none; }
+        .camera-box { width: 100%; background-color: #000; border-radius: 6px; overflow: hidden; margin-bottom: 10px; position: relative; }
         video, canvas { width: 100%; height: auto; display: block; }
         canvas { display: none; }
         .btn { width: 100%; padding: 12px; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background-color 0.2s; }
         .btn:hover { background-color: #1b5e20; }
-        .btn-capture { background-color: #495057; margin-bottom: 15px; display: none; }
+        .btn-capture { background-color: #495057; margin-bottom: 15px; }
         .btn-capture:hover { background-color: #343a40; }
         .register-link { margin-top: 20px; font-size: 13px; color: #6c757d; }
         .register-link a { color: #2e7d32; text-decoration: none; font-weight: 600; }
@@ -82,7 +81,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .alert { padding: 10px; margin-bottom: 20px; border-radius: 6px; font-size: 14px; }
         .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .conditional-section { display: none; }
+        
+        /* Modal Styles para sa Terms & Conditions */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; text-align: left; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        .modal-content h4 { color: #2e7d32; margin-bottom: 15px; }
+        .modal-content p { font-size: 13px; color: #444; line-height: 1.6; margin-bottom: 15px; }
+        .terms-checkbox { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 13px; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -96,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="alert alert-<?php echo $status; ?>"><?php echo htmlspecialchars($message); ?></div>
     <?php endif; ?>
 
-    <form method="POST" action="register.php" id="registerForm">
+    <form method="POST" action="register.php" id="registerForm" onsubmit="return validateForm()">
         <div class="form-group">
             <label for="full_name">Full Name</label>
             <input type="text" id="full_name" name="full_name" required placeholder="Enter your full name">
@@ -116,8 +121,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </select>
         </div>
 
-        <!-- Student Specific Section (Course & Year OR Grade & Section) -->
-        <div id="studentSection" class="conditional-section" style="display: block;">
+        <!-- Student Specific Section (Live Selfie & Academic Info) -->
+        <div id="studentSection" class="conditional-section">
+            <div class="form-group">
+                <label>Live Selfie Capture (Student Only)</label>
+                <div class="camera-box" id="cameraBox">
+                    <video id="video" autoplay playsinline></video>
+                    <canvas id="canvas"></canvas>
+                </div>
+                <button type="button" id="captureBtn" class="btn btn-capture">Capture Selfie</button>
+            </div>
+
             <div class="form-group">
                 <label for="student_level">Student Level Category</label>
                 <select id="student_level" onchange="handleLevelChange()">
@@ -125,21 +139,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <option value="basic_ed">Elementary to SHS</option>
                 </select>
             </div>
+            
             <div class="form-group">
                 <label id="academicLabel" for="academic_info">Course & Year</label>
                 <input type="text" id="academic_info" name="academic_info" placeholder="e.g. BSIT 3-1">
-            </div>
-        </div>
-
-        <!-- Custodian Specific Section (Live Selfie Capture) -->
-        <div id="custodianSection" class="conditional-section">
-            <div class="form-group">
-                <label>Live Selfie Capture (Custodian Only)</label>
-                <div class="camera-box" id="cameraBox">
-                    <video id="video" autoplay playsinline></video>
-                    <canvas id="canvas"></canvas>
-                </div>
-                <button type="button" id="captureBtn" class="btn btn-capture">Capture Selfie</button>
             </div>
         </div>
 
@@ -150,12 +153,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="register-link">Already have an account? <a href="login.php">Login via OTP here</a></div>
 </div>
 
+<!-- Terms & Conditions Modal Pop-up -->
+<div id="termsModal" class="modal">
+    <div class="modal-content">
+        <h4>Terms & Conditions (Equipment Borrowing)</h4>
+        <p>Sa pamamagitan ng pagpaparehistro bilang Student sa <strong>MQCQC Equipment Monitoring System</strong>, ikaw ay sumasang-ayon sa patakaran ng paaralan:</p>
+        <p><em>"Kung sakaling ang anumang kagamitang hiniram ay masira, mawala, o magkaroon ng depekto habang nasa ilalim ng iyong pangangasiwa, ikaw ay obligadong mag-replace o mag-ayos nito ng isang kagamitang may eksaktong klase, kalidad, at uri (exact replacement)."</em></p>
+        
+        <div class="terms-checkbox">
+            <input type="checkbox" id="agreeTerms" onchange="toggleAgree()">
+            <label for="agreeTerms">Nabasa ko at sumasang-ayon ako sa Terms & Conditions na ito.</label>
+        </div>
+
+        <button type="button" class="btn" id="proceedBtn" disabled style="opacity: 0.5;" onclick="closeModal()">Proceed & Register</button>
+    </div>
+</div>
+
 <script>
     const roleSelect = document.getElementById('role');
     const studentSection = document.getElementById('studentSection');
-    const custodianSection = document.getElementById('custodianSection');
-    const cameraBox = document.getElementById('cameraBox');
-    const captureBtn = document.getElementById('captureBtn');
     
     const studentLevel = document.getElementById('student_level');
     const academicLabel = document.getElementById('academicLabel');
@@ -163,29 +179,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
     const imageDataInput = document.getElementById('imageData');
     let mediaStream = null;
+
+    const termsModal = document.getElementById('termsModal');
+    const agreeTerms = document.getElementById('agreeTerms');
+    const proceedBtn = document.getElementById('proceedBtn');
+    let termsAccepted = false;
 
     function handleRoleChange() {
         const selectedRole = roleSelect.value;
 
         if (selectedRole === 'student') {
             studentSection.style.display = 'block';
-            custodianSection.style.display = 'none';
             academicInfoInput.required = true;
-            stopCamera();
-        } else if (selectedRole === 'faculty') {
-            studentSection.style.display = 'none';
-            custodianSection.style.display = 'none';
-            academicInfoInput.required = false;
-            stopCamera();
-        } else if (selectedRole === 'custodian') {
-            studentSection.style.display = 'none';
-            custodianSection.style.display = 'block';
-            cameraBox.style.display = 'block';
-            captureBtn.style.display = 'block';
-            academicInfoInput.required = false;
             startCamera();
+            // Ipakita ang terms modal kapag student ang pinili
+            if (!termsAccepted) {
+                termsModal.style.display = 'flex';
+            }
+        } else {
+            studentSection.style.display = 'none';
+            academicInfoInput.required = false;
+            stopCamera();
+            termsModal.style.display = 'none';
         }
     }
 
@@ -197,6 +215,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             academicLabel.textContent = "Grade & Section";
             academicInfoInput.placeholder = "e.g. Grade 11 - St. Joseph";
         }
+    }
+
+    function toggleAgree() {
+        if (agreeTerms.checked) {
+            proceedBtn.disabled = false;
+            proceedBtn.style.opacity = "1";
+        } else {
+            proceedBtn.disabled = true;
+            proceedBtn.style.opacity = "0.5";
+        }
+    }
+
+    function closeModal() {
+        termsAccepted = true;
+        termsModal.style.display = 'none';
+    }
+
+    function validateForm() {
+        if (roleSelect.value === 'student' && !termsAccepted) {
+            termsModal.style.display = 'flex';
+            return false;
+        }
+        return true;
     }
 
     function startCamera() {

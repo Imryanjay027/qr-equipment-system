@@ -2,15 +2,13 @@
 session_start();
 include 'db_connection.php';
 
-// PHPMailer Namespaces & Alias override para hindi na hanapin ang external SMTP class kung nagka-issue
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 $phpmailer_path = __DIR__ . '/phpmailer/';
-require_once $phpmailer_path . 'Exception.php';
-require_once $phpmailer_path . 'PHPMailer.php';
 
-// Kung sakaling wala talagang SMTP.php file, gagawa tayo ng dummy class para hindi mag-crash ang PHPMailer.php line 2167
+// Safe inclusion ng core files
+if (file_exists($phpmailer_path . 'Exception.php')) require_once $phpmailer_path . 'Exception.php';
+if (file_exists($phpmailer_path . 'PHPMailer.php')) require_once $phpmailer_path . 'PHPMailer.php';
+
+// Fallback sakaling kulang o hindi mabasa ang SMTP class file sa server
 if (!class_exists('PHPMailer\PHPMailer\SMTP')) {
     namespace PHPMailer\PHPMailer {
         class SMTP {
@@ -25,12 +23,8 @@ if (!class_exists('PHPMailer\PHPMailer\SMTP')) {
     }
 }
 
-// Bumalik sa global namespace para sa main logic
+// Bumalik sa Global scope para sa main logic
 namespace {
-    session_start();
-    // Re-include db connection kung kinakailangan sa scope
-    include 'db_connection.php';
-
     $error_msg = "";
     $success_msg = "";
 

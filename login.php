@@ -7,10 +7,10 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// PHPMailer core files (Tamang sequence)
-require 'phpmailer/Exception.php';
-require 'phpmailer/SMTP.php';
-require 'phpmailer/PHPMailer.php';
+// PHPMailer core files gamit ang absolute path para siguraduhing mahanap sa server
+require_once __DIR__ . '/phpmailer/Exception.php';
+require_once __DIR__ . '/phpmailer/SMTP.php';
+require_once __DIR__ . '/phpmailer/PHPMailer.php';
 
 $error_msg = "";
 $success_msg = "";

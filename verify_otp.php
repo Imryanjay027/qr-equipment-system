@@ -44,8 +44,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Linisin ang temporary OTP session
             unset($_SESSION['otp']);
 
-            // Mag-redirect sa dashboard pagkatapos ng 1 segundo
-            header("refresh:1;url=dashboard.php"); // Palitan ng tamang pangalan ng iyong dashboard file kung kinakailangan
+            // Mag-redirect sa tamang custodian dashboard pagkatapos ng 1 segundo
+            header("refresh:1;url=custodian_dashboard.php");
             exit();
         } else {
             $error_msg = "Mali ang OTP code. Pakitingnan muli ang iyong Gmail.";
@@ -54,7 +54,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error_msg = "Mangyaring ilagay ang OTP code.";
     }
 }
-$conn->close();
+if (isset($conn) && $conn) {
+    $conn->close();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -99,7 +101,7 @@ $conn->close();
         <form action="" method="POST">
             <div class="form-group">
                 <label for="otp_code">OTP Code</label>
-                <input type="text" id="otp_code" name="otp_code" required placeholder="Enter 6-digit OTP" autocomplete="off">
+                <input type="text" id="otp_code" name="otp_code" required placeholder="Enter 6-digit OTP" autocomplete="off" maxlength="6">
             </div>
             <button type="submit" class="btn-login">Verify OTP</button>
         </form>

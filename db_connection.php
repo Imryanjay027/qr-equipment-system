@@ -1,10 +1,9 @@
 <?php
-// Babasahin nito ang nilagay mo sa Environment Variables sa Coolify
-$host = getenv('DB_HOST') ?: '172.17.0.1';
+$host = '127.0.0.1';
 $port = 3306;
 $user = 'root';
 $pass = 'ryan072797';
-$dbname = 'qrcode';
+$dbname = 'qrcode'; // Ang initial database name mula sa Coolify[cite: 4]
 
 $conn = @new mysqli($host, $user, $pass, $dbname, $port);
 

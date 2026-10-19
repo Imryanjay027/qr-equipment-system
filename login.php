@@ -1,110 +1,89 @@
 <?php
 // login.php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
-include 'db_connection.php'; // Siguraduhing tama ang pangalan ng connection file mo
+include('db_connection.php');
 
-// ==========================================
-// BREVO API EMAIL FUNCTION (cURL)
-// ==========================================
-function sendOTP($toEmail, $otpCode) {
-    $apiKey = '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';
-    $url = 'https://api.brevo.com/v3/smtp/email';
-
-    $data = array(
-        'sender' => array(
-            'name' => 'MQCQC Equipment System',
-            'email' => 'ryanjayleoligao64@gmail.com'
-        ),
-        'to' => array(
-            array(
-                'email' => $toEmail
-            )
-        ),
-        'subject' => 'Your Login OTP Code - MQCQC System',
-        'htmlContent' => "
-            <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; max-width: 500px;'>
-                <h2 style='color: #2e7d32;'>MQCQC Equipment Monitoring System</h2>
-                <p>Hello,</p>
-                <p>Ang iyong One-Time Password (OTP) para sa pag-login ay:</p>
-                <h1 style='color: #1b5e20; letter-spacing: 4px; background-color: #f4f4f4; padding: 10px; display: inline-block; border-radius: 4px;'>{$otpCode}</h1>
-                <p>Mangyaring i-input ang code na ito sa OTP verification page. Huwag itong ibahagi kanino man.</p>
-                <br>
-                <small style='color: #777;'>Awtomatikong mensahe mula sa MQCQC System.</small>
-            </div>
-        "
-    );
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'accept: application/json',
-        'api-key: ' . $apiKey,
-        'content-type: application/json'
-    ));
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    return ($httpCode == 201);
-}
-
-$message = '';
+$message = ''; 
 $status = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action']) && $_POST['action'] === 'request_otp') {
-        $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-        
-        if ($email) {
-            // I-check muna sa database kung rehistrado ang email at kunin ang role
-            $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR Email = ?");
-            $stmt->bind_param("ss", $email, $email);
-            $stmt->execute();
-            $result = $stmt->get_result();
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
 
-            if ($row = $result->fetch_assoc()) {
-                $otp = sprintf("%06d", mt_rand(1, 999999));
-                
-                // I-save ang mga detalye sa session para magamit sa verify_otp.php
-                $_SESSION['otp'] = $otp;
-                $_SESSION['login_email'] = $email;
-                $_SESSION['temp_email'] = $email;
-                $_SESSION['temp_user_id'] = $row['id'];
-                $_SESSION['temp_user_role'] = $row['role'] ?? 'student';
-                $_SESSION['otp_expiration'] = time() + (5 * 60);
+    if ($email) {
+        // Hanapin ang user sa tbl_users
+        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR Email = ?");
+        $stmt->bind_param("ss", $email, $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-                if (sendOTP($email, $otp)) {
-                    header("Location: verify_otp.php");
-                    exit();
-                } else {
-                    $message = "Nagkaroon ng problema sa pagpapadala ng OTP. Subukan ulit.";
-                    $status = "error";
-                }
-            } else {
-                $message = "Ang email na ito ay hindi pa rehistrado sa sistema.";
-                $status = "error";
-            }
-            $stmt->close();
+        if ($row = $result->fetch_assoc()) {
+            $otp = sprintf("%06d", mt_rand(1, 999999));
+            $db_role = strtolower(trim($row['role'] ?? 'student'));
+
+            // Itabi sa Session (WAG SISIRAIN ANG SESSION)
+            $_SESSION['otp'] = $otp;
+            $_SESSION['temp_email'] = $email;
+            $_SESSION['temp_user_id'] = $row['id'];
+            $_SESSION['temp_user_role'] = $db_role;
+            $_SESSION['otp_expiration'] = time() + (5 * 60);
+
+            // BREVO API INTEGRATION
+            $apiKey = 'IYONG_BREVO_API_KEY_HERE'; // Ilagay ang iyong Brevo API Key dito
+            $url = 'https://api.brevo.com/v3/smtp/email';
+
+            $data = [
+                'sender' => [
+                    'name' => 'MQCQC Equipment System',
+                    'email' => 'no-reply@mqcqc.edu.ph' // Palitan ayon sa Brevo sender email mo
+                ],
+                'to' => [
+                    ['email' => $email]
+                ],
+                'subject' => 'Your Login OTP Code - MQCQC System',
+                'htmlContent' => "<h3>Your One-Time Password (OTP) is: <b>{$otp}</b></h3><p>This code will expire in 5 minutes.</p>"
+            ];
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'accept: application/json',
+                'api-key: ' . $apiKey,
+                'content-type: application/json'
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            // Lumipat sa verify_otp.php
+            header("Location: verify_otp.php");
+            exit();
+
         } else {
-            $message = "Mangyaring maglagay ng tamang email address.";
+            $message = "Email address not found in our database. Please register first.";
             $status = "error";
         }
+        $stmt->close();
+    } else {
+        $message = "Please enter a valid email address.";
+        $status = "error";
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - MQCQC Equipment Monitoring System</title>
+    <title>Login via OTP - MQCQC Equipment Monitoring System</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 40px 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 450px; text-align: center; }
+        body { font-family: Arial, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .login-card { background: white; padding: 40px 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 420px; text-align: center; }
         .login-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
         .login-card h3 { margin: 10px 0 5px 0; color: #212529; font-size: 18px; font-weight: bold; }
         .login-card p.subtitle { color: #6c757d; font-size: 13px; margin-bottom: 25px; }
@@ -123,21 +102,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
 <div class="login-card">
-    <img src="logo.jpg" alt="MQCQC Logo">
+    <img src="logo.jpg" alt="MQCQC Logo" onerror="this.src='uploads/default.png'">
     <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
-    <p class="subtitle">Account Login (OTP Authentication)</p>
+    <p class="subtitle">Login via One-Time Password (OTP)</p>
 
     <?php if (!empty($message)): ?>
         <div class="alert alert-<?php echo $status; ?>"><?php echo htmlspecialchars($message); ?></div>
     <?php endif; ?>
 
     <form method="POST" action="login.php">
-        <input type="hidden" name="action" value="request_otp">
         <div class="form-group">
             <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" required placeholder="Enter your Email">
+            <input type="email" id="email" name="email" required placeholder="Enter your registered email">
         </div>
-        <button type="submit" class="btn">Send OTP</button>
+        <button type="submit" class="btn">Send OTP Code</button>
     </form>
 
     <div class="register-link">Don't have an account? <a href="register.php">Register here</a></div>

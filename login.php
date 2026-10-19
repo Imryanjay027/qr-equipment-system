@@ -1,13 +1,52 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Ligtas na pagsusuri: Kung nakalog-in na ang student, direktang dalhin sa borrower.php
-// (Hindi ito mag-loloop dahil hiwalay ang destinasyon nito)
 if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && strtolower(trim($_SESSION['role'])) === 'student') {
     header("Location: borrower.php");
     exit();
+}
+
+$error = "";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email_or_id = trim($_POST['email_or_id'] ?? '');
+
+    if (!empty($email_or_id)) {
+        // Dito mo ilalagay ang koneksyon sa database para hanapin ang user
+        // Halimbawa: 
+        // include 'db.php';
+        // $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? OR student_id = ?");
+        // $stmt->execute([$email_or_id, $email_or_id]);
+        // $user = $stmt->fetch();
+
+        // Pansamantalang simulation para masubukan agad (Alisin ito kapag ikinabit mo na sa DB query mo):
+        // Mag-generate ng 6-digit OTP
+        $otp = rand(100000, 999999);
+        
+        // I-save sa Session ang OTP at ang expiration (5 minuto mula ngayon)
+        $_SESSION['otp_code'] = $otp;
+        $_SESSION['otp_expiry'] = time() + 300; // 300 seconds = 5 minutes
+        
+        // Ilagay dito ang code para sa pagpapadala gamit ang Brevo API o PHPMailer
+        // mail($email_or_id, "Your OTP Code", "Your OTP is: $otp");
+
+        // Pansamantalang temporary user data para sa session pagkatapos mag-verify
+        $_SESSION['temp_user_id'] = 1;
+        $_SESSION['temp_role'] = 'student';
+        $_SESSION['temp_full_name'] = 'Ryan Jay Leoligao';
+        $_SESSION['temp_student_id'] = '903324454';
+        $_SESSION['temp_course_year'] = 'BSIT-3B';
+
+        // Dalhin na sa verify_otp.php para ma-type ang code
+        header("Location: verify_otp.php");
+        exit();
+    } else {
+        $error = "Please enter your email or Student ID.";
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -38,8 +77,14 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && strtolower(trim($
                         <p class="text-muted small">Enter your details to receive an OTP via email (Brevo)</p>
                     </div>
 
-                    <!-- Login Form patungong OTP verification -->
-                    <form action="verify_otp.php" method="POST">
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger py-2 small" role="alert">
+                            <?= htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Login Form patungong POST handler sa sarili nitong file -->
+                    <form action="login.php" method="POST">
                         <div class="mb-3">
                             <label for="email" class="form-label fw-semibold">Email Address or Student ID</label>
                             <input type="text" class="form-control" id="email" name="email_or_id" required placeholder="Enter your email or ID">

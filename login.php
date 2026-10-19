@@ -1,4 +1,9 @@
 <?php
+// I-on ang error reporting para makita natin kung may problema sa database o code
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 include 'db_connection.php';
 
@@ -8,38 +13,42 @@ if (isset($_POST['send_otp'])) {
     $identifier = trim($_POST['identifier']);
 
     if (!empty($identifier)) {
-        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("s", $identifier);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result && $result->num_rows > 0) {
-                $user = $result->fetch_assoc();
-                $email = $user['email'];
-
-                $otp = rand(100000, 999999);
-                $_SESSION['otp'] = $otp;
-                $_SESSION['email'] = $email;
-
-                // Subukang i-send ang email
-                $to = $email;
-                $subject = "Your Login OTP Code";
-                $message = "Ang iyong OTP code para sa login ay: " . $otp;
-                $headers = "From: noreply@equipment-system.local\r\n";
-
-                // Kahit mag-fail o mag-success ang mail(), ituloy natin sa verify_otp para ma-test mo agad
-                @mail($to, $subject, $message, $headers);
-                
-                header("Location: verify_otp.php");
-                exit();
-            } else {
-                // ITO ANG DAHILAN KAYA NAGRERE-LOAD: Walang nakitang ganitong email sa tbl_users
-                $error_msg = "Error: Ang Email na '$identifier' ay walang nahanap na record sa tbl_users!";
-            }
-            $stmt->close();
+        // Siguraduhing konektado ang database
+        if (!$conn) {
+            $error_msg = "Database connection failed!";
         } else {
-            $error_msg = "Database query error: " . $conn->error;
+            $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param("s", $identifier);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                if ($result && $result->num_rows > 0) {
+                    $user = $result->fetch_assoc();
+                    $email = $user['email'];
+
+                    $otp = rand(100000, 999999);
+                    $_SESSION['otp'] = $otp;
+                    $_SESSION['email'] = $email;
+
+                    // I-send ang email gamit ang native mail function
+                    $to = $email;
+                    $subject = "Your Login OTP Code";
+                    $message = "Ang iyong OTP code para sa login ay: " . $otp;
+                    $headers = "From: noreply@equipment-system.local\r\n";
+
+                    @mail($to, $subject, $message, $headers);
+
+                    // Lumipat kaagad sa verify_otp.php
+                    header("Location: verify_otp.php");
+                    exit();
+                } else {
+                    $error_msg = "Ang Email na ito ay walang nahanap na record sa tbl_users.";
+                }
+                $stmt->close();
+            } else {
+                $error_msg = "Database query error: " . $conn->error;
+            }
         }
     } else {
         $error_msg = "Mangyaring ilagay ang iyong Email address.";
@@ -179,7 +188,7 @@ if (isset($_POST['send_otp'])) {
     <h2 class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h2>
     <p class="system-subtitle">Account Login (OTP Authentication)</p>
 
-    <!-- Error Message Alert Box - Dito makikita kung bakit nagre-reload -->
+    <!-- Error Message Alert Box -->
     <?php if (!empty($error_msg)): ?>
         <div class="alert-danger">
             <?= htmlspecialchars($error_msg); ?>

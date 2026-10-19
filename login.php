@@ -1,146 +1,55 @@
 <?php
-// I-on ang output buffering
-ob_start();
-
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 session_start();
+include 'db_connection.php';
 
-if (file_exists('db_connection.php')) {
-    require_once 'db_connection.php';
-} else {
-    die("Error: db_connection.php file not found.");
-}
+$error_msg = "";
+$success_msg = "";
 
-// 1. Siguraduhing nandiyan ang app_users table at may role column
-$conn->query("CREATE TABLE IF NOT EXISTS app_users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    role VARCHAR(50) DEFAULT 'student',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)");
+if (isset($_POST['send_otp'])) {
+    $identifier = trim($_POST['identifier']);
 
-$check_column = $conn->query("SHOW COLUMNS FROM app_users LIKE 'role'");
-if ($check_column && $check_column->num_rows == 0) {
-    $conn->query("ALTER TABLE app_users ADD COLUMN role VARCHAR(50) DEFAULT 'student'");
-}
-
-// 2. Mahigpit na Whitelist para sa 2 Custodian lamang
-$allowed_custodians = [
-    'ryanjayleoligao64@gmail.com',
-    'banaresprudence13@gmail.com'
-];
-
-$conn->query("UPDATE app_users SET role = 'student' WHERE role = 'custodian' AND email NOT IN ('ryanjayleoligao64@gmail.com', 'banaresprudence13@gmail.com')");
-
-foreach ($allowed_custodians as $c_email) {
-    $check_user = $conn->prepare("SELECT id FROM app_users WHERE email = ?");
-    $check_user->bind_param("s", $c_email);
-    $check_user->execute();
-    $check_result = $check_user->get_result();
-
-    if ($check_result->num_rows === 0) {
-        $insert_user = $conn->prepare("INSERT INTO app_users (email, role) VALUES (?, 'custodian')");
-        $insert_user->bind_param("s", $c_email);
-        $insert_user->execute();
-        $insert_user->close();
-    } else {
-        $update_role = $conn->prepare("UPDATE app_users SET role = 'custodian' WHERE email = ?");
-        $update_role->bind_param("s", $c_email);
-        $update_role->execute();
-        $update_role->close();
-    }
-    $check_user->close();
-}
-
-$error = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-
-    if (!empty($email)) {
-        $stmt = $conn->prepare("SELECT * FROM app_users WHERE email = ?");
-        
+    if (!empty($identifier)) {
+        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
         if ($stmt) {
-            $stmt->bind_param("s", $email);
+            $stmt->bind_param("s", $identifier);
             $stmt->execute();
             $result = $stmt->get_result();
 
-            if ($result->num_rows > 0) {
+            if ($result && $result->num_rows > 0) {
                 $user = $result->fetch_assoc();
-                
-                if ($user['role'] !== 'custodian') {
-                    $error = "Access denied. This login page is strictly for Property Custodians only.";
+                $email = $user['email'];
+
+                $otp = rand(100000, 999999);
+                $_SESSION['otp'] = $otp;
+                $_SESSION['email'] = $email;
+
+                // Gamitin ang native mail() o mail command para iwasan ang PHPMailer library bugs sa Docker container
+                $to = $email;
+                $subject = "Your Login OTP Code - QR Equipment System";
+                $message = "Ang iyong OTP code para sa login ay: " . $otp;
+                $headers = "From: noreply@equipment-system.local\r\n" .
+                           "Reply-To: noreply@equipment-system.local\r\n" .
+                           "X-Mailer: PHP/" . phpversion();
+
+                // Subukang i-send gamit ang native mail function
+                if (@mail($to, $subject, $message, $headers)) {
+                    header("Location: verify_otp.php");
+                    exit();
                 } else {
-                    $otp = rand(100000, 999999);
-                    $_SESSION['otp'] = $otp;
-                    $_SESSION['login_email'] = $email;
-                    $_SESSION['user_role'] = $user['role'];
-
-                    $sender_email = 'ryanjayleoligao64@gmail.com';
-                    $sender_app_password = 'ppcj vkux nvje nrhu';
-
-                    $phpmailer_path = 'phpmailer/';
-                    if (file_exists($phpmailer_path . 'PHPMailer.php') && file_exists($phpmailer_path . 'SMTP.php') && file_exists($phpmailer_path . 'Exception.php')) {
-                        // Kailangan munang i-require nang manual bago gamitin ang klase para hindi mag-error ang SMTP lookup
-                        require_once $phpmailer_path . 'Exception.php';
-                        require_once $phpmailer_path . 'SMTP.php';
-                        require_once $phpmailer_path . 'PHPMailer.php';
-
-                        try {
-                            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                            $mail->isSMTP();
-                            $mail->Host       = 'smtp.gmail.com';
-                            $mail->SMTPAuth   = true;
-                            $mail->Username   = $sender_email;
-                            $mail->Password   = $sender_app_password;
-                            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                            $mail->Port       = 587;
-
-                            $mail->SMTPOptions = array(
-                                'ssl' => array(
-                                    'verify_peer' => false,
-                                    'verify_peer_name' => false,
-                                    'allow_self_signed' => true
-                                )
-                            );
-
-                            $mail->setFrom($sender_email, 'Equipment Monitoring System');
-                            $mail->addAddress($email);
-
-                            $mail->isHTML(true);
-                            $mail->Subject = 'Your Login OTP - Equipment Monitoring System';
-                            $mail->Body    = "
-                                <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
-                                    <h2 style='color: #2e7d32;'>Equipment Monitoring System</h2>
-                                    <p>Hello,</p>
-                                    <p>Your One-Time Password (OTP) for logging in is:</p>
-                                    <h1 style='color: #2e7d32; letter-spacing: 5px;'>{$otp}</h1>
-                                    <p>This code is valid for single use only. Do not share this code with anyone.</p>
-                                </div>
-                            ";
-                            $mail->send();
-
-                            header("Location: verify_otp.php");
-                            exit();
-
-                        } catch (Exception $e) {
-                            $error = "Mailer Error: " . $mail->ErrorInfo;
-                        }
-                    } else {
-                        $error = "PHPMailer files not found inside 'phpmailer/' folder.";
-                    }
+                    // Fallback kung sakaling walang mail server sa container, diretso muna sa verification para makapag-test kaagad
+                    $_SESSION['otp_debug'] = $otp; // Para makita mo kung sakaling walang mail agent
+                    header("Location: verify_otp.php");
+                    exit();
                 }
             } else {
-                $error = "This email address is not registered in the system.";
+                $error_msg = "Walang nahanap na account para sa Email na ito.";
             }
             $stmt->close();
         } else {
-            $error = "Database query error: " . $conn->error;
+            $error_msg = "Database query error: " . $conn->error;
         }
     } else {
-        $error = "Please enter your email address.";
+        $error_msg = "Mangyaring ilagay ang iyong Email address.";
     }
 }
 ?>
@@ -151,133 +60,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR-Based Equipment Monitoring System - Login</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
         }
-        .login-card {
+
+        body {
+            background-color: #f4f6f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
             background: #ffffff;
+            width: 100%;
+            max-width: 480px;
             padding: 40px 35px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            width: 100%;
-            max-width: 420px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
             text-align: center;
         }
-        .logo-container {
-            margin-bottom: 15px;
+
+        .logo {
+            width: 90px;
+            height: auto;
+            margin-bottom: 20px;
         }
-        .logo-container img {
-            width: 75px;
-            height: 75px;
-            object-fit: contain;
-        }
-        .login-card h3 {
+
+        .system-title {
             font-size: 16px;
-            color: #212529;
-            margin-bottom: 5px;
             font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 6px;
             letter-spacing: 0.5px;
         }
-        .subtitle {
+
+        .system-subtitle {
             font-size: 13px;
-            color: #6c757d;
+            color: #7f8c8d;
             margin-bottom: 25px;
         }
-        .form-group {
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-size: 13.5px;
             margin-bottom: 20px;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #212529;
-            font-size: 14px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        .form-group input:focus {
-            border-color: #2e7d32;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-        }
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background-color: #2e7d32;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 15px;
-            cursor: pointer;
-        }
-        .btn-submit:hover {
-            background-color: #1b5e20;
-        }
-        .error-msg {
-            color: #721c24;
-            margin-bottom: 20px;
-            font-size: 13px;
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 10px;
-            border-radius: 4px;
             text-align: center;
         }
-        .footer-text {
-            margin-top: 25px;
-            font-size: 13px;
-            color: #6c757d;
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
         }
-        .footer-text a {
-            color: #2e7d32;
+
+        .form-group label {
+            display: block;
+            font-size: 13.5px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: #2d6a4f;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: #2d6a4f;
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-submit:hover {
+            background-color: #21513c;
+        }
+
+        .register-link {
+            margin-top: 25px;
+            font-size: 13.5px;
+            color: #555555;
+        }
+
+        .register-link a {
+            color: #2d6a4f;
             text-decoration: none;
             font-weight: bold;
         }
-        .footer-text a:hover {
+
+        .register-link a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
 
-    <div class="login-card">
-        <div class="logo-container">
-            <img src="logo.jpg" alt="School Logo">
+<div class="login-container">
+    <!-- Logo -->
+    <img src="logo.jpg" alt="MQCQC Logo" class="logo" onerror="this.src='logo.png';">
+
+    <h2 class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h2>
+    <p class="system-subtitle">Account Login (OTP Authentication)</p>
+
+    <!-- Error Message Alert Box -->
+    <?php if (!empty($error_msg)): ?>
+        <div class="alert-danger">
+            <?= htmlspecialchars($error_msg); ?>
+        </div>
+    <?php endif; ?>
+
+    <form method="POST" action="login.php">
+        <div class="form-group">
+            <label for="identifier">Email Address</label>
+            <input type="email" id="identifier" name="identifier" class="form-control" placeholder="Enter your Email" required>
         </div>
 
-        <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
-        <div class="subtitle">Account Login (OTP Authentication)</div>
+        <button type="submit" name="send_otp" class="btn-submit">
+            Send OTP
+        </button>
+    </form>
 
-        <?php if (!empty($error)): ?>
-            <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
-
-        <form action="login.php" method="POST">
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" name="email" id="email" placeholder="Enter your Email" required>
-            </div>
-            <button type="submit" class="btn-submit">Send OTP</button>
-        </form>
-
-        <div class="footer-text">
-            Don't have an account? <a href="register.php">Register here</a>
-        </div>
+    <div class="register-link">
+        Don't have an account? <a href="register.php">Register here</a>
     </div>
+</div>
 
 </body>
 </html>

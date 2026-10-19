@@ -1,54 +1,69 @@
 <?php
-// verify_otp.php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// login.php
 error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 session_start();
 
-// Ginamit natin ang 'temp_email' para magtugma sa login.php
-if (!isset($_SESSION['temp_email']) || !isset($_SESSION['otp'])) {
-    header("Location: login.php");
-    exit();
+// Linisin at sirain ang lumang session para hindi mag-overlap ang mga role
+$_SESSION = array();
+if (ini_get("session.use_cookies")) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000,
+        $params["path"], $params["domain"],
+        $params["secure"], $params["httponly"]
+    );
 }
+session_destroy();
 
-$error_msg = "";
+// Simulan ang bagong malinis na session
+session_start();
+include 'db_connection.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $otp_code = trim($_POST['otp_code'] ?? '');
+// I-load ang Brevo Mailer library kung kinakailangan para sa OTP
+// (Siguraduhing naka-setup ang iyong Brevo API configuration dito)
 
-    if (!empty($otp_code)) {
-        if (intval($otp_code) === intval($_SESSION['otp'])) {
-            $role = strtolower($_SESSION['temp_user_role'] ?? 'student');
+$message = '';
+$status = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+
+    if ($email) {
+        // I-check sa database ang email (kinukuha ang lahat ng impormasyon kabilang ang role)
+        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR Email = ?");
+        $stmt->bind_param("ss", $email, $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($row = $result->fetch_assoc()) {
+            $otp = sprintf("%06d", mt_rand(1, 999999));
             
-            $_SESSION['logged_in'] = true;
-            $_SESSION['user_id'] = $_SESSION['temp_user_id'];
-            $_SESSION['email'] = $_SESSION['temp_email'];
-            $_SESSION['role'] = $role;
+            // Kunin ang eksaktong role mula sa database row
+            $db_role = strtolower(trim($row['role'] ?? 'student'));
 
-            // Linisin ang temporary session
-            unset($_SESSION['otp']);
-            unset($_SESSION['otp_expiry']);
-            unset($_SESSION['temp_email']);
-            unset($_SESSION['temp_user_id']);
-            unset($_SESSION['temp_user_role']);
+            // Itabi sa temporary session ang mga detalye habang naghihintay ng OTP verification
+            $_SESSION['otp'] = $otp;
+            $_SESSION['temp_email'] = $email;
+            $_SESSION['temp_user_id'] = $row['id'];
+            $_SESSION['temp_user_role'] = $db_role; // Dito nakasalalay ang dynamic redirection sa verify_otp.php
+            $_SESSION['otp_expiration'] = time() + (5 * 60);
 
-            // Redirection batay sa role
-            if ($role === 'custodian' || $role === 'property custodian') {
-                $_SESSION['custodian_logged_in'] = true;
-                header("Location: custodian_dashboard.php");
-                exit();
-            } else {
-                $_SESSION['student_logged_in'] = true;
-                header("Location: borrower.php");
-                exit();
-            }
+            // TODO: Ilagay dito ang Brevo API code para magpadala ng OTP sa email ng user
+            // Halimbawa: sendOtpViaBrevo($email, $otp);
+
+            // Pansamantalang ilipat sa verify_otp.php page para i-input ang code
+            header("Location: verify_otp.php");
+            exit();
 
         } else {
-            $error_msg = "Mali ang OTP code. Pakitingnan muli ang iyong Gmail.";
+            $message = "Email address not found in our database. Please register first.";
+            $status = "error";
         }
+        $stmt->close();
     } else {
-        $error_msg = "Mangyaring ilagay ang OTP code.";
+        $message = "Please enter a valid email address.";
+        $status = "error";
     }
 }
 ?>
@@ -57,43 +72,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR-Based Equipment Monitoring System - Verify OTP</title>
+    <title>Login via OTP - MQCQC Equipment Monitoring System</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .login-card { background: white; padding: 40px 30px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 450px; text-align: center; }
-        .logo-container img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 15px; }
-        .system-title { font-size: 16px; font-weight: 700; color: #1b4332; margin-bottom: 5px; line-height: 1.4; }
-        .system-subtitle { font-size: 13px; color: #555; margin-bottom: 25px; }
-        .form-group { text-align: left; margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #222; font-size: 13px; }
-        .form-group input { width: 100%; padding: 11px 14px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; outline: none; transition: border-color 0.2s; text-align: center; letter-spacing: 2px; }
-        .form-group input:focus { border-color: #2d6a4f; }
-        .btn-login { background-color: #2d6a4f; color: white; padding: 12px; border: none; border-radius: 4px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
-        .btn-login:hover { background-color: #1b4332; }
-        .error-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb; text-align: left; }
+        body { font-family: Arial, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .login-card { background: white; padding: 40px 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 420px; text-align: center; }
+        .login-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
+        .login-card h3 { margin: 10px 0 5px 0; color: #212529; font-size: 18px; font-weight: bold; }
+        .login-card p.subtitle { color: #6c757d; font-size: 13px; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; color: #212529; font-weight: 600; font-size: 14px; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        .btn { width: 100%; padding: 12px; background-color: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background-color 0.2s; }
+        .btn:hover { background-color: #1b5e20; }
+        .register-link { margin-top: 20px; font-size: 13px; color: #6c757d; }
+        .register-link a { color: #2e7d32; text-decoration: none; font-weight: 600; }
+        .register-link a:hover { text-decoration: underline; }
+        .alert { padding: 10px; margin-bottom: 20px; border-radius: 6px; font-size: 14px; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <div class="logo-container">
-            <img src="logo.jpg" alt="Mary The Queen College Logo" onerror="this.src='uploads/default.png'">
+
+<div class="login-card">
+    <img src="logo.jpg" alt="MQCQC Logo" onerror="this.src='uploads/default.png'">
+    <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
+    <p class="subtitle">Login via One-Time Password (OTP)</p>
+
+    <?php if (!empty($message)): ?>
+        <div class="alert alert-<?php echo $status; ?>"><?php echo htmlspecialchars($message); ?></div>
+    <?php endif; ?>
+
+    <form method="POST" action="login.php">
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required placeholder="Enter your registered email">
         </div>
-        
-        <div class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</div>
-        <div class="system-subtitle">Enter Verification Code (OTP)</div>
+        <button type="submit" class="btn">Send OTP Code</button>
+    </form>
 
-        <?php if (!empty($error_msg)): ?>
-            <div class="error-alert"><?php echo htmlspecialchars($error_msg); ?></div>
-        <?php endif; ?>
+    <div class="register-link">Don't have an account? <a href="register.php">Register here</a></div>
+</div>
 
-        <form action="" method="POST">
-            <div class="form-group">
-                <label for="otp_code">OTP Code</label>
-                <input type="text" id="otp_code" name="otp_code" required placeholder="Enter 6-digit OTP" autocomplete="off" maxlength="6">
-            </div>
-            <button type="submit" class="btn-login">Verify OTP</button>
-        </form>
-    </div>
 </body>
 </html>

@@ -88,23 +88,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - MQCQC Equipment Monitoring System</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        .login-card h2 { margin-bottom: 20px; color: #2e7d32; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #333; }
-        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 10px; background-color: #2e7d32; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        .btn:hover { background-color: #1b5e20; }
-        .alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; }
-        .alert-success { background-color: #d4edda; color: #155724; }
-        .alert-error { background-color: #f8d7da; color: #721c24; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f8f9fa; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .login-card { 
+            background: white; 
+            padding: 40px 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+            width: 100%; 
+            max-width: 450px; 
+            text-align: center;
+        }
+        .login-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+        .login-card h3 { 
+            margin: 10px 0 5px 0; 
+            color: #212529; 
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .login-card p.subtitle { 
+            color: #6c757d; 
+            font-size: 13px; 
+            margin-bottom: 25px; 
+        }
+        .form-group { 
+            margin-bottom: 20px; 
+            text-align: left; 
+        }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            color: #212529; 
+            font-weight: 600;
+            font-size: 14px; 
+        }
+        .form-group input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ced4da; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 14px;
+        }
+        .btn { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: #2e7d32; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn:hover { 
+            background-color: #1b5e20; 
+        }
+        .register-link {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #6c757d;
+        }
+        .register-link a {
+            color: #2e7d32;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+        .alert { 
+            padding: 10px; 
+            margin-bottom: 20px; 
+            border-radius: 6px; 
+            font-size: 14px; 
+        }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <h2>MQCQC System Login</h2>
+    <!-- Logo ng Paaralan -->
+    <img src="logo.jpg" alt="MQCQC Logo">
+
+    <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
+    <p class="subtitle">Account Login (OTP Authentication)</p>
 
     <?php if (!empty($message)): ?>
         <div class="alert alert-<?php echo $status; ?>">
@@ -116,10 +199,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="hidden" name="action" value="request_otp">
         <div class="form-group">
             <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" required placeholder="Enter your registered email">
+            <input type="email" id="email" name="email" required placeholder="Enter your Email">
         </div>
         <button type="submit" class="btn">Send OTP</button>
     </form>
+
+    <div class="register-link">
+        Don't have an account? <a href="register.php">Register here</a>
+    </div>
 </div>
 
 </body>

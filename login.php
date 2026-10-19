@@ -5,27 +5,43 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// ROBUST DATABASE CONNECTION PARA SA COOLIFY
+// ADVANCED COOLIFY DATABASE CONNECTION
 // ==========================================
 $database = "qrcode";
 $username = "root";
-$password = ""; // I-update ito kung may password ang database mo
+$password = ""; 
 
 $conn = null;
-$hosts_to_try = ['127.0.0.1', 'localhost'];
-$ports_to_try = [3306, 3307]; // Posibleng nasa ibang port ang MySQL sa loob ng container
 
-foreach ($hosts_to_try as $h) {
-    foreach ($ports_to_try as $p) {
-        @$conn = new mysqli($h, $username, $password, $database, $p);
+// 1. Kung may ibinigay na DATABASE_URL o MYSQL_URL ang Coolify
+$database_url = getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
+if ($database_url) {
+    $db_parsed = parse_url($database_url);
+    if (isset($db_parsed['host'])) {
+        $host = $db_parsed['host'];
+        $user = $db_parsed['user'] ?? $username;
+        $pass = $db_parsed['pass'] ?? $password;
+        $db_name = ltrim($db_parsed['path'] ?? $database, '/');
+        $port = $db_parsed['port'] ?? 3306;
+        
+        @$conn = new mysqli($host, $user, $pass, $db_name, $port);
+    }
+}
+
+// 2. Kung wala, susubukan natin ang mga karaniwang internal hostnames sa Coolify / Docker networks
+if (!$conn || $conn->connect_error) {
+    $possible_hosts = ['mysql', 'database', 'db', 'mariadb', '127.0.0.1', 'localhost'];
+    
+    foreach ($possible_hosts as $h) {
+        @$conn = new mysqli($h, $username, $password, $database, 3306);
         if (!$conn->connect_error) {
-            break 2; // Tagumpay ang koneksyon!
+            break;
         }
     }
 }
 
 if (!$conn || $conn->connect_error) {
-    die("Database Connection Failed: " . ($conn->connect_error ?? 'Unknown error'));
+    die("Database Connection Failed. Pakitingnan sa Coolify dashboard kung ano ang tamang Hostname o Database URL ng iyong MySQL service. Error: " . ($conn->connect_error ?? 'Connection refused'));
 }
 
 // Kung naka-login na, i-redirect batay sa role

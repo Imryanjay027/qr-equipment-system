@@ -5,16 +5,27 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// COOLIFY DATABASE SERVICE CONNECTION
+// ROBUST DATABASE CONNECTION PARA SA COOLIFY
 // ==========================================
-$host = "db";          // Subukan ang 'db', o ang mismong pangalan ng database service mo sa Coolify
-$username = "root";    // Database username
-$password = "";        // Palitan kung may password ang database mo sa Coolify
-$database = "qrcode";  // Pangalan ng database
+$database = "qrcode";
+$username = "root";
+$password = ""; // I-update ito kung may password ang database mo
 
-$conn = new mysqli($host, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+$conn = null;
+$hosts_to_try = ['127.0.0.1', 'localhost'];
+$ports_to_try = [3306, 3307]; // Posibleng nasa ibang port ang MySQL sa loob ng container
+
+foreach ($hosts_to_try as $h) {
+    foreach ($ports_to_try as $p) {
+        @$conn = new mysqli($h, $username, $password, $database, $p);
+        if (!$conn->connect_error) {
+            break 2; // Tagumpay ang koneksyon!
+        }
+    }
+}
+
+if (!$conn || $conn->connect_error) {
+    die("Database Connection Failed: " . ($conn->connect_error ?? 'Unknown error'));
 }
 
 // Kung naka-login na, i-redirect batay sa role

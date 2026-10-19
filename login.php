@@ -5,22 +5,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// COOLIFY ENVIRONMENT DATABASE CONNECTION
+// DIREKTANG ILAGAY ANG MGA DETALYE MULA SA COOLIFY
 // ==========================================
-$host = getenv('DB_HOST') ?: (getenv('MYSQL_HOST') ?: '127.0.0.1');
-$username = getenv('DB_USER') ?: (getenv('MYSQL_USER') ?: 'root');
-
-// Awtomatikong hahanapin ang password mula sa iba't ibang Coolify environment variables
-$password = "";
-if (getenv('DB_PASS') !== false && getenv('DB_PASS') !== '') {
-    $password = getenv('DB_PASS');
-} elseif (getenv('MYSQL_PASSWORD') !== false && getenv('MYSQL_PASSWORD') !== '') {
-    $password = getenv('MYSQL_PASSWORD');
-} elseif (getenv('MYSQL_ROOT_PASSWORD') !== false && getenv('MYSQL_ROOT_PASSWORD') !== '') {
-    $password = getenv('MYSQL_ROOT_PASSWORD');
-}
-
-$database = getenv('DB_NAME') ?: (getenv('MYSQL_DATABASE') ?: 'qrcode');
+$host = "mysql";       // Palitan ito ng pangalan ng database service mo sa Coolify (hal. 'mysql', 'db', o 'mariadb')
+$username = "root";    // Database username
+$password = "";        // ILAGAY ANG PASSWORD DITO kung may password ang root sa Coolify (hal. "secret123"). Kung wala, iwanang blanko "" pero siguraduhing tama ang $host.
+$database = "qrcode";  // Pangalan ng database
 
 $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {
@@ -62,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Kunin ang totoong data mula sa database
             $_SESSION['temp_user_id'] = $user['id'];
-            $_SESSION['temp_role'] = strtolower(trim($user['role'])); // 'student' o 'custodian'
+            $_SESSION['temp_role'] = strtolower(trim($_SESSION['role'])); // 'student' o 'custodian'
             $_SESSION['temp_full_name'] = $user['full_name'];
             $_SESSION['temp_student_id'] = $user['student_id'] ?? '';
             $_SESSION['temp_course_year'] = $user['course_year'] ?? '';

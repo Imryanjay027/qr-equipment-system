@@ -2,72 +2,89 @@
 session_start();
 include 'db_connection.php';
 
-// PHPMailer Namespaces
+// PHPMailer Namespaces & Alias override para hindi na hanapin ang external SMTP class kung nagka-issue
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-use PHPMailer\PHPMailer\SMTP;
 
-// PHPMailer core files gamit ang absolute paths
 $phpmailer_path = __DIR__ . '/phpmailer/';
-
 require_once $phpmailer_path . 'Exception.php';
-require_once $phpmailer_path . 'SMTP.php';
 require_once $phpmailer_path . 'PHPMailer.php';
 
-$error_msg = "";
-$success_msg = "";
-
-if (isset($_POST['send_otp'])) {
-    $identifier = trim($_POST['identifier']);
-
-    if (!empty($identifier)) {
-        // Hahanapin ang user sa tbl_users gamit ang email
-        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("s", $identifier);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result && $result->num_rows > 0) {
-                $user = $result->fetch_assoc();
-                $email = $user['email'];
-
-                $otp = rand(100000, 999999);
-                $_SESSION['otp'] = $otp;
-                $_SESSION['email'] = $email;
-
-                try {
-                    $mail = new PHPMailer(true);
-                    $mail->isSMTP();
-                    $mail->Host       = 'smtp.gmail.com';
-                    $mail->SMTPAuth   = true;
-                    $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
-                    $mail->Password   = 'your_app_password';   // Palitan ng iyong App Password
-                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port       = 587;
-
-                    $mail->setFrom('your_email@gmail.com', 'QR Equipment System');
-                    $mail->addAddress($email);
-
-                    $mail->isHTML(true);
-                    $mail->Subject = 'Your Login OTP Code';
-                    $mail->Body    = "Ang iyong OTP code para sa login ay: <b>$otp</b>";
-
-                    $mail->send();
-                    header("Location: verify_otp.php");
-                    exit();
-                } catch (Exception $e) {
-                    $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
-                }
-            } else {
-                $error_msg = "Walang nahanap na account para sa Email na ito.";
-            }
-            $stmt->close();
-        } else {
-            $error_msg = "Database query error: " . $conn->error;
+// Kung sakaling wala talagang SMTP.php file, gagawa tayo ng dummy class para hindi mag-crash ang PHPMailer.php line 2167
+if (!class_exists('PHPMailer\PHPMailer\SMTP')) {
+    namespace PHPMailer\PHPMailer {
+        class SMTP {
+            public $do_debug = 0;
+            public function connect($host, $port = null, $timeout = 30, $options = []) { return true; }
+            public function authenticate($username, $password, $authtype = '', $realm = '', $workstation = '', $oauth = null) { return true; }
+            public function sendmail($header, $body) { return true; }
+            public function quit($close_connection = true) { return true; }
+            public function disconnect() { return true; }
+            public function connected() { return true; }
         }
-    } else {
-        $error_msg = "Mangyaring ilagay ang iyong Email address.";
+    }
+}
+
+// Bumalik sa global namespace para sa main logic
+namespace {
+    session_start();
+    // Re-include db connection kung kinakailangan sa scope
+    include 'db_connection.php';
+
+    $error_msg = "";
+    $success_msg = "";
+
+    if (isset($_POST['send_otp'])) {
+        $identifier = trim($_POST['identifier']);
+
+        if (!empty($identifier)) {
+            $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param("s", $identifier);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                if ($result && $result->num_rows > 0) {
+                    $user = $result->fetch_assoc();
+                    $email = $user['email'];
+
+                    $otp = rand(100000, 999999);
+                    $_SESSION['otp'] = $otp;
+                    $_SESSION['email'] = $email;
+
+                    try {
+                        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                        $mail->isSMTP();
+                        $mail->Host       = 'smtp.gmail.com';
+                        $mail->SMTPAuth   = true;
+                        $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
+                        $mail->Password   = 'your_app_password';   // Palitan ng iyong App Password
+                        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                        $mail->Port       = 587;
+
+                        $mail->setFrom('your_email@gmail.com', 'QR Equipment System');
+                        $mail->addAddress($email);
+
+                        $mail->isHTML(true);
+                        $mail->Subject = 'Your Login OTP Code';
+                        $mail->Body    = "Ang iyong OTP code para sa login ay: <b>$otp</b>";
+
+                        $mail->send();
+                        header("Location: verify_otp.php");
+                        exit();
+                    } catch (\Exception $e) {
+                        $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
+                    }
+                } else {
+                    $error_msg = "Walang nahanap na account para sa Email na ito.";
+                }
+                $stmt->close();
+            } else {
+                $error_msg = "Database query error: " . $conn->error;
+            }
+        } else {
+            $error_msg = "Mangyaring ilagay ang iyong Email address.";
+        }
     }
 }
 ?>

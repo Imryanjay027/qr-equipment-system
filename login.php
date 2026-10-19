@@ -7,7 +7,7 @@ ini_set('display_errors', 1);
 // Kunin ang credentials mula sa Coolify environment variables o gamitin ang standard defaults
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: 'localhost');
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD'] : (getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
 $conn = new mysqli($host, $username, $password, $database);

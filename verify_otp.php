@@ -18,7 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!empty($otp_code)) {
         if (intval($otp_code) === intval($_SESSION['otp'])) {
-            $role = strtolower($_SESSION['temp_user_role'] ?? 'student');
+            $role = strtolower(trim($_SESSION['temp_user_role'] ?? 'student'));
             
             $_SESSION['logged_in'] = true;
             $_SESSION['user_id'] = $_SESSION['temp_user_id'];
@@ -77,6 +77,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <img src="logo.jpg" alt="MQCQC Logo" onerror="this.src='uploads/default.png'">
     <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
     <p class="subtitle">Enter One-Time Password (OTP)</p>
+
+    <!-- Pansamantalang Debug para makita kung anong role ang binabasa mula sa database -->
+    <div style="background: #e2f0cb; padding: 8px; margin-bottom: 15px; border-radius: 5px; font-size: 12px; color: #2e7d32; font-weight: bold;">
+        DEBUG ROLE: [<?php echo htmlspecialchars($_SESSION['temp_user_role'] ?? 'wala'); ?>]
+    </div>
 
     <?php if (!empty($error_msg)): ?>
         <div class="alert"><?php echo htmlspecialchars($error_msg); ?></div>

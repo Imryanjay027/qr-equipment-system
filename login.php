@@ -25,7 +25,7 @@ function sendOTP($toEmail, $otpCode) {
                 <p>Hello,</p>
                 <p>Ang iyong One-Time Password (OTP) para sa pag-login ay:</p>
                 <h1 style='color: #1b5e20; letter-spacing: 4px; background-color: #f4f4f4; padding: 10px; display: inline-block; border-radius: 4px;'>{$otpCode}</h1>
-                <p>Mangyaring i-input ang code na ito sa login page. Huwag itong ibahagi kanino man.</p>
+                <p>Mangyaring i-input ang code na ito sa OTP verification page. Huwag itong ibahagi kanino man.</p>
                 <br>
                 <small style='color: #777;'>Awtomatikong mensahe mula sa MQCQC System.</small>
             </div>
@@ -62,13 +62,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($email) {
             $otp = sprintf("%06d", mt_rand(1, 999999));
             
+            // I-save ang Session Variable na kailangan ng verify_otp.php mo
             $_SESSION['otp'] = $otp;
-            $_SESSION['otp_email'] = $email;
-            $_SESSION['otp_expiration'] = time() + (5 * 60); // Valid for 5 minutes
+            $_SESSION['login_email'] = $email;
+            $_SESSION['otp_expiration'] = time() + (5 * 60); // Valid 5 minutes
 
             if (sendOTP($email, $otp)) {
-                $message = "Matagumpay na naisend ang OTP sa iyong email!";
-                $status = "success";
+                // Pagka-send ng email, direct REDIRECT sa verify_otp.php!
+                header("Location: verify_otp.php");
+                exit();
             } else {
                 $message = "Nagkaroon ng problema sa pagpapadala ng OTP. Subukan ulit.";
                 $status = "error";
@@ -176,14 +178,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 6px; 
             font-size: 14px; 
         }
-        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <!-- Logo ng Paaralan -->
     <img src="logo.jpg" alt="MQCQC Logo">
 
     <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>

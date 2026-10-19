@@ -1,9 +1,9 @@
 <?php
-$host = '127.0.0.1';
+$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101'; // Ang eksaktong host mula sa Coolify URL mo
 $port = 3306;
 $user = 'root';
 $pass = 'ryan072797';
-$dbname = 'qrcode'; // Ang initial database name mula sa Coolify[cite: 4]
+$dbname = 'qrcode';
 
 $conn = @new mysqli($host, $user, $pass, $dbname, $port);
 

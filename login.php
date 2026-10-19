@@ -3,7 +3,6 @@ session_start();
 include 'db_connection.php';
 
 $error_msg = "";
-$success_msg = "";
 
 if (isset($_POST['send_otp'])) {
     $identifier = trim($_POST['identifier']);
@@ -23,26 +22,20 @@ if (isset($_POST['send_otp'])) {
                 $_SESSION['otp'] = $otp;
                 $_SESSION['email'] = $email;
 
-                // Gamitin ang native mail() o mail command para iwasan ang PHPMailer library bugs sa Docker container
+                // Subukang i-send ang email
                 $to = $email;
-                $subject = "Your Login OTP Code - QR Equipment System";
+                $subject = "Your Login OTP Code";
                 $message = "Ang iyong OTP code para sa login ay: " . $otp;
-                $headers = "From: noreply@equipment-system.local\r\n" .
-                           "Reply-To: noreply@equipment-system.local\r\n" .
-                           "X-Mailer: PHP/" . phpversion();
+                $headers = "From: noreply@equipment-system.local\r\n";
 
-                // Subukang i-send gamit ang native mail function
-                if (@mail($to, $subject, $message, $headers)) {
-                    header("Location: verify_otp.php");
-                    exit();
-                } else {
-                    // Fallback kung sakaling walang mail server sa container, diretso muna sa verification para makapag-test kaagad
-                    $_SESSION['otp_debug'] = $otp; // Para makita mo kung sakaling walang mail agent
-                    header("Location: verify_otp.php");
-                    exit();
-                }
+                // Kahit mag-fail o mag-success ang mail(), ituloy natin sa verify_otp para ma-test mo agad
+                @mail($to, $subject, $message, $headers);
+                
+                header("Location: verify_otp.php");
+                exit();
             } else {
-                $error_msg = "Walang nahanap na account para sa Email na ito.";
+                // ITO ANG DAHILAN KAYA NAGRERE-LOAD: Walang nakitang ganitong email sa tbl_users
+                $error_msg = "Error: Ang Email na '$identifier' ay walang nahanap na record sa tbl_users!";
             }
             $stmt->close();
         } else {
@@ -186,7 +179,7 @@ if (isset($_POST['send_otp'])) {
     <h2 class="system-title">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h2>
     <p class="system-subtitle">Account Login (OTP Authentication)</p>
 
-    <!-- Error Message Alert Box -->
+    <!-- Error Message Alert Box - Dito makikita kung bakit nagre-reload -->
     <?php if (!empty($error_msg)): ?>
         <div class="alert-danger">
             <?= htmlspecialchars($error_msg); ?>

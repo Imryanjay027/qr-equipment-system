@@ -9,7 +9,7 @@ include('db_connection.php');
 $message = '';$status = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'] ?? '');$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-    $role =$_POST['role'] ?? 'student';
+    $role = trim($_POST['role'] ?? 'student');
     $academic_info = trim($_POST['academic_info'] ?? '');
     $image_data =$_POST['image_data'] ?? '';
 
@@ -55,35 +55,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
         $db_error = '';
 
         if (!empty($name_col)) {
-            $cols = [$name_col, 'email', 'role', 'photo'];
-            $vals = [$full_name, $email,$role, $photo_filename];$types = "ssss";
+            // Unahin nating i-check kung umiiral na ang email sa database para maiwasan ang duplicate entry error
+            $check_stmt =$conn->prepare("SELECT id FROM tbl_users WHERE email = ? OR Email = ?");
+            $check_stmt->bind_param("ss", $email,$email);
+            $check_stmt->execute();$check_stmt->store_result();
 
-            // Isama ang username kung mayroon nitong column sa database
-            if (in_array('username', $table_columns)) {$cols[] = 'username';
-                $vals[] =$username;
-                $types .= "s";
-            }
-
-            if (!empty($acad_col) &&$role === 'student') {
-                $cols[] =$acad_col;
-                $vals[] =$academic_info;
-                $types .= "s";
-            }
-
-            $placeholders = implode(',', array_fill(0, count($cols), '?'));
-            $col_string = implode(',',$cols);
-
-            $sql = "INSERT INTO tbl_users ($col_string) VALUES ($placeholders)";
-            $stmt = $conn->prepare($sql);
-
-            if ($stmt) {$stmt->bind_param($types, ...$vals);
-                if ($stmt->execute()) {$inserted = true;
-                } else {
-                    $db_error =$stmt->error;
-                }
-                $stmt->close();
+            if ($check_stmt->num_rows > 0) {$db_error = "Ang email address na ito ay nakarehistro na sa sistema.";
+                $check_stmt->close();
             } else {
-                $db_error =$conn->error;
+                $check_stmt->close();
+
+                $cols = [$name_col, 'email', 'role', 'photo'];
+                $vals = [$full_name, $email,$role, $photo_filename];$types = "ssss";
+
+                // Isama ang username kung mayroon nitong column sa database
+                if (in_array('username', $table_columns)) {$cols[] = 'username';
+                    $vals[] =$username;
+                    $types .= "s";
+                }
+
+                // Isama ang academic info kung student at may column para dito
+                if (!empty($acad_col) &&$role === 'student') {
+                    $cols[] =$acad_col;
+                    $vals[] =$academic_info;
+                    $types .= "s";
+                }
+
+                $placeholders = implode(',', array_fill(0, count($cols), '?'));
+                $col_string = implode(',',$cols);
+
+                $sql = "INSERT INTO tbl_users ($col_string) VALUES ($placeholders)";
+                $stmt = $conn->prepare($sql);
+
+                if ($stmt) {$stmt->bind_param($types, ...$vals);
+                    if ($stmt->execute()) {$inserted = true;
+                    } else {
+                        $db_error =$stmt->error;
+                    }
+                    $stmt->close();
+                } else {
+                    $db_error =$conn->error;
+                }
             }
         } else {
             $db_error = "Walang nahanap na name column (`full_name` o `fullname`) sa database table.";

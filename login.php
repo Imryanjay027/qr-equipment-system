@@ -160,9 +160,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-card">
-        <!-- Logo ng Mary the Queen College of Quezon City -->
+        <!-- Inilagay ang tamang reference sa logo.jpg -->
         <div class="logo-container">
-            <img src="logo.png" alt="School Logo" onerror="this.style.display='none'">
+            <img src="logo.jpg" alt="School Logo">
         </div>
 
         <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>

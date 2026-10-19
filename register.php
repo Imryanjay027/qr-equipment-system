@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             }
         }
 
-        // Dynamically kuhanin ang mga existing columns sa live database table para iwas Unknown Column error
+        // Kunin ang tunay na columns ng tbl_users sa live database
         $table_columns = [];
         $res =$conn->query("SHOW COLUMNS FROM tbl_users");
         if ($res) {
@@ -42,17 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             }
         }
 
-        // Piliin ang tamang pangalan ng column para sa pangalan base sa kung ano ang meron sa DB
+        // Alamin kung anong column ang gagamitin sa pangalan
         $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname',$table_columns) ? 'fullname' : '');
         
-        // Piliin ang tamang pangalan ng column para sa academic info
+        // Alamin kung anong column ang gagamitin sa academic info
         $acad_col = in_array('academic_info', $table_columns) ? 'academic_info' : (in_array('course_year',$table_columns) ? 'course_year' : '');
 
         $inserted = false;
         $db_error = '';
 
         if (!empty($name_col)) {
-            // Buuin ang query nang dinamiko batay sa available columns
             $cols = [$name_col, 'email', 'role', 'photo'];
             $vals = [$full_name, $email,$role, $photo_filename];$types = "ssss";
 
@@ -62,15 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
                 $types .= "s";
             }
 
-            $placeholders = implode(',', array_fill(0, count(names:$cols), '?'));
+            $placeholders = implode(',', array_fill(0, count($cols), '?'));
             $col_string = implode(',',$cols);
 
             $sql = "INSERT INTO tbl_users ($col_string) VALUES ($placeholders)";
             $stmt = $conn->prepare($sql);
 
-            if ($stmt) {
-                // Dynamic binding ng parameters
-                $stmt->bind_param($types, ...$vals);
+            if ($stmt) {$stmt->bind_param($types, ...$vals);
                 if ($stmt->execute()) {$inserted = true;
                 } else {
                     $db_error =$stmt->error;
@@ -164,8 +161,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             </select>
         </div>
 
-        <!-- Student Specific Section (Live Selfie & Academic Info) - Naka-hide by default para hindi lumitaw sa Faculty -->
-        <div id="studentSection" class="conditional-section" style="display: none;">
+        <!-- Student Specific Section (Live Selfie & Academic Info) -->
+        <div id="studentSection" class="conditional-section" style="display: block;">
             <div class="form-group">
                 <label>Live Selfie Capture (Student Only)</label>
                 <div class="camera-box" id="cameraBox">
@@ -196,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
     <div class="register-link">Already have an account? <a href="login.php">Login via OTP here</a></div>
 </div>
 
-<!-- Translated Terms & Conditions Modal Pop-up -->
+<!-- Terms & Conditions Modal Pop-up -->
 <div id="termsModal" class="modal">
     <div class="modal-content">
         <h4>Terms & Conditions (Equipment Borrowing)</h4>
@@ -282,63 +279,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             proceedBtn.style.opacity = "1";
         } else {
             proceedBtn.disabled = true;
-            proceedBtn.style.opacity = "0.5";
-        }
-    }
-
-    function submitForm() {
-        termsModal.style.display = 'none';
-        registerForm.submit();
-    }
-
-    function startCamera() {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                .then(stream => {
-                    mediaStream = stream;
-                    if (video) video.srcObject = stream;
-                })
-                .catch(err => {
-                    console.error("Camera access error: ", err);
-                });
-        }
-    }
-
-    function stopCamera() {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-            mediaStream = null;
-        }
-    }
-
-    if (captureBtn) {
-        captureBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (video && canvas) {
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth || 640;
-                canvas.height = video.videoHeight || 480;
-
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                if (imageDataInput) {
-                    imageDataInput.value = canvas.toDataURL('image/png');
-                }
-
-                stopCamera();
-
-                video.style.display = 'none';
-                canvas.style.display = 'block';
-                
-                captureBtn.textContent = "Selfie Captured!";
-                captureBtn.disabled = true;
-                captureBtn.style.backgroundColor = "#6c757d";
-            }
-        });
-    }
-
-    // Siguraduhing ma-evaluate ang role pagka-load ng page
-    handleRoleChange();
-</script>
-
-</body>
-</html>
+            proceedBtn.style

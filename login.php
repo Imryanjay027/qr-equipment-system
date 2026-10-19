@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// KUKUNIN ANG MGA ENVIRONMENT VARIABLES NG COOLIFY
+// COOLIFY DATABASE CONNECTION
 // ==========================================
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
@@ -13,17 +13,37 @@ $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
 $password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
-// Kung sakaling ang host ay 'localhost' o '127.0.0.1' pero nag-re-refuse, subukan nating basahin ang docker service name kung meron
 $conn = @new mysqli($host, $username, $password, $database, (int)$port);
-
-// Fallback kung sakaling nabigo ang unang koneksyon at gumagamit ng standard docker bridge IP kung kinakailangan
 if ($conn->connect_error) {
-    // Subukan natin ang alternative host kung sakaling 'localhost' ang nasalo
     $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
 }
 
 if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error . " (Host: $host, Port: $port, User: $username)");
+    die("Database Connection Failed: " . $conn->connect_error);
+}
+
+// ==========================================
+// AUTO-CREATE USERS TABLE & DEFAULT ACCOUNTS
+// ==========================================
+$conn->query("CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    student_id VARCHAR(50) DEFAULT NULL,
+    course_year VARCHAR(100) DEFAULT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'borrower',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Magdagdag ng default test accounts kung wala pa
+$check_user = $conn->query("SELECT COUNT(*) as count FROM users");
+if ($check_user) {
+    $row = $check_user->fetch_assoc();
+    if ($row['count'] == 0) {
+        $conn->query("INSERT INTO users (full_name, email, student_id, course_year, role) VALUES 
+        ('System Custodian', 'custodian@mqcqc.edu.ph', 'CUST001', 'Staff', 'custodian'),
+        ('Test Borrower', 'ryanjayleoligao64@gmail.com', '2026-00001', 'BSIT 3rd Year', 'borrower')");
+    }
 }
 
 // Kung naka-login na, i-redirect batay sa role
@@ -43,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email_or_id = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($email_or_id)) {
-        // Hanapin ang user sa database gamit ang email o student_id
         $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? OR student_id = ?");
         $stmt->bind_param("ss", $email_or_id, $email_or_id);
         $stmt->execute();
@@ -52,23 +71,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
             
-            // 1. Mag-generate ng 6-digit OTP
             $otp = rand(100000, 999999);
             
-            // 2. I-save sa Session (5 minutes expiration)
             $_SESSION['otp_code'] = $otp;
             $_SESSION['otp_expiry'] = time() + 300; 
 
-            // Kunin ang totoong data mula sa database
             $_SESSION['temp_user_id'] = $user['id'];
-            $_SESSION['temp_role'] = strtolower(trim($user['role'])); // 'student' o 'custodian'
+            $_SESSION['temp_role'] = strtolower(trim($user['role']));
             $_SESSION['temp_full_name'] = $user['full_name'];
             $_SESSION['temp_student_id'] = $user['student_id'] ?? '';
             $_SESSION['temp_course_year'] = $user['course_year'] ?? '';
             
             $target_email = $user['email'];
 
-            // 3. Pagpapadala ng OTP gamit ang Brevo API (cURL)
             $brevo_api_key = "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"; 
             
             $email_data = [

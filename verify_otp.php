@@ -1,10 +1,17 @@
 <?php
+// Custom session path para hindi mawala sa Coolify container
+$session_path = __DIR__ . '/sessions';
+if (!is_dir($session_path)) {
+    mkdir($session_path, 0777, true);
+}
+session_save_path($session_path);
+
 session_start();
 date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Kung walang inaasahang OTP process, ibalik sa login.php
+// Kung walang OTP session, ibalik sa login
 if (!isset($_SESSION['otp_code']) || !isset($_SESSION['temp_user_id'])) {
     header("Location: login.php");
     exit();
@@ -15,25 +22,23 @@ $error = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_otp = trim($_POST['otp'] ?? '');
 
-    // Suriin kung expired na ang OTP (5 minutes limit)
     if (time() > $_SESSION['otp_expiry']) {
-        $error = "Expired na ang OTP. Mangyaring mag-login ulit para makatanggap ng bago.";
+        $error = "Expired na ang OTP. Mangyaring mag-login ulit.";
         unset($_SESSION['otp_code'], $_SESSION['otp_expiry'], $_SESSION['temp_user_id']);
     } 
-    // Suriin kung tama ang inilagay na OTP
     else if ($user_otp == $_SESSION['otp_code']) {
         
-        // 1. ILIPAT ANG TEMP SESSION SA PERMANENT LOGIN SESSION (Lahat ng standard flags)
+        // I-set ang permanenteng login sessions
         $_SESSION['user_id']      = $_SESSION['temp_user_id'];
-        $_SESSION['user']         = $_SESSION['temp_user_id']; // For dashboards looking for 'user'
-        $_SESSION['logged_in']    = true;                      // For flags looking for 'logged_in'
+        $_SESSION['user']         = $_SESSION['temp_user_id'];
+        $_SESSION['logged_in']    = true;
         $_SESSION['is_logged_in'] = true;
         
-        $_SESSION['role']         = strtolower(trim($_SESSION['temp_role'])); // 'custodian' o 'borrower'
+        $_SESSION['role']         = strtolower(trim($_SESSION['temp_role']));
         $_SESSION['full_name']    = $_SESSION['temp_full_name'];
         $_SESSION['student_id']   = $_SESSION['temp_student_id'];
 
-        // 2. LINISIN ANG TEMP OTP SESSION
+        // Linisin ang temporary session variables
         unset($_SESSION['otp_code']);
         unset($_SESSION['otp_expiry']);
         unset($_SESSION['temp_user_id']);
@@ -41,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['temp_full_name']);
         unset($_SESSION['temp_student_id']);
 
-        // 3. DYNAMIC REDIRECTION BATAY SA ROLE
+        // Redirect batay sa role
         $role = strtolower(trim($_SESSION['role']));
 
         if ($role === 'custodian') {

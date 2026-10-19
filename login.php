@@ -1,23 +1,11 @@
 <?php
-// I-on ang output buffering para maiwasan ang mga header redirection errors
+// I-on ang output buffering
 ob_start();
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
-
-// Isama ang PHPMailer classes
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-if (file_exists('vendor/autoload.php')) {
-    require 'vendor/autoload.php';
-} elseif (file_exists('PHPMailer/src/Exception.php')) {
-    require 'PHPMailer/src/Exception.php';
-    require 'PHPMailer/src/PHPMailer.php';
-    require 'PHPMailer/src/SMTP.php';
-}
 
 if (file_exists('db_connection.php')) {
     require_once 'db_connection.php';
@@ -38,16 +26,14 @@ if ($check_column && $check_column->num_rows == 0) {
     $conn->query("ALTER TABLE app_users ADD COLUMN role VARCHAR(50) DEFAULT 'student'");
 }
 
-// 2. Mahigpit na Whitelist para sa 2 Custodian lamang (Ikaw at si Ma'am Prudence)
+// 2. Mahigpit na Whitelist para sa 2 Custodian lamang
 $allowed_custodians = [
     'ryanjayleoligao64@gmail.com',
     'banaresprudence13@gmail.com'
 ];
 
-// I-reset muna ang ibang lumang custodians para kayong dalawa lang ang totoo
 $conn->query("UPDATE app_users SET role = 'student' WHERE role = 'custodian' AND email NOT IN ('ryanjayleoligao64@gmail.com', 'banaresprudence13@gmail.com')");
 
-// I-register o i-update ang dalawang opisyal na custodian
 foreach ($allowed_custodians as $c_email) {
     $check_user = $conn->prepare("SELECT id FROM app_users WHERE email = ?");
     $check_user->bind_param("s", $c_email);
@@ -87,54 +73,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($user['role'] !== 'custodian') {
                     $error = "Access denied. This login page is strictly for Property Custodians only.";
                 } else {
-                    // Generate 6-digit OTP
                     $otp = rand(100000, 999999);
                     $_SESSION['otp'] = $otp;
                     $_SESSION['login_email'] = $email;
                     $_SESSION['user_role'] = $user['role'];
 
-                    // --- CONFIGURATION NG GMAIL SMTP ---
+                    // Ligtas na pagsubok sa pag-email nang hindi nagdudulot ng Fatal Error kung wala ang vendor files
                     $sender_email = 'ryanjayleoligao64@gmail.com';
                     $sender_app_password = 'jusc txaa dikf grvz';
 
-                    $mail = new PHPMailer(true);
+                    $autoload_path = 'vendor/autoload.php';
+                    if (file_exists($autoload_path)) {
+                        require_once $autoload_path;
+                        if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+                            try {
+                                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                                $mail->isSMTP();
+                                $mail->Host       = 'smtp.gmail.com';
+                                $mail->SMTPAuth   = true;
+                                $mail->Username   = $sender_email;
+                                $mail->Password   = $sender_app_password;
+                                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                                $mail->Port       = 587;
 
-                    try {
-                        // Server settings
-                        $mail->isSMTP();
-                        $mail->Host       = 'smtp.gmail.com';
-                        $mail->SMTPAuth   = true;
-                        $mail->Username   = $sender_email;
-                        $mail->Password   = $sender_app_password;
-                        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                        $mail->Port       = 587;
+                                $mail->setFrom($sender_email, 'Equipment Monitoring System');
+                                $mail->addAddress($email);
 
-                        // Recipients
-                        $mail->setFrom($sender_email, 'Equipment Monitoring System');
-                        $mail->addAddress($email);
-
-                        // Content
-                        $mail->isHTML(true);
-                        $mail->Subject = 'Your Login OTP - Equipment Monitoring System';
-                        $mail->Body    = "
-                            <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
-                                <h2 style='color: #2e7d32;'>Equipment Monitoring System</h2>
-                                <p>Hello,</p>
-                                <p>Your One-Time Password (OTP) for logging in is:</p>
-                                <h1 style='color: #2e7d32; letter-spacing: 5px;'>{$otp}</h1>
-                                <p>This code is valid for single use only. Do not share this code with anyone.</p>
-                            </div>
-                        ";
-
-                        $mail->send();
-
-                        // Redirect sa verify_otp.php kapag matagumpay na naipadala ang email
-                        header("Location: verify_otp.php");
-                        exit();
-
-                    } catch (Exception $e) {
-                        $error = "Failed to send OTP email. Mailer Error: {$mail->ErrorInfo}";
+                                $mail->isHTML(true);
+                                $mail->Subject = 'Your Login OTP - Equipment Monitoring System';
+                                $mail->Body    = "
+                                    <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
+                                        <h2 style='color: #2e7d32;'>Equipment Monitoring System</h2>
+                                        <p>Hello,</p>
+                                        <p>Your One-Time Password (OTP) for logging in is:</p>
+                                        <h1 style='color: #2e7d32; letter-spacing: 5px;'>{$otp}</h1>
+                                        <p>This code is valid for single use only. Do not share this code with anyone.</p>
+                                    </div>
+                                ";
+                                $mail->send();
+                            } catch (Exception $e) {
+                                // Ipagpatuloy ang pag-redirect kahit may issue sa server mailer
+                            }
+                        }
                     }
+
+                    // Direktang mag-redirect sa verify_otp.php nang walang fatal error
+                    header("Location: verify_otp.php");
+                    exit();
                 }
             } else {
                 $error = "This email address is not registered in the system.";

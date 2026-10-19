@@ -6,33 +6,50 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Coolify Database Connection
-$host = "wfbyfhr4404k2y9u2spiv101";
-$username = "root";
-$password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
-$database = "qrcode";
+// Siguraduhing dumaan muna sa login (itinugma natin sa $_SESSION['login_email'])
+if (!isset($_SESSION['login_email']) || !isset($_SESSION['otp'])) {
+    header("Location: login.php");
+    exit();
+}
 
-$conn = new mysqli($host, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+// Gamitin ang db_connection.php para iisa ang koneksyon at maiwasan ang error sa host/credentials
+if (file_exists('db_connection.php')) {
+    require_once 'db_connection.php';
+} else {
+    $host = "wfbyfhr4404k2y9u2spiv101";
+    $username = "root";
+    $password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
+    $database = "qrcode";
+    $conn = new mysqli($host, $username, $password, $database);
+    if ($conn->connect_error) {
+        die("Database Connection Failed: " . $conn->connect_error);
+    }
 }
 
 $error_msg = "";
 $success_msg = "";
 
-// Siguraduhing dumaan muna sa login
-if (!isset($_SESSION['temp_user_id'])) {
-    header("Location: login.php");
-    exit();
-}
-
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $otp_code = trim($_POST['otp_code'] ?? '');
 
     if (!empty($otp_code)) {
-        // Ilagay dito ang logic para sa pag-verify ng OTP
-        // Halimbawa: kung tugma ang OTP, itutuloy na sa dashboard
-        $success_msg = "Tagumpay ang OTP verification!";
+        // Suriin kung tugma ang in-input na OTP sa session OTP
+        if (intval($otp_code) === intval($_SESSION['otp'])) {
+            $success_msg = "Tagumpay ang OTP verification! Nagbubukas na ang dashboard...";
+            
+            // I-set ang session na logged in na ang custodian
+            $_SESSION['custodian_logged_in'] = true;
+            $email = $_SESSION['login_email'];
+
+            // Linisin ang temporary OTP session
+            unset($_SESSION['otp']);
+
+            // Mag-redirect sa dashboard pagkatapos ng 1 segundo
+            header("refresh:1;url=dashboard.php"); // Palitan ng tamang pangalan ng iyong dashboard file kung kinakailangan
+            exit();
+        } else {
+            $error_msg = "Mali ang OTP code. Pakitingnan muli ang iyong Gmail.";
+        }
     } else {
         $error_msg = "Mangyaring ilagay ang OTP code.";
     }
@@ -82,7 +99,7 @@ $conn->close();
         <form action="" method="POST">
             <div class="form-group">
                 <label for="otp_code">OTP Code</label>
-                <input type="text" id="otp_code" name="otp_code" required placeholder="Enter 6-digit OTP">
+                <input type="text" id="otp_code" name="otp_code" required placeholder="Enter 6-digit OTP" autocomplete="off">
             </div>
             <button type="submit" class="btn-login">Verify OTP</button>
         </form>

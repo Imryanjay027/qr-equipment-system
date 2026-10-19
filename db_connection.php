@@ -1,5 +1,5 @@
 <?php
-// Kunin ang credentials mula sa Coolify environment variables o gamitin ang fallback
+// Kunin ang credentials mula sa Coolify environment variables o gamitin ang localhost
 $host = getenv('DB_HOST') ?: 'localhost'; 
 $username = getenv('DB_USER') ?: 'root';
 $password = getenv('DB_PASSWORD') ?: '';

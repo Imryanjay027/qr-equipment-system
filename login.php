@@ -5,43 +5,21 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// ADVANCED COOLIFY DATABASE CONNECTION
+// DIREKTANG ILAGAY ANG COOLIFY DATABASE HOST
 // ==========================================
-$database = "qrcode";
-$username = "root";
-$password = ""; 
+// TINGNAN SA COOLIFY DASHBOARD: 
+// Kung ano ang nakalagay na Internal URL/Host ng Database mo (hal. 'coolify-mysql-xxxx' o IP address), 
+// ilagay mo rito sa loob ng single quotes sa ibaba:
+$host = "127.0.0.1";     // <- KUNG HINDI '127.0.0.1', PALITAN NG EKSAKTONG HOSTNAME MULA SA COOLIFY
+$username = "root";      // Database username
+$password = "";          // Database password (kung mayroon)
+$database = "qrcode";    // Database name
+$port = 3306;            // Port
 
-$conn = null;
+$conn = new mysqli($host, $username, $password, $database, $port);
 
-// 1. Kung may ibinigay na DATABASE_URL o MYSQL_URL ang Coolify
-$database_url = getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
-if ($database_url) {
-    $db_parsed = parse_url($database_url);
-    if (isset($db_parsed['host'])) {
-        $host = $db_parsed['host'];
-        $user = $db_parsed['user'] ?? $username;
-        $pass = $db_parsed['pass'] ?? $password;
-        $db_name = ltrim($db_parsed['path'] ?? $database, '/');
-        $port = $db_parsed['port'] ?? 3306;
-        
-        @$conn = new mysqli($host, $user, $pass, $db_name, $port);
-    }
-}
-
-// 2. Kung wala, susubukan natin ang mga karaniwang internal hostnames sa Coolify / Docker networks
-if (!$conn || $conn->connect_error) {
-    $possible_hosts = ['mysql', 'database', 'db', 'mariadb', '127.0.0.1', 'localhost'];
-    
-    foreach ($possible_hosts as $h) {
-        @$conn = new mysqli($h, $username, $password, $database, 3306);
-        if (!$conn->connect_error) {
-            break;
-        }
-    }
-}
-
-if (!$conn || $conn->connect_error) {
-    die("Database Connection Failed. Pakitingnan sa Coolify dashboard kung ano ang tamang Hostname o Database URL ng iyong MySQL service. Error: " . ($conn->connect_error ?? 'Connection refused'));
+if ($conn->connect_error) {
+    die("Database Connection Failed: " . $conn->connect_error);
 }
 
 // Kung naka-login na, i-redirect batay sa role

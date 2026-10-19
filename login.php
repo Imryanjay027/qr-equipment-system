@@ -1,5 +1,5 @@
 <?php
-// I-on ang error reporting para makita agad kung may problema
+// I-on ang error reporting para makita kung sakaling may iba pang kulang
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // PALITAN ANG 'users' NG TANGGAP NA PANGALAN NG TABLE SA DATABASE MO (hal. accounts, tbl_users, etc.)
+        // === PALITAN ANG 'users' SA IBABA NG TUNAY NA PANGALAN NG TABLE MO SA DATABASE (HAL. accounts, tbl_users, etc.) ===
         $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
         
         if ($stmt) {

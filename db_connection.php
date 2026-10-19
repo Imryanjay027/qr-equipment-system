@@ -1,21 +1,16 @@
 <?php
-// db_connection.php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Kunin ang credentials mula sa Coolify environment variables o gamitin ang fallback
+$host = getenv('DB_HOST') ?: 'localhost'; 
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASSWORD') ?: '';
+$dbname = getenv('DB_NAME') ?: 'qr_equipment_system';
+$port = getenv('DB_PORT') ?: 3306;
 
-$host = 'localhost';
-$username = 'root';
-$password = ''; // I-update kung may password ang live database mo
-$database = 'qrcode';
+// Gumawa ng koneksyon gamit ang MySQLi
+$conn = new mysqli($host, $username, $password, $dbname, $port);
 
-try {
-    $conn = new mysqli($host, $username, $password, $database);
-} catch (mysqli_sql_exception $e) {
-    // Fallback sakaling ang socket naman ang magka-problema sa cloud environment
-    try {
-        $conn = new mysqli('127.0.0.1', $username, $password, $database);
-    } catch (mysqli_sql_exception $e2) {
-        die("Database Connection Failed: " . $e2->getMessage());
-    }
+// Suriin ang koneksyon
+if ($conn->connect_error) {
+    die("Database Connection Failed: " . $conn->connect_error);
 }
 ?>

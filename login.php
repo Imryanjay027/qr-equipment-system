@@ -1,7 +1,7 @@
 <?php
 // I-on ang error reporting para makita agad kung may problema
 error_reporting(E_ALL);
-sql_mode: ini_set('display_errors', 1);
+ini_set('display_errors', 1);
 
 session_start();
 
@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // Palitan ang 'users' ng tamang pangalan ng table mo sa database kung kinakailangan
+        // TANDAAN: Palitan ang 'users' ng tamang pangalan ng table mo sa database (hal. accounts, students, atbp.)
         $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
         
         if ($stmt) {
@@ -52,7 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR-Based Equipment Monitoring System - Login</title>
-    <!-- Ilagay dito ang iyong CSS stylesheet kung meron man -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -71,10 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%;
             max-width: 400px;
             text-align: center;
-        }
-        .login-card img {
-            width: 80px;
-            margin-bottom: 15px;
         }
         .form-group {
             margin-bottom: 15px;
@@ -116,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-card">
-        <!-- Palitan o tanggalin ang logo img tag kung may sarili kang header layout -->
         <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
         <p style="font-size: 14px; color: #666;">Account Login (OTP Authentication)</p>
 

@@ -1,17 +1,14 @@
 <?php
-// Subukan nating i-explicit ang port 3306
-$host = '127.0.0.1';
+$host = 'mariadb-database-wfbyfhr4404k2y9u2spiv101'; // Ang Host/Name mula sa Coolify
 $port = 3306;
-$user = 'root';
-$pass = ''; // Subukan muna ang walang password kung ito ay local container
-$dbname = 'qrequipment_db'; // Palitan ng aktwal na pangalan ng database mo kung iba
+$user = 'root';                                      // Normal User[cite: 4]
+$pass = 'ILAGAY_ANG_PASSWORD_MULA_SA_SCREEN';         // Pindutin ang eye icon sa screen para makita ang password[cite: 4]
+$dbname = 'qrcode';                                  // Initial Database[cite: 4]
 
-// Gamitin ang port sa mysqli constructor
-$conn = @new mysqli($host, $user, $pass, $dbname, $port);
+$conn = new mysqli($host, $user, $pass, $dbname, $port);
 
 if ($conn->connect_error) {
-    // Kung nag-fail ang 127.0.0.1, subukan ang socket o ibang paraan
-    die("Database Connection Failed: " . $conn->connect_error . " <br>Tiyakin na naka-start ang MySQL/MariaDB service at tama ang pangalan ng database.");
+    die("Database Connection Failed: " . $conn->connect_error);
 }
 
 $conn->set_charset("utf8mb4");

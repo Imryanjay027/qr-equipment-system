@@ -4,15 +4,15 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Direktang Database Connection (Walang hinahanap na iba pang file)
-$host = "localhost";
-$username = "root"; // Palitan kung iba ang username sa server/Coolify DB mo
-$password = "";     // Palitan kung may password ang database mo
-$database = "your_database_name"; // Palitan ng tamang pangalan ng iyong database
+// Database Connection na sumusuporta sa Coolify environment at localhost
+$host = getenv('DB_HOST') ?: 'localhost';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') ?: '';
+$database = getenv('DB_NAME') ?: 'your_database_name'; // Siguraduhing ito ang tamang pangalan ng DB o i-update kung kinakailangan
 
 $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die("Database Connection Failed: " . $conn->connect_error);
 }
 
 // Kung naka-login na, i-redirect batay sa role

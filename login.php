@@ -1,16 +1,22 @@
 <?php
-// I-on ang error reporting para makita agad kung may problema
+// I-on ang error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
 
-// Siguraduhing tama ang path ng db_connection.php mo
 if (file_exists('db_connection.php')) {
     require_once 'db_connection.php';
 } else {
     die("Error: Hindi makita ang db_connection.php file.");
 }
+
+// Subukang awtomatikong i-create ang table kung wala pa sa kasalukuyang database
+$conn->query("CREATE TABLE IF NOT EXISTS app_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
 
 $error = '';
 
@@ -18,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // Ginagamit na nito ang malinis na bagong table na 'app_users'
         $stmt = $conn->prepare("SELECT * FROM app_users WHERE email = ?");
         
         if ($stmt) {
@@ -31,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['otp'] = $otp;
                 $_SESSION['login_email'] = $email;
 
-                // Tagumpay! Mag-redirect papuntang verify_otp.php
                 header("Location: verify_otp.php");
                 exit();
             } else {

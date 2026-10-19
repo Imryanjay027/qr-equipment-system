@@ -13,7 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
 
     if ($email) {
-        // Hanapin ang user sa tbl_users
         $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR Email = ?");
         $stmt->bind_param("ss", $email, $email);
         $stmt->execute();
@@ -23,21 +22,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $otp = sprintf("%06d", mt_rand(1, 999999));
             $db_role = strtolower(trim($row['role'] ?? 'student'));
 
-            // Itabi sa Session para sa OTP verification at dynamic role redirection
             $_SESSION['otp'] = $otp;
             $_SESSION['temp_email'] = $email;
             $_SESSION['temp_user_id'] = $row['id'];
             $_SESSION['temp_user_role'] = $db_role;
             $_SESSION['otp_expiration'] = time() + (5 * 60);
 
-            // BREVO API INTEGRATION (Pagalawin ang pagpapadala ng OTP sa Gmail)
-            $apiKey = 'IYONG_BREVO_API_KEY_HERE'; // Siguraduhing nakalagay ang tamang Brevo API Key mo dito
+            // BREVO API INTEGRATION KASAMA ANG API KEY MO
+            $apiKey = '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'; 
             $url = 'https://api.brevo.com/v3/smtp/email';
 
             $data = [
                 'sender' => [
                     'name' => 'MQCQC Equipment System',
-                    'email' => 'no-reply@mqcqc.edu.ph'
+                    'email' => 'no-reply@mqcqc.edu.ph' // Palitan ito kung ibang email ang verified sa Brevo mo
                 ],
                 'to' => [
                     ['email' => $email]
@@ -60,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
 
-            // Dumiretso sa verify_otp.php para i-input ang code
             header("Location: verify_otp.php");
             exit();
 

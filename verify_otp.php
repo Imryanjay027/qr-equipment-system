@@ -1,59 +1,40 @@
 <?php
+session_start();
+date_default_timezone_set('Asia/Manila'); // PANG-FIX SA TIMEZONE (Para hindi agad mag-expired)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-include 'db_connection.php';
-session_start();
+// I-include ang iyong database connection dito (halimbawa: include 'db.php';)
+// require_once 'db.php';
 
 $error = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $entered_otp = trim($_POST['otp'] ?? '');
     
-    if (isset($_SESSION['otp'], $_SESSION['otp_expiry']) && time() <= $_SESSION['otp_expiry']) {
-        if ($entered_otp == $_SESSION['otp']) {
+    // Halimbawa ng pag-verify gamit ang Session o Database:
+    // Siguraduhing pantay ang oras ng server at ng pag-check ng expiration (hal. 5 minutes limit)
+    if (isset($_SESSION['otp_code']) && isset($_SESSION['otp_expiry'])) {
+        if (time() > $_SESSION['otp_expiry']) {
+            $error = "OTP code has expired. Please log in again.";
+        } elseif ($entered_otp === $_SESSION['otp_code']) {
+            // Success: I-set ang user session papuntang borrower dashboard
+            $_SESSION['user_id'] = $_SESSION['temp_user_id'];
+            $_SESSION['role'] = $_SESSION['temp_role'];
+            $_SESSION['full_name'] = $_SESSION['temp_full_name'];
+            $_SESSION['student_id'] = $_SESSION['temp_student_id'];
+            $_SESSION['course_year'] = $_SESSION['temp_course_year'];
             
-            $user_id = $_SESSION['temp_user_id'] ?? '';
+            // Linisin ang temporary session
+            unset($_SESSION['otp_code'], $_SESSION['otp_expiry']);
             
-            if (!empty($user_id)) {
-                $sql = "SELECT * FROM tbl_users WHERE id = ?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("i", $user_id);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                
-                if ($row = $result->fetch_assoc()) {
-                    // Itakda ang permanenteng session flag para hindi ma-log out tuwing magre-refresh
-                    $_SESSION['logged_in'] = true;
-                    
-                    $_SESSION['user_id'] = $row['id'];
-                    $_SESSION['email'] = $row['email'] ?? $row['Email'];
-                    $_SESSION['fullname'] = $row['fullname'] ?? $row['name'] ?? '';
-                    $_SESSION['student_id'] = $row['student_id'] ?? $row['username'] ?? '';
-                    $_SESSION['course_year'] = $row['course_year'] ?? '';
-                    $_SESSION['role'] = $row['role'] ?? 'Student';
-                    $_SESSION['photo'] = $row['photo'] ?? '';
-                    
-                    // Linisin ang temporary session variables
-                    unset($_SESSION['otp'], $_SESSION['otp_expiry'], $_SESSION['temp_user_id'], $_SESSION['temp_user_role'], $_SESSION['temp_email']);
-                    
-                    // Tamang pag-redirect batay sa database role
-                    $role = strtolower(trim($row['role'] ?? ''));
-                    if ($role === 'custodian') {
-                        header("Location: custodian_dashboard.php");
-                        exit();
-                    } else {
-                        header("Location: borrower.php");
-                        exit();
-                    }
-                }
-            }
-
+            header("Location: borrower.php");
+            exit();
         } else {
             $error = "Invalid OTP code. Please try again.";
         }
     } else {
-        $error = "OTP code has expired. Please log in again.";
+        $error = "No OTP request found. Please log in again.";
     }
 }
 ?>
@@ -62,55 +43,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify OTP - Mary The Queen College of Quezon City</title>
+    <title>Verify OTP - MQCQC Equipment Monitoring System</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f4f7f6;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .verify-card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-        }
-        .btn-primary {
-            background-color: #0d6efd;
-            border: none;
-        }
-        .btn-primary:hover {
-            background-color: #0b5ed7;
-        }
+        body { background-color: #f4f7f6; font-family: Arial, sans-serif; }
+        .otp-card { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 30px; margin-top: 50px; }
+        .btn-custom { background-color: #198754; color: white; }
+        .btn-custom:hover { background-color: #157347; color: white; }
     </style>
 </head>
-<body class="d-flex align-items-center justify-content-center vh-100">
+<body class="d-flex align-items-center justify-content-center min-vh-100">
 
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-5">
-                <div class="card verify-card p-4 bg-white">
-                    <div class="text-center mb-4">
-                        <img src="logo.jpg" alt="Logo" class="mb-2" style="max-height: 70px;">
-                        <h4 class="fw-bold text-primary mb-1">Mary The Queen College of Quezon City</h4>
-                        <p class="text-muted small">Enter the 6-digit OTP sent to your email</p>
-                    </div>
+                <div class="otp-card text-center">
+                    <h4 class="fw-bold text-success mb-2">Enter OTP</h4>
+                    <p class="text-muted small mb-4">Enter the 6-digit OTP sent to your email via Brevo</p>
 
-                    <?php if (!empty($error)) { ?>
-                        <div class="alert alert-danger py-2 text-center small" role="alert">
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger py-2 small" role="alert">
                             <?= htmlspecialchars($error); ?>
                         </div>
-                    <?php } ?>
+                    <?php endif; ?>
 
-                    <form method="POST" action="">
-                        <div class="mb-4">
-                            <label for="otp" class="form-label fw-semibold text-secondary small">OTP Code</label>
-                            <input type="text" class="form-control text-center tracking-widest" id="otp" name="otp" placeholder="------" maxlength="6" required autofocus>
+                    <form action="verify_otp.php" method="POST">
+                        <div class="mb-3">
+                            <input type="text" class="form-control text-center fs-4 tracking-wide" id="otp" name="otp" required placeholder="------" maxlength="6" autofocus>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Verify OTP</button>
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-custom fw-bold py-2">Verify OTP</button>
+                        </div>
                     </form>
 
-                    <div class="text-center mt-3">
-                        <p class="small text-muted mb-0">Back to <a href="logout.php" class="text-decoration-none fw-bold">Login</a></p>
+                    <div class="mt-3">
+                        <p class="small text-muted">Back to <a href="login.php" class="text-success fw-bold text-decoration-none">Login</a></p>
                     </div>
                 </div>
             </div>

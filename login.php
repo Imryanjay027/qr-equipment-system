@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
     if (!empty($email)) {
-        // TANDAAN: Palitan ang 'users' ng tamang pangalan ng table mo sa database (hal. accounts, students, atbp.)
+        // PALITAN ANG 'users' NG TANGGAP NA PANGALAN NG TABLE SA DATABASE MO (hal. accounts, tbl_users, etc.)
         $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
         
         if ($stmt) {

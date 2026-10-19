@@ -6,13 +6,13 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Siguraduhing dumaan muna sa login (itinugma natin sa $_SESSION['login_email'])
+// Siguraduhing may na-request na OTP at email
 if (!isset($_SESSION['login_email']) || !isset($_SESSION['otp'])) {
     header("Location: login.php");
     exit();
 }
 
-// Gamitin ang db_connection.php para iisa ang koneksyon at maiwasan ang error sa host/credentials
+// Gamitin ang db_connection.php para sa koneksyon
 if (file_exists('db_connection.php')) {
     require_once 'db_connection.php';
 } else {
@@ -35,17 +35,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!empty($otp_code)) {
         // Suriin kung tugma ang in-input na OTP sa session OTP
         if (intval($otp_code) === intval($_SESSION['otp'])) {
-            $success_msg = "Tagumpay ang OTP verification! Nagbubukas na ang dashboard...";
             
-            // I-set ang session na logged in na ang custodian
+            // I-set ang mga sessions na kailangan ng custodian dashboard
             $_SESSION['custodian_logged_in'] = true;
-            $email = $_SESSION['login_email'];
-
-            // Linisin ang temporary OTP session
+            $_SESSION['logged_in'] = true;
+            
+            // Linisin ang temporary OTP session para hindi na magamit ulit
             unset($_SESSION['otp']);
 
-            // Mag-redirect sa tamang custodian dashboard pagkatapos ng 1 segundo
-            header("refresh:1;url=custodian_dashboard.php");
+            // Direktang i-redirect sa custodian_dashboard.php nang walang delay
+            header("Location: custodian_dashboard.php");
             exit();
         } else {
             $error_msg = "Mali ang OTP code. Pakitingnan muli ang iyong Gmail.";
@@ -54,6 +53,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error_msg = "Mangyaring ilagay ang OTP code.";
     }
 }
+
 if (isset($conn) && $conn) {
     $conn->close();
 }
@@ -78,7 +78,6 @@ if (isset($conn) && $conn) {
         .btn-login { background-color: #2d6a4f; color: white; padding: 12px; border: none; border-radius: 4px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
         .btn-login:hover { background-color: #1b4332; }
         .error-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb; text-align: left; }
-        .success-alert { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; border: 1px solid #c3e6cb; text-align: left; }
     </style>
 </head>
 <body>
@@ -92,10 +91,6 @@ if (isset($conn) && $conn) {
 
         <?php if (!empty($error_msg)): ?>
             <div class="error-alert"><?php echo htmlspecialchars($error_msg); ?></div>
-        <?php endif; ?>
-
-        <?php if (!empty($success_msg)): ?>
-            <div class="success-alert"><?php echo htmlspecialchars($success_msg); ?></div>
         <?php endif; ?>
 
         <form action="" method="POST">

@@ -226,7 +226,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return;
         }
 
-        // Kapag Student ang role, ipakita ang Terms & Conditions modal bago mag-submit
         if (roleSelect.value === 'student') {
             termsModal.style.display = 'flex';
         } else {
@@ -294,7 +293,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
     }
 
-    // Run once on load
     handleRoleChange();
 </script>
 

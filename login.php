@@ -118,14 +118,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </div>
                                 ";
                                 $mail->send();
-                            } catch (Exception $e) {
-                                // Ipagpatuloy ang pag-redirect kahit may aberya
-                            }
-                        }
-                    }
+                                
+                                // Kung matagumpay na naipadala, saka mag-redirect
+                                header("Location: verify_otp.php");
+                                exit();
 
-                    header("Location: verify_otp.php");
-                    exit();
+                            } catch (Exception $e) {
+                                // Ipapakita sa screen ang eksaktong error kung bakit hindi pumasok
+                                $error = "Mailer Error: " . $mail->ErrorInfo;
+                            }
+                        } else {
+                            $error = "PHPMailer class not found.";
+                        }
+                    } else {
+                        $error = "Vendor autoload.php not found.";
+                    }
                 }
             } else {
                 $error = "This email address is not registered in the system.";

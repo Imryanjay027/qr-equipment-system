@@ -78,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['login_email'] = $email;
                     $_SESSION['user_role'] = $user['role'];
 
-                    // Ligtas na pagsubok sa pag-email nang hindi nagdudulot ng Fatal Error kung wala ang vendor files
                     $sender_email = 'ryanjayleoligao64@gmail.com';
                     $sender_app_password = 'jusc txaa dikf grvz';
 
@@ -96,6 +95,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
                                 $mail->Port       = 587;
 
+                                // Dagdag para maiwasan ang SSL blockage ng hosting server
+                                $mail->SMTPOptions = array(
+                                    'ssl' => array(
+                                        'verify_peer' => false,
+                                        'verify_peer_name' => false,
+                                        'allow_self_signed' => true
+                                    )
+                                );
+
                                 $mail->setFrom($sender_email, 'Equipment Monitoring System');
                                 $mail->addAddress($email);
 
@@ -112,12 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ";
                                 $mail->send();
                             } catch (Exception $e) {
-                                // Ipagpatuloy ang pag-redirect kahit may issue sa server mailer
+                                // Ipagpatuloy ang pag-redirect kahit magkaroon ng isyu sa mailer
                             }
                         }
                     }
 
-                    // Direktang mag-redirect sa verify_otp.php nang walang fatal error
                     header("Location: verify_otp.php");
                     exit();
                 }

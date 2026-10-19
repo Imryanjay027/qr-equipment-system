@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
         curl_close($ch);
 
         // Suriin kung pumasok ang pagpapadala ng email
@@ -67,7 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: verify_otp.php");
             exit();
         } else {
-            $error = "Failed to send OTP email via Brevo. Please check your API key or email address.";
+            // I-display ang eksaktong tugon galing sa Brevo para makita natin ang dahilan
+            $error = "Brevo Error (HTTP $http_code): " . ($curl_error ? $curl_error : $response);
         }
     } else {
         $error = "Please enter your email or Student ID.";

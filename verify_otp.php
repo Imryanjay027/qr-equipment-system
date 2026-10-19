@@ -6,44 +6,23 @@ error_reporting(E_ALL);
 
 session_start();
 
-// Siguraduhing may na-request na OTP at email
 if (!isset($_SESSION['login_email']) || !isset($_SESSION['otp'])) {
     header("Location: login.php");
     exit();
 }
 
-// Gamitin ang db_connection.php para sa koneksyon
-if (file_exists('db_connection.php')) {
-    require_once 'db_connection.php';
-} else {
-    $host = "wfbyfhr4404k2y9u2spiv101";
-    $username = "root";
-    $password = "cW86JONRjM797hW23852myqva2R4yZKKCcJ9o41Hd8ViLXYCAy2MQchbytcIY0ke";
-    $database = "qrcode";
-    $conn = new mysqli($host, $username, $password, $database);
-    if ($conn->connect_error) {
-        die("Database Connection Failed: " . $conn->connect_error);
-    }
-}
-
 $error_msg = "";
-$success_msg = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $otp_code = trim($_POST['otp_code'] ?? '');
 
     if (!empty($otp_code)) {
-        // Suriin kung tugma ang in-input na OTP sa session OTP
         if (intval($otp_code) === intval($_SESSION['otp'])) {
-            
-            // I-set ang mga sessions na kailangan ng custodian dashboard
             $_SESSION['custodian_logged_in'] = true;
             $_SESSION['logged_in'] = true;
             
-            // Linisin ang temporary OTP session para hindi na magamit ulit
             unset($_SESSION['otp']);
 
-            // Direktang i-redirect sa custodian_dashboard.php nang walang delay
             header("Location: custodian_dashboard.php");
             exit();
         } else {
@@ -52,10 +31,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } else {
         $error_msg = "Mangyaring ilagay ang OTP code.";
     }
-}
-
-if (isset($conn) && $conn) {
-    $conn->close();
 }
 ?>
 <!DOCTYPE html>

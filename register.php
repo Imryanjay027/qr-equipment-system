@@ -33,9 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $stmt = $conn->prepare("INSERT INTO tbl_users (full_name, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?)");
+        // Sinigurong sinasama ang parehong full_name at fullname para iwas-error sa database schema
+        $stmt = $conn->prepare("INSERT INTO tbl_users (full_name, fullname, email, role, photo, academic_info) VALUES (?, ?, ?, ?, ?, ?)");
         if ($stmt) {
-            $stmt->bind_param("sssss", $full_name, $email, $role, $photo_filename, $academic_info);
+            $stmt->bind_param("ssssss", $full_name, $full_name, $email, $role, $photo_filename, $academic_info);
             if ($stmt->execute()) {
                 $message = "Registration successful! You can now log in.";
                 $status = "success";

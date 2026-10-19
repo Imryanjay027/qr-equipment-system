@@ -10,12 +10,28 @@ if (file_exists('db_connection.php')) {
     die("Error: db_connection.php file not found.");
 }
 
-// Awtomatikong tinitiyak na nandiyan ang app_users table para iwas tablespace error
+// 1. Tinitiyak na may app_users table at may 'role' column para sa custodian access
 $conn->query("CREATE TABLE IF NOT EXISTS app_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
+    role VARCHAR(50) DEFAULT 'student',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
+
+// 2. Awtomatikong i-register ang email mo bilang Custodian kung wala pa sa database
+$my_email = 'ryanjayleoligao64@gmail.com';
+$check_user = $conn->prepare("SELECT id FROM app_users WHERE email = ?");
+$check_user->bind_param("s", $my_email);
+$check_user->execute();
+$check_result = $check_user->get_result();
+
+if ($check_result->num_rows === 0) {
+    $insert_user = $conn->prepare("INSERT INTO app_users (email, role) VALUES (?, 'custodian')");
+    $insert_user->bind_param("s", $my_email);
+    $insert_user->execute();
+    $insert_user->close();
+}
+$check_user->close();
 
 $error = '';
 
@@ -31,10 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $stmt->get_result();
 
             if ($result->num_rows > 0) {
+                $user = $result->fetch_assoc();
+                
                 $otp = rand(100000, 999999);
                 $_SESSION['otp'] = $otp;
                 $_SESSION['login_email'] = $email;
+                $_SESSION['user_role'] = $user['role'];
 
+                // Tagumpay! Mag-redirect sa verify_otp.php
                 header("Location: verify_otp.php");
                 exit();
             } else {
@@ -160,7 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-card">
-        <!-- Inilagay ang tamang reference sa logo.jpg -->
         <div class="logo-container">
             <img src="logo.jpg" alt="School Logo">
         </div>

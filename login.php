@@ -1,4 +1,7 @@
 <?php
+// 1. I-on ang output buffering para hindi magkaroon ng "Headers already sent" error sa redirection
+ob_start();
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -10,7 +13,7 @@ if (file_exists('db_connection.php')) {
     die("Error: db_connection.php file not found.");
 }
 
-// 1. Siguraduhing nandiyan ang app_users table at may role column
+// 2. Siguraduhing nandiyan ang app_users table at may role column
 $conn->query("CREATE TABLE IF NOT EXISTS app_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -23,7 +26,7 @@ if ($check_column && $check_column->num_rows == 0) {
     $conn->query("ALTER TABLE app_users ADD COLUMN role VARCHAR(50) DEFAULT 'student'");
 }
 
-// 2. Mahigpit na Whitelist para sa 2 Custodian lamang
+// 3. Mahigpit na Whitelist para sa 2 Custodian lamang
 $allowed_custodians = [
     'ryanjayleoligao64@gmail.com',
     'banaresprudence13@gmail.com'
@@ -109,10 +112,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ";
                             $mail->send();
                         } catch (Exception $e) {
-                            // Magpapatuloy pa rin kahit may konting delay sa email para hindi ma-block ang login
+                            // Itutuloy pa rin ang pag-redirect kahit may aberya sa email para hindi ma-stuck
                         }
                     }
 
+                    // Direktang mag-redirect sa verify_otp.php
                     header("Location: verify_otp.php");
                     exit();
                 }

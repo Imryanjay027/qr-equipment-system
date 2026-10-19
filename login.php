@@ -4,7 +4,7 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Ligtas na pagsusuri: Kung nakalog-in na ang student, direktang dalhin sa borrower.php
+// Kung naka-login na, diretso sa borrower dashboard
 if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && strtolower(trim($_SESSION['role'])) === 'student') {
     header("Location: borrower.php");
     exit();
@@ -16,34 +16,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email_or_id = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($email_or_id)) {
-        // Dito mo ilalagay ang koneksyon sa database para hanapin ang user
-        // Halimbawa: 
-        // include 'db.php';
-        // $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? OR student_id = ?");
-        // $stmt->execute([$email_or_id, $email_or_id]);
-        // $user = $stmt->fetch();
-
-        // Pansamantalang simulation para masubukan agad (Alisin ito kapag ikinabit mo na sa DB query mo):
-        // Mag-generate ng 6-digit OTP
+        // 1. Mag-generate ng 6-digit OTP
         $otp = rand(100000, 999999);
         
-        // I-save sa Session ang OTP at ang expiration (5 minuto mula ngayon)
+        // 2. I-save sa Session (5 minutes expiration)
         $_SESSION['otp_code'] = $otp;
-        $_SESSION['otp_expiry'] = time() + 300; // 300 seconds = 5 minutes
-        
-        // Ilagay dito ang code para sa pagpapadala gamit ang Brevo API o PHPMailer
-        // mail($email_or_id, "Your OTP Code", "Your OTP is: $otp");
+        $_SESSION['otp_expiry'] = time() + 300; 
+        $_SESSION['temp_email'] = $email_or_id;
 
-        // Pansamantalang temporary user data para sa session pagkatapos mag-verify
+        // Pansamantalang user data para sa session pagkatapos mag-verify
         $_SESSION['temp_user_id'] = 1;
         $_SESSION['temp_role'] = 'student';
         $_SESSION['temp_full_name'] = 'Ryan Jay Leoligao';
         $_SESSION['temp_student_id'] = '903324454';
         $_SESSION['temp_course_year'] = 'BSIT-3B';
 
-        // Dalhin na sa verify_otp.php para ma-type ang code
-        header("Location: verify_otp.php");
-        exit();
+        // 3. Pagpapadala ng OTP gamit ang Brevo API (cURL)
+        $brevo_api_key = "xkeysib-ILAGAY_ANG_IYONG_BREVO_API_KEY_DITO"; // Palitan ito ng iyong Brevo API Key
+        
+        $email_data = [
+            "sender" => [
+                "name" => "MQCQC Equipment System",
+                "email" => "no-reply@yourdomain.com" // Palitan ng iyong verified sender email sa Brevo
+            ],
+            "to" => [
+                [
+                    "email" => $email_or_id
+                ]
+            ],
+            "subject" => "Your Login OTP Code",
+            "htmlContent" => "<p>Hello,</p><p>Your 6-digit OTP code for system login is: <strong>{$otp}</strong></p><p>This code will expire in 5 minutes.</p>"
+        ];
+
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($email_data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'accept: application/json',
+            'api-key: ' . $brevo_api_key,
+            'content-type: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        // Suriin kung pumasok ang pagpapadala ng email
+        if ($http_code >= 200 && $http_code < 300) {
+            header("Location: verify_otp.php");
+            exit();
+        } else {
+            $error = "Failed to send OTP email via Brevo. Please check your API key or email address.";
+        }
     } else {
         $error = "Please enter your email or Student ID.";
     }
@@ -83,7 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     <?php endif; ?>
 
-                    <!-- Login Form patungong POST handler sa sarili nitong file -->
                     <form action="login.php" method="POST">
                         <div class="mb-3">
                             <label for="email" class="form-label fw-semibold">Email Address or Student ID</label>
@@ -94,7 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </form>
 
-                    <!-- Nakaturo na nang tama sa registration.php -->
                     <div class="text-center mt-3">
                         <p class="small text-muted">Don't have an account yet? <a href="registration.php" class="text-success fw-bold text-decoration-none">Register here</a></p>
                     </div>

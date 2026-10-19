@@ -19,10 +19,10 @@ if (isset($_POST['send_otp'])) {
     $identifier = trim($_POST['identifier']);
 
     if (!empty($identifier)) {
-        // Hahanapin ang user sa tbl_users gamit ang Email o ID Number
-        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? OR id_number = ? LIMIT 1");
+        // Hahanapin ang user sa tbl_users gamit ang email
+        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
         if ($stmt) {
-            $stmt->bind_param("ss", $identifier, $identifier);
+            $stmt->bind_param("s", $identifier);
             $stmt->execute();
             $result = $stmt->get_result();
 
@@ -59,14 +59,14 @@ if (isset($_POST['send_otp'])) {
                     $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
                 }
             } else {
-                $error_msg = "Walang nahanap na account para sa Email o ID na ito.";
+                $error_msg = "Walang nahanap na account para sa Email na ito.";
             }
             $stmt->close();
         } else {
             $error_msg = "Database query error: " . $conn->error;
         }
     } else {
-        $error_msg = "Mangyaring ilagay ang iyong Email o ID Number.";
+        $error_msg = "Mangyaring ilagay ang iyong Email address.";
     }
 }
 ?>
@@ -212,8 +212,8 @@ if (isset($_POST['send_otp'])) {
 
     <form method="POST" action="login.php">
         <div class="form-group">
-            <label for="identifier">Email Address or ID Number</label>
-            <input type="text" id="identifier" name="identifier" class="form-control" placeholder="Enter your Email or ID Number" required>
+            <label for="identifier">Email Address</label>
+            <input type="email" id="identifier" name="identifier" class="form-control" placeholder="Enter your Email" required>
         </div>
 
         <button type="submit" name="send_otp" class="btn-submit">

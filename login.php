@@ -10,7 +10,7 @@ if (file_exists('db_connection.php')) {
     die("Error: db_connection.php file not found.");
 }
 
-// Awtomatikong siguraduhing nandiyan ang table para walang tablespace error
+// Awtomatikong tinitiyak na nandiyan ang app_users table para iwas tablespace error
 $conn->query("CREATE TABLE IF NOT EXISTS app_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -67,30 +67,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .login-card {
             background: #ffffff;
-            padding: 40px 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            padding: 40px 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             width: 100%;
             max-width: 420px;
             text-align: center;
         }
         .logo-container {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .logo-container img {
-            width: 80px;
-            height: 80px;
+            width: 75px;
+            height: 75px;
             object-fit: contain;
         }
         .login-card h3 {
-            font-size: 18px;
-            color: #2c3e50;
+            font-size: 16px;
+            color: #212529;
             margin-bottom: 5px;
-            font-weight: 700;
+            font-weight: bold;
+            letter-spacing: 0.5px;
         }
         .subtitle {
             font-size: 13px;
-            color: #7f8c8d;
+            color: #6c757d;
             margin-bottom: 25px;
         }
         .form-group {
@@ -100,57 +101,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            font-weight: 600;
-            color: #34495e;
+            font-weight: bold;
+            color: #212529;
             font-size: 14px;
         }
         .form-group input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #dcdde1;
-            border-radius: 6px;
+            padding: 12px 14px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
             box-sizing: border-box;
             font-size: 14px;
-            transition: border-color 0.2s;
         }
         .form-group input:focus {
-            border-color: #1b5e20;
+            border-color: #2e7d32;
             outline: none;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
         }
         .btn-submit {
             width: 100%;
             padding: 12px;
-            background-color: #1b5e20;
+            background-color: #2e7d32;
             color: white;
             border: none;
-            border-radius: 6px;
-            font-weight: 600;
+            border-radius: 4px;
+            font-weight: bold;
             font-size: 15px;
             cursor: pointer;
-            transition: background-color 0.2s;
         }
         .btn-submit:hover {
-            background-color: #2e7d32;
+            background-color: #1b5e20;
         }
         .error-msg {
-            color: #c0392b;
+            color: #721c24;
             margin-bottom: 20px;
             font-size: 13px;
-            background: #fadbd8;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
             padding: 10px;
-            border-radius: 6px;
-            border-left: 4px solid #c0392b;
-            text-align: left;
+            border-radius: 4px;
+            text-align: center;
         }
         .footer-text {
             margin-top: 25px;
             font-size: 13px;
-            color: #7f8c8d;
+            color: #6c757d;
         }
         .footer-text a {
-            color: #1b5e20;
+            color: #2e7d32;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: bold;
         }
         .footer-text a:hover {
             text-decoration: underline;
@@ -160,10 +160,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-card">
-        <!-- Kung may logo ka, pwede mong i-uncomment ang sunod na linya at ilagay ang path ng logo -->
-        <!-- <div class="logo-container"><img src="path_to_logo.png" alt="Logo"></div> -->
+        <!-- Logo ng Mary the Queen College of Quezon City -->
+        <div class="logo-container">
+            <img src="logo.png" alt="School Logo" onerror="this.style.display='none'">
+        </div>
 
-        <h3>QR-BASED EQUIPMENT MONITORING SYSTEM</h3>
+        <h3>"QR-BASED EQUIPMENT MONITORING SYSTEM"</h3>
         <div class="subtitle">Account Login (OTP Authentication)</div>
 
         <?php if (!empty($error)): ?>
@@ -173,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form action="login.php" method="POST">
             <div class="form-group">
                 <label for="email">Email Address</label>
-                <input type="email" name="email" id="email" placeholder="Enter your email address" required>
+                <input type="email" name="email" id="email" placeholder="Enter your Email" required>
             </div>
             <button type="submit" class="btn-submit">Send OTP</button>
         </form>

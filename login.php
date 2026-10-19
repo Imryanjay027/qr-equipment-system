@@ -7,17 +7,12 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
-// PHPMailer core files gamit ang absolute path
 $phpmailer_path = __DIR__ . '/phpmailer/';
 
-require_once $phpmailer_path . 'Exception.php';
-require_once $phpmailer_path . 'SMTP.php';
-require_once $phpmailer_path . 'PHPMailer.php';
-
-// Safety check para masigurong laging loaded ang SMTP class sa Linux/Coolify
-if (!class_exists('PHPMailer\PHPMailer\SMTP')) {
-    include_once $phpmailer_path . 'SMTP.php';
-}
+// Siguraduhing tama ang pagkakarga ng mga file
+if (file_exists($phpmailer_path . 'Exception.php')) require_once $phpmailer_path . 'Exception.php';
+if (file_exists($phpmailer_path . 'SMTP.php')) require_once $phpmailer_path . 'SMTP.php';
+if (file_exists($phpmailer_path . 'PHPMailer.php')) require_once $phpmailer_path . 'PHPMailer.php';
 
 $error_msg = "";
 $success_msg = "";
@@ -26,7 +21,6 @@ if (isset($_POST['send_otp'])) {
     $identifier = trim($_POST['identifier']);
 
     if (!empty($identifier)) {
-        // Hahanapin ang user sa tbl_users gamit ang email
         $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ? LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("s", $identifier);
@@ -41,14 +35,13 @@ if (isset($_POST['send_otp'])) {
                 $_SESSION['otp'] = $otp;
                 $_SESSION['email'] = $email;
 
-                $mail = new PHPMailer(true);
-
                 try {
+                    $mail = new PHPMailer(true);
                     $mail->isSMTP();
                     $mail->Host       = 'smtp.gmail.com';
                     $mail->SMTPAuth   = true;
-                    $mail->Username   = 'your_email@gmail.com'; // Palitan ng iyong Gmail
-                    $mail->Password   = 'your_app_password';   // Palitan ng iyong App Password
+                    $mail->Username   = 'your_email@gmail.com'; // Iyong Gmail
+                    $mail->Password   = 'your_app_password';   // Iyong App Password
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port       = 587;
 
@@ -62,7 +55,7 @@ if (isset($_POST['send_otp'])) {
                     $mail->send();
                     header("Location: verify_otp.php");
                     exit();
-                } catch (Exception $e) {
+                } catch (\Exception $e) {
                     $error_msg = "Hindi maipadala ang email. Mailer Error: " . $mail->ErrorInfo;
                 }
             } else {

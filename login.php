@@ -22,7 +22,7 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Siguraduhing may users table
+// Siguraduhing may users table at otp columns
 $conn->query("CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -35,25 +35,8 @@ $conn->query("CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
-// Ligtas na pagdaragdag ng columns gamit ang Try-Catch
-try {
-    @$conn->query("ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL");
-} catch (Exception $e) { /* Ignore duplicate column error */ }
-
-try {
-    @$conn->query("ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL");
-} catch (Exception $e) { /* Ignore duplicate column error */ }
-
-// Default test accounts kung walang laman
-$check_user = $conn->query("SELECT COUNT(*) as count FROM users");
-if ($check_user) {
-    $row = $check_user->fetch_assoc();
-    if ($row['count'] == 0) {
-        $conn->query("INSERT INTO users (full_name, email, student_id, course_year, role) VALUES 
-        ('System Custodian', 'custodian@mqcqc.edu.ph', 'CUST001', 'Staff', 'custodian'),
-        ('Test Borrower', 'ryanjayleoligao64@gmail.com', '2026-00001', 'BSIT 3rd Year', 'borrower')");
-    }
-}
+try { @$conn->query("ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL"); } catch (Exception $e) {}
+try { @$conn->query("ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL"); } catch (Exception $e) {}
 
 $error = "";
 
@@ -72,10 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $otp = (string)rand(100000, 999999);
             $expiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
 
-            // Itabi ang OTP at Expiry sa Database
+            // UPDATE OTP SA DATABASE
             $update_stmt = $conn->prepare("UPDATE users SET otp_code = ?, otp_expiry = ? WHERE id = ?");
             $update_stmt->bind_param("ssi", $otp, $expiry, $user['id']);
             $update_stmt->execute();
+
+            // ITABI ANG USER ID SA COOKIE AT SESSION
+            setcookie("temp_user_id", $user['id'], time() + 600, "/"); // valid for 10 mins
+            $_SESSION['temp_user_id'] = $user['id'];
 
             $target_email = $user['email'];
             $brevo_api_key = "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"; 
@@ -85,9 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     "name" => "MQCQC Equipment System",
                     "email" => "ryanjayleoligao64@gmail.com"
                 ],
-                "to" => [
-                    ["email" => $target_email]
-                ],
+                "to" => [ ["email" => $target_email] ],
                 "subject" => "Your Login OTP Code",
                 "htmlContent" => "<p>Hello {$user['full_name']},</p><p>Your 6-digit OTP code is: <strong>{$otp}</strong></p><p>This code will expire in 5 minutes.</p>"
             ];
@@ -96,7 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($email_data));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            curl_setopt($ch, CURLOPT_HTTPHEADERコーディネート
+            [
                 'accept: application/json',
                 'api-key: ' . $brevo_api_key,
                 'content-type: application/json'
@@ -107,7 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_close($ch);
 
             if ($http_code >= 200 && $http_code < 300) {
-                // Ipa-pasa ang user ID (uid) sa URL para basahin ng verify_otp.php
                 header("Location: verify_otp.php?uid=" . $user['id']);
                 exit();
             } else {

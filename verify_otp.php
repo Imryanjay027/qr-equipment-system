@@ -22,61 +22,45 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Kunin ang User ID mula sa URL o POST (HINDI gagamit ng lumang session para hindi ma-bypass)
-$user_id = $_GET['uid'] ?? ($_POST['uid'] ?? '');
-
-// Kung walang User ID sa URL o POST, ibalik agad sa login
-if (empty($user_id)) {
-    header("Location: login.php");
-    exit();
-}
-
 $error = "";
 $redirect_url = "";
 
-// ==========================================
-// PROCESO AT VERIFICATION KAPAG NAG-SUBMIT
-// ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_otp = trim((string)($_POST['otp'] ?? ''));
 
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-        $stmt->bind_param("i", $user_id);
+        $current_time = date('Y-m-d H:i:s');
+
+        // Hanapin ang user gamit ang OTP code at siguraduhing hindi pa expired
+        $stmt = $conn->prepare("SELECT * FROM users WHERE otp_code = ? AND otp_expiry >= ?");
+        $stmt->bind_param("ss", $user_otp, $current_time);
         $stmt->execute();
-        $user = $stmt->get_result()->fetch_assoc();
+        $result = $stmt->get_result();
 
-        if ($user) {
-            $db_otp = trim((string)$user['otp_code']);
-            $current_time = date('Y-m-d H:i:s');
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
 
-            if (empty($db_otp) || $db_otp !== $user_otp) {
-                $error = "Mali ang OTP code na inilagay mo.";
-            } else if ($current_time > $user['otp_expiry']) {
-                $error = "Expired na ang OTP. Mangyaring mag-login ulit sa login.php.";
+            // TAMA ANG OTP! I-set ang session
+            $_SESSION['user_id']   = $user['id'];
+            $_SESSION['role']      = strtolower(trim($user['role']));
+            $_SESSION['full_name'] = $user['full_name'];
+
+            // Linisin ang OTP sa database para hindi na magamit ulit
+            $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
+            $clear->bind_param("i", $user['id']);
+            $clear->execute();
+
+            // Tukuyin ang redirection batay sa role
+            $user_role = strtolower(trim($user['role']));
+            if ($user_role === 'custodian') {
+                $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
             } else {
-                // TAMA ANG OTP! DITO PA LANG IA-ASSIGN ANG SESSION
-                $_SESSION['user_id']   = $user['id'];
-                $_SESSION['role']      = strtolower(trim($user['role']));
-                $_SESSION['full_name'] = $user['full_name'];
-
-                // Burahin ang OTP sa DB para hindi na magamit ulit
-                $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
-                $clear->bind_param("i", $user['id']);
-                $clear->execute();
-
-                // I-SET ANG REDIRECT URL DEPENDING SA ROLE
-                $user_role = strtolower(trim($user['role']));
-                if ($user_role === 'custodian') {
-                    $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
-                } else {
-                    $redirect_url = "borrower.php?uid=" . $user['id'];
-                }
+                $redirect_url = "borrower.php?uid=" . $user['id'];
             }
         } else {
-            $error = "User not found in database.";
+            $error = "Mali o expired na ang OTP code na inilagay mo.";
         }
     }
 }
@@ -111,8 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </script>
                     <?php else: ?>
                         <p class="text-muted text-center small">Inilagay namin ang 6-digit code sa iyong email. Pakilagay sa ibaba:</p>
-                        <form action="verify_otp.php?uid=<?= htmlspecialchars($user_id); ?>" method="POST">
-                            <input type="hidden" name="uid" value="<?= htmlspecialchars($user_id); ?>">
+                        <form action="verify_otp.php" method="POST">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Enter 6-Digit OTP</label>
                                 <input type="text" class="form-control text-center fs-4 fw-bold" name="otp" maxlength="6" required placeholder="000000" autocomplete="off">

@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// DYNAMIC DATABASE CONNECTION (COOLIFY)
+// DATABASE CONNECTION (COOLIFY ENVIRONMENT)
 // ==========================================
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
@@ -22,7 +22,7 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Auto-create users table & default accounts kung wala pa
+// Siguraduhing may users table at default test accounts
 $conn->query("CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -57,10 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
             
+            // Gumawa ng 6-digit OTP
             $otp = rand(100000, 999999);
             
             $_SESSION['otp_code'] = $otp;
-            $_SESSION['otp_expiry'] = time() + 300; 
+            $_SESSION['otp_expiry'] = time() + 300; // 5 minutes validity
 
             $_SESSION['temp_user_id'] = $user['id'];
             $_SESSION['temp_role'] = strtolower(trim($user['role']));
@@ -122,7 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - MQCQC Equipment Monitoring System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background-color: #f4f7f6; font-family: Arial, sans-serif; }
         .login-card { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 30px; margin-top: 50px; }

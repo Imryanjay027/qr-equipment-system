@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// DATABASE CONNECTION (COOLIFY ENVIRONMENT)
+// DATABASE CONNECTION
 // ==========================================
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
@@ -25,14 +25,15 @@ if ($conn->connect_error) {
 $error = "";
 $redirect_url = "";
 
+// DEBUG: Tingnan kung pumasok ang POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_otp = trim((string)($_POST['otp'] ?? ''));
 
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        // Gagamitin ang NOW() ng MySQL para siguruhing tama ang pagbasa ng expiry oras
-        $stmt = $conn->prepare("SELECT * FROM users WHERE otp_code = ? AND otp_expiry >= NOW()");
+        // Hanapin sa database ang OTP code
+        $stmt = $conn->prepare("SELECT * FROM users WHERE otp_code = ?");
         $stmt->bind_param("s", $user_otp);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -45,12 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role']      = strtolower(trim($user['role']));
             $_SESSION['full_name'] = $user['full_name'];
 
-            // Linisin ang OTP sa database para hindi na magamit ulit
+            // Linisin ang OTP sa database
             $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
             $clear->bind_param("i", $user['id']);
             $clear->execute();
 
-            // Tukuyin ang redirection batay sa role
+            // Redirection
             $user_role = strtolower(trim($user['role']));
             if ($user_role === 'custodian') {
                 $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
@@ -58,7 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $redirect_url = "borrower.php?uid=" . $user['id'];
             }
         } else {
-            $error = "Mali o expired na ang OTP code na inilagay mo.";
+            // Kung walang mahanap, i-display kung ano ang in-input para makita natin
+            $error = "Walang nagtutugmang OTP sa database para sa code na: " . htmlspecialchars($user_otp);
         }
     }
 }
@@ -79,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <h4 class="fw-bold text-success text-center mb-3">OTP Verification</h4>
 
                     <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger py-2 small"><?= htmlspecialchars($error); ?></div>
+                        <div class="alert alert-danger py-2 small"><?= $error; ?></div>
                     <?php endif; ?>
 
                     <?php if (!empty($redirect_url)): ?>
@@ -92,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             setTimeout(function() { window.location.href = "<?= $redirect_url; ?>"; }, 1000);
                         </script>
                     <?php else: ?>
-                        <p class="text-muted text-center small">Inilagay namin ang 6-digit code sa iyong email. Pakilagay sa ibaba:</p>
+                        <p class="text-muted text-center small">Ilagay ang 6-digit code na natanggap sa email:</p>
                         <form action="verify_otp.php" method="POST">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Enter 6-Digit OTP</label>

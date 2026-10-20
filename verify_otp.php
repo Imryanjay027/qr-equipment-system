@@ -1,11 +1,4 @@
 <?php
-// Custom session path para hindi mawala sa Coolify container
-$session_path = __DIR__ . '/sessions';
-if (!is_dir($session_path)) {
-    mkdir($session_path, 0777, true);
-}
-session_save_path($session_path);
-
 session_start();
 date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);

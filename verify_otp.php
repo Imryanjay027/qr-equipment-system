@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // ==========================================
-// DATABASE CONNECTION
+// DATABASE CONNECTION (COOLIFY ENVIRONMENT)
 // ==========================================
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
@@ -25,15 +25,14 @@ if ($conn->connect_error) {
 $error = "";
 $redirect_url = "";
 
-// DEBUG: Tingnan kung pumasok ang POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_otp = trim((string)($_POST['otp'] ?? ''));
 
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        // Hanapin sa database ang OTP code
-        $stmt = $conn->prepare("SELECT * FROM users WHERE otp_code = ?");
+        // Hanapin diretso sa database gamit ang OTP code (TRIM para iwas space issue)
+        $stmt = $conn->prepare("SELECT * FROM users WHERE TRIM(otp_code) = TRIM(?)");
         $stmt->bind_param("s", $user_otp);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -41,17 +40,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
 
-            // TAMA ANG OTP! I-set ang session
+            // TAMA ANG OTP! I-set ang session ng user
             $_SESSION['user_id']   = $user['id'];
             $_SESSION['role']      = strtolower(trim($user['role']));
             $_SESSION['full_name'] = $user['full_name'];
 
-            // Linisin ang OTP sa database
+            // Burahin ang OTP sa database para secure at hindi na magamit ulit
             $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
             $clear->bind_param("i", $user['id']);
             $clear->execute();
 
-            // Redirection
+            // Itakda ang redirection batay sa role
             $user_role = strtolower(trim($user['role']));
             if ($user_role === 'custodian') {
                 $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
@@ -59,8 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $redirect_url = "borrower.php?uid=" . $user['id'];
             }
         } else {
-            // Kung walang mahanap, i-display kung ano ang in-input para makita natin
-            $error = "Walang nagtutugmang OTP sa database para sa code na: " . htmlspecialchars($user_otp);
+            $error = "Mali o hindi na nagtutugma ang OTP code sa database.";
         }
     }
 }
@@ -81,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <h4 class="fw-bold text-success text-center mb-3">OTP Verification</h4>
 
                     <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger py-2 small"><?= $error; ?></div>
+                        <div class="alert alert-danger py-2 small"><?= htmlspecialchars($error); ?></div>
                     <?php endif; ?>
 
                     <?php if (!empty($redirect_url)): ?>
@@ -94,7 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             setTimeout(function() { window.location.href = "<?= $redirect_url; ?>"; }, 1000);
                         </script>
                     <?php else: ?>
-                        <p class="text-muted text-center small">Ilagay ang 6-digit code na natanggap sa email:</p>
+                        <p class="text-muted text-center small">Ilagay ang 6-digit code na ipinadala sa iyong email:</p>
+                        <!-- Walang ?uid= sa action para hindi ma-block ng Coolify proxy -->
                         <form action="verify_otp.php" method="POST">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Enter 6-Digit OTP</label>

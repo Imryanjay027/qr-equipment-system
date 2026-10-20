@@ -81,8 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($email_data));
-            curl_setopt($ch, CURLOPT_HTTPHEADERコーディネート
-            [
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'accept: application/json',
                 'api-key: ' . $brevo_api_key,
                 'content-type: application/json'

@@ -31,11 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        $current_time = date('Y-m-d H:i:s');
-
-        // Hanapin ang user gamit ang OTP code at siguraduhing hindi pa expired
-        $stmt = $conn->prepare("SELECT * FROM users WHERE otp_code = ? AND otp_expiry >= ?");
-        $stmt->bind_param("ss", $user_otp, $current_time);
+        // Gagamitin ang NOW() ng MySQL para siguruhing tama ang pagbasa ng expiry oras
+        $stmt = $conn->prepare("SELECT * FROM users WHERE otp_code = ? AND otp_expiry >= NOW()");
+        $stmt->bind_param("s", $user_otp);
         $stmt->execute();
         $result = $stmt->get_result();
 

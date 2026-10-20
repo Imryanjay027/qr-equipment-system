@@ -16,6 +16,7 @@ if ($conn->connect_error) {
     $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
 }
 
+// Kunin ang User ID mula sa URL, Cookie, o Session
 $user_id = $_GET['uid'] ?? ($_POST['uid'] ?? ($_COOKIE['temp_user_id'] ?? ($_SESSION['temp_user_id'] ?? '')));
 
 if (empty($user_id)) {
@@ -27,7 +28,6 @@ $error = "";
 $redirect_url = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Malinis na pag-extract ng input
     $user_otp = trim((string)($_POST['otp'] ?? ''));
 
     $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
@@ -39,9 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db_otp = trim((string)$user['otp_code']);
         $current_time = date('Y-m-d H:i:s');
 
-        // Loose at Strict Type Verification Logic
         if (empty($db_otp) || $db_otp !== $user_otp) {
-            $error = "Mali ang OTP code na inilagay mo. (Sinubukan: $user_otp)";
+            $error = "Mali ang OTP code na inilagay mo.";
         } else if ($current_time > $user['otp_expiry']) {
             $error = "Expired na ang OTP. Mangyaring mag-login ulit.";
         } else {
@@ -51,13 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role']      = strtolower(trim($user['role']));
             $_SESSION['full_name'] = $user['full_name'];
 
-            // Clear OTP
+            // Clear OTP sa DB
             $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
             $clear->bind_param("i", $user['id']);
             $clear->execute();
 
             setcookie("temp_user_id", "", time() - 3600, "/");
 
+            // REDIRECTION BATAY SA ROLE (BORROWER.PHP NA ANG GINAMIT)
             $user_role = strtolower(trim($user['role']));
             if ($user_role === 'custodian') {
                 $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             setTimeout(function() { window.location.href = "<?= $redirect_url; ?>"; }, 1000);
                         </script>
                     <?php else: ?>
-                        <form action="verify_otp.php" method="POST">
+                        <form action="verify_otp.php?uid=<?= htmlspecialchars($user_id); ?>" method="POST">
                             <input type="hidden" name="uid" value="<?= htmlspecialchars($user_id); ?>">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Enter 6-Digit OTP</label>

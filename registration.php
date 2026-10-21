@@ -6,13 +6,11 @@ ini_set('display_errors', 1);
 
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
-$conn = @new mysqli($host, $username, $password, $database, (int)$port);
-if ($conn->connect_error) {
-    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
+$conn = @new mysqli($host, $username,$password, $database, (int)$port);
+if ($conn->connect_error) {$conn = @new mysqli('mysql', $username,$password, $database, (int)$port);
 }
 
 if ($conn->connect_error) {
@@ -34,179 +32,166 @@ $conn->query("CREATE TABLE IF NOT EXISTS borrow_requests (
 )");
 
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
-$student_id_query = $_GET['sid'] ?? '';
+$student_id_query =$_GET['sid'] ?? '';
 
 $current_user = null;
 if (!empty($user_id)) {
-    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $current_user = $stmt->get_result()->fetch_assoc();
+    $stmt =$conn->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt->bind_param("i", $user_id);$stmt->execute();
+    $current_user =$stmt->get_result()->fetch_assoc();
 }
 
 if (!$current_user && !empty($student_id_query)) {
-    $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ?");
-    $stmt->bind_param("s", $student_id_query);
-    $stmt->execute();
-    $current_user = $stmt->get_result()->fetch_assoc();
+    $stmt =$conn->prepare("SELECT * FROM users WHERE student_id = ?");
+    $stmt->bind_param("s", $student_id_query);$stmt->execute();
+    $current_user =$stmt->get_result()->fetch_assoc();
 }
 
-// Fallback dummy user if none found
-if (!$current_user) {
-    $current_user = [
+if (!$current_user) {$current_user = [
         'id' => 1,
         'full_name' => 'Ryan Jay Leoligao',
-        'student_id' => !empty($student_id_query) ? $student_id_query : '2026-00001',
+        'student_id' => !empty($student_id_query) ?$student_id_query : '123456',
         'course_year' => 'BSIT 3rd Year',
         'profile_pic' => ''
     ];
 }
 
-$sid = $current_user['student_id'];
+$success_msg = '';$error_msg = '';
 
-// Kukunin ang lahat ng hiram ng borrower
-$borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE student_id = ? OR full_name = ? ORDER BY id DESC");
-$borrow_query->bind_param("ss", $sid, $current_user['full_name']);
-$borrow_query->execute();
-$borrowed_items = $borrow_query->get_result();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?? $current_user['student_id'];
+    $full_name =$_POST['full_name'] ?? $current_user['full_name'];$course_year = $_POST['course_year'] ?? $current_user['course_year'];
+    $item_to_borrow =$_POST['item_to_borrow'] ?? '';
+    $return_date =$_POST['return_date'] ?? '';
+    $return_time =$_POST['return_time'] ?? '';
+    $selfie_image =$_POST['selfie_image'] ?? '';
+
+    if (!empty($item_to_borrow) && !empty($return_date) && !empty($return_time)) {
+        $stmt =$conn->prepare("INSERT INTO borrow_requests (student_id, full_name, course_year, item_to_borrow, return_date, return_time, selfie_image, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')");
+        $stmt->bind_param("sssssss", $student_id, $full_name,$course_year, $item_to_borrow,$return_date, $return_time,$selfie_image);
+        if ($stmt->execute()) {
+            header("Location: borrower.php?uid=" . $current_user['id']);
+            exit();
+        } else {
+            $error_msg = "May nangyaring error sa pag-save ng request: " . $conn->error;
+        }
+    } else {
+        $error_msg = "Paki-fill out lahat ng kinakailangang fields.";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borrower's Portal - MQCQC</title>
+    <title>Equipment Registration - MQCQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { background-color: #f4f6f9; }
         .top-navbar { background-color: #217835; color: #ffffff; padding: 10px 15px; font-weight: bold; font-size: 0.85rem; }
         .main-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); background: #ffffff; }
-        .profile-img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid #217835; }
-        .nav-tabs .nav-link { color: #495057; font-weight: 600; border: none; background-color: #e9ecef; border-radius: 6px 6px 0 0; font-size: 0.85rem; }
-        .nav-tabs .nav-link.active { color: #ffffff; background-color: #217835; }
-        .table-custom th { background-color: #217835 !important; color: #ffffff !important; font-size: 0.85rem; border: none; }
-        .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 10px 20px; text-decoration: none; display: inline-block; }
+        .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; width: 100%; cursor: pointer; }
         .btn-green:hover { background-color: #1a602a; color: #ffffff; }
+        #video, #canvas { width: 100%; max-width: 320px; border-radius: 8px; border: 2px solid #217835; }
     </style>
 </head>
 <body>
 
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
-        <div>MQCQC - BORROWER PORTAL</div>
-        <div class="d-flex gap-1">
-            <a href="borrower.php" class="btn btn-dark btn-sm px-2 py-1" style="font-size: 0.75rem;">Dashboard</a>
-            <a href="login.php" class="btn btn-danger btn-sm px-2 py-1" style="font-size: 0.75rem;">Logout</a>
+        <div>MQCQC - EQUIPMENT BORROWING FORM</div>
+        <div>
+            <a href="borrower.php?uid=<?= $current_user['id']; ?>" class="btn btn-dark btn-sm px-2 py-1" style="font-size: 0.75rem;">Back to Dashboard</a>
         </div>
     </div>
 
-    <div class="container my-3">
-        <div class="card main-card p-3 p-md-4 mx-auto" style="max-width: 900px;">
-            
-            <div class="d-flex flex-column flex-md-row align-items-center justify-content-between border-bottom pb-4 mb-4 gap-3 text-center text-md-start">
-                <div class="d-flex flex-column flex-md-row align-items-center gap-3">
-                    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center profile-img fs-3">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                        <h4 class="fw-bold mb-1 text-dark fs-5"><?= htmlspecialchars($current_user['full_name']); ?></h4>
-                        <p class="text-muted mb-0 small">Student ID: <strong><?= htmlspecialchars($current_user['student_id']); ?></strong></p>
-                        <p class="text-muted mb-0 small">Course / Year: <strong><?= htmlspecialchars($current_user['course_year']); ?></strong></p>
-                    </div>
-                </div>
-                
-                <div class="text-center">
-                    <div class="d-inline-block p-2 bg-white border rounded shadow-sm">
-                        <div id="qrcode" class="d-flex justify-content-center"></div>
-                        <span class="text-muted d-block mt-1" style="font-size: 0.7rem;">Your QR Code</span>
-                    </div>
-                </div>
-            </div>
+    <div class="container my-4">
+        <div class="card main-card p-3 p-md-4 mx-auto" style="max-width: 700px;">
+            <h4 class="fw-bold mb-3 text-success text-center">Borrow Equipment Registration</h4>
 
-            <ul class="nav nav-tabs mb-3 flex-column flex-sm-row" id="portalTabs" role="tablist">
-                <li class="nav-item flex-fill text-center mb-1 mb-sm-0" role="presentation">
-                    <button class="nav-link w-100 active" id="borrowed-tab" data-bs-toggle="tab" data-bs-target="#borrowed-content" type="button" role="tab">My Borrowed Equipment</button>
-                </li>
-                <li class="nav-item flex-fill text-center" role="presentation">
-                    <button class="nav-link w-100" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-content" type="button" role="tab">Returned Items History / Remarks</button>
-                </li>
-            </ul>
+            <?php if (!empty($error_msg)): ?>
+                <div class="alert alert-danger py-2 small"><?= $error_msg; ?></div>
+            <?php endif; ?>
 
-            <div class="tab-content" id="portalTabsContent">
-                <div class="tab-pane fade show active" id="borrowed-content" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped align-middle text-center">
-                            <thead>
-                                <tr class="table-custom">
-                                    <th>Student ID</th>
-                                    <th>Equipment Name</th>
-                                    <th>Borrow Date / Due Date</th>
-                                    <th>Status / Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if ($borrowed_items && $borrowed_items->num_rows > 0): ?>
-                                    <?php while($row = $borrowed_items->fetch_assoc()): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($row['student_id']); ?></td>
-                                            <td class="fw-bold"><?= htmlspecialchars($row['item_to_borrow']); ?></td>
-                                            <td><?= htmlspecialchars($row['return_date']) . ' (' . htmlspecialchars($row['return_time']) . ')'; ?></td>
-                                            <td><span class="badge bg-warning text-dark"><?= htmlspecialchars($row['status']); ?></span></td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="4" class="text-muted py-4 small">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+            <form method="POST" action="">
+                <input type="hidden" name="student_id" value="<?= htmlspecialchars($current_user['student_id']); ?>">
+                <input type="hidden" name="full_name" value="<?= htmlspecialchars($current_user['full_name']); ?>">
+                <input type="hidden" name="course_year" value="<?= htmlspecialchars($current_user['course_year']); ?>">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Full Name</label>
+                    <input type="text" class="form-control form-control-sm" value="<?= htmlspecialchars($current_user['full_name']); ?>" disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Student ID / Course & Year</label>
+                    <input type="text" class="form-control form-control-sm" value="<?= htmlspecialchars($current_user['student_id'] . ' - ' .$current_user['course_year']); ?>" disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Equipment Name / Item to Borrow</label>
+                    <select name="item_to_borrow" class="form-select form-select-sm" required>
+                        <option value="">-- Pili ng Kagamitan --</option>
+                        <option value="Keyboard">Keyboard</option>
+                        <option value="Mouse">Mouse</option>
+                        <option value="Projector">Projector</option>
+                        <option value="Extension Cord">Extension Cord</option>
+                        <option value="HDMI Cable">HDMI Cable</option>
+                        <option value="VGA Cable">VGA Cable</option>
+                    </select>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold small">Return Date</label>
+                        <input type="date" name="return_date" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold small">Return Time</label>
+                        <input type="time" name="return_time" class="form-control form-control-sm" required>
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="history-content" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped align-middle text-center">
-                            <thead>
-                                <tr class="table-custom">
-                                    <th>Student ID</th>
-                                    <th>Equipment Name</th>
-                                    <th>Date Returned</th>
-                                    <th>Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="4" class="text-muted py-4 small">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div class="mb-3 text-center">
+                    <label class="form-label fw-bold small d-block">Selfie Verification</label>
+                    <div class="d-flex flex-column align-items-center gap-2">
+                        <video id="video" autoplay playsinline></video>
+                        <button type="button" id="snap" class="btn btn-dark btn-sm px-3">Capture Selfie</button>
+                        <canvas id="canvas" style="display:none;"></canvas>
+                        <input type="hidden" name="selfie_image" id="selfie_image">
+                        <div id="preview-container" class="mt-2"></div>
                     </div>
                 </div>
-            </div>
 
-            <div class="text-center mt-4 pt-3 border-top">
-                <p class="text-muted small mb-2">Need to borrow an item?</p>
-                <a href="registration.php" class="btn btn-green">Borrow an Item</a>
-            </div>
-
+                <button type="submit" class="btn btn-green mt-3">Submit Borrow Request</button>
+            </form>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const qrDiv = document.getElementById('qrcode');
-            qrDiv.innerHTML = "";
-            new QRCode(qrDiv, {
-                text: "MQCQC-ID: <?= htmlspecialchars($current_user['student_id']); ?> | Name: <?= htmlspecialchars($current_user['full_name']); ?>",
-                width: 80,
-                height: 80,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snap = document.getElementById('snap');
+        const selfieInput = document.getElementById('selfie_image');
+        const previewContainer = document.getElementById('preview-container');
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Camera access denied or unavailable: ", err);
             });
+
+        snap.addEventListener('click', function() {
+            canvas.width = video.videoWidth || 320;
+            canvas.height = video.videoHeight || 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/png');
+            selfieInput.value = dataURL;
+            previewContainer.innerHTML = `<img src="${dataURL}" style="width:120px; border-radius:6px; border:2px solid #217835;" alt="Selfie Preview"><br><small class="text-success">Selfie Captured Successfully!</small>`;
         });
     </script>
 </body>

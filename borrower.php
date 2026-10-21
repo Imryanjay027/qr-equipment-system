@@ -63,6 +63,7 @@ if (!$current_user) {
 }
 
 $sid = $current_user['student_id'];
+$uid = $current_user['id'];
 
 // Kukunin ang lahat ng hiram ng borrower
 $borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE student_id = ? OR full_name = ? ORDER BY id DESC");
@@ -96,7 +97,7 @@ $borrowed_items = $borrow_query->get_result();
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
         <div>MQCQC - BORROWER PORTAL</div>
         <div class="d-flex gap-1">
-            <a href="borrower.php" class="btn btn-dark btn-sm px-2 py-1" style="font-size: 0.75rem;">Dashboard</a>
+            <a href="borrower.php?uid=<?= $uid; ?>" class="btn btn-dark btn-sm px-2 py-1" style="font-size: 0.75rem;">Dashboard</a>
             <a href="login.php" class="btn btn-danger btn-sm px-2 py-1" style="font-size: 0.75rem;">Logout</a>
         </div>
     </div>
@@ -189,12 +190,10 @@ $borrowed_items = $borrow_query->get_result();
                 </div>
             </div>
 
-            <!-- Foolproof Form-Based Redirection Button -->
+            <!-- Foolproof Direct JS Location Redirect Button -->
             <div class="text-center mt-4 pt-3 border-top">
                 <p class="text-muted small mb-2">Need to borrow an item?</p>
-                <form action="registration.php" method="GET" class="d-inline">
-                    <button type="submit" class="btn btn-green">Borrow an Item</button>
-                </form>
+                <button type="button" class="btn btn-green" onclick="window.location.replace('registration.php?uid=<?= $uid; ?>');">Borrow an Item</button>
             </div>
 
         </div>

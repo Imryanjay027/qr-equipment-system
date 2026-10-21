@@ -89,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin: 30px auto;
         }
         .logo-img {
-            width: 75px;
-            height: 75px;
+            width: 90px;
+            height: 90px;
             object-fit: contain;
         }
         .btn-green {
@@ -128,10 +128,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- Top Header Bar -->
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
-        <div>MARY THE QUEEN COLLEGE - BORROWER PORTAL</div>
+        <div>MQCQC - BORROWER PORTAL</div>
         <div class="d-flex gap-2">
-            <a href="borrower.php" class="btn btn-dark btn-sm px-3">Back to your Dashboard</a>
-            <a href="login.php" class="btn btn-danger btn-sm px-3">Log In</a>
+            <a href="borrower.php" class="btn btn-dark btn-sm px-3">Dashboard</a>
+            <a href="login.php" class="btn btn-danger btn-sm px-3">Logout</a>
         </div>
     </div>
 
@@ -139,9 +139,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card form-card">
             
             <div class="text-center mb-4">
-                <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png/220px-Mary_the_Queen_College_of_Quezon_City_logo.png" alt="Logo" class="logo-img mb-2">
+                <img src="https://upload.wikimedia.org/wikipedia/en/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png" alt="MQCQC Logo" class="logo-img mb-3">
                 <h4 class="fw-bold text-dark mb-1">Student Borrower Registration Form</h4>
-                <p class="text-muted small mb-0">QR - BASED SCHOOL EQUIPMENT BORROWING, RETURN, AND CONDITION MONITORING SYSTEM</p>
+                <p class="text-success fw-bold small mb-2">QR-BASED EQUIPMENT MONITORING SYSTEM</p>
                 <p class="text-muted small">Please complete the registration form below, take a live selfie, and submit to borrow an item.</p>
             </div>
 
@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <input type="hidden" name="selfie_image" id="selfie_image">
                     <div class="text-center">
-                        <button type="button" id="snap-btn" class="btn btn-outline-secondary btn-sm px-4">Retake Selfie</button>
+                        <button type="button" id="snap-btn" class="btn btn-outline-secondary btn-sm px-4">Take / Retake Selfie</button>
                     </div>
                 </div>
 

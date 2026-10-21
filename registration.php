@@ -28,8 +28,9 @@ $conn->query("CREATE TABLE IF NOT EXISTS borrow_requests (
     item_to_borrow VARCHAR(255) NOT NULL,
     return_date DATE NOT NULL,
     return_time VARCHAR(50) NOT NULL,
-    selfie_image TEXT,
-    status VARCHAR(50) DEFAULT 'Pending'
+    selfie_image LONGTEXT,
+    status VARCHAR(50) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
 $success_msg = "";
@@ -75,18 +76,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .top-navbar {
             background-color: #217835;
             color: #ffffff;
-            padding: 12px 20px;
+            padding: 10px 15px;
             font-weight: bold;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
         .form-card {
             border: none;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             background: #ffffff;
-            padding: 30px;
-            max-width: 700px;
-            margin: 30px auto;
+            padding: 25px 20px;
+            max-width: 650px;
+            margin: 20px auto;
         }
         .logo-img {
             width: 90px;
@@ -99,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 600;
             border: none;
             border-radius: 8px;
-            padding: 10px;
+            padding: 12px;
         }
         .btn-green:hover {
             background-color: #1a602a;
@@ -112,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             overflow: hidden;
             position: relative;
             width: 100%;
-            height: 240px;
+            height: 250px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -126,37 +127,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-    <!-- Top Header Bar -->
+    <!-- Top Header Bar (Mobile Friendly Layout) -->
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
-        <div>MQCQC - BORROWER PORTAL</div>
-        <div class="d-flex gap-2">
-            <a href="borrower.php" class="btn btn-dark btn-sm px-3">Dashboard</a>
-            <a href="login.php" class="btn btn-danger btn-sm px-3">Logout</a>
+        <div class="fw-bold">MQCQC BORROWER PORTAL</div>
+        <div class="d-flex gap-1">
+            <a href="borrower.php" class="btn btn-dark btn-sm px-2 py-1 style="font-size: 0.75rem;">Dashboard</a>
+            <a href="login.php" class="btn btn-danger btn-sm px-2 py-1" style="font-size: 0.75rem;">Logout</a>
         </div>
     </div>
 
-    <div class="container my-4">
+    <div class="container my-2">
         <div class="card form-card">
             
+            <!-- Header Section with Working Logo Fallback -->
             <div class="text-center mb-4">
-                <img src="https://upload.wikimedia.org/wikipedia/en/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png" alt="MQCQC Logo" class="logo-img mb-3">
-                <h4 class="fw-bold text-dark mb-1">Student Borrower Registration Form</h4>
+                <div class="mb-2">
+                    <img src="logo.png" 
+                         onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/en/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png';" 
+                         alt="MQCQC Logo" 
+                         class="logo-img">
+                </div>
+                <h4 class="fw-bold text-dark mb-1 fs-5">Student Borrower Registration Form</h4>
                 <p class="text-success fw-bold small mb-2">QR-BASED EQUIPMENT MONITORING SYSTEM</p>
-                <p class="text-muted small">Please complete the registration form below, take a live selfie, and submit to borrow an item.</p>
+                <p class="text-muted small mb-0">Please complete the registration form below, take a live selfie, and submit to borrow an item.</p>
             </div>
 
             <?php if (!empty($success_msg)): ?>
-                <div class="alert alert-success text-center"><?= $success_msg; ?></div>
+                <div class="alert alert-success text-center py-2 small"><?= $success_msg; ?></div>
             <?php endif; ?>
 
             <?php if (!empty($error_msg)): ?>
-                <div class="alert alert-danger text-center"><?= $error_msg; ?></div>
+                <div class="alert alert-danger text-center py-2 small"><?= $error_msg; ?></div>
             <?php endif; ?>
 
             <form action="registration.php" method="POST">
                 <!-- Live Selfie Verification -->
                 <div class="mb-4">
-                    <label class="form-label fw-bold text-dark small">Live Selfie Verification:</label>
+                    <label class="form-label fw-bold text-dark small mb-1">Live Selfie Verification:</label>
                     <div class="camera-box mb-2">
                         <video id="video" autoplay playsinline></video>
                         <canvas id="canvas" style="display:none;"></canvas>
@@ -164,42 +171,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <input type="hidden" name="selfie_image" id="selfie_image">
                     <div class="text-center">
-                        <button type="button" id="snap-btn" class="btn btn-outline-secondary btn-sm px-4">Take / Retake Selfie</button>
+                        <button type="button" id="snap-btn" class="btn btn-secondary btn-sm px-4">Take / Retake Selfie</button>
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-dark small">Student ID Number:</label>
+                    <label class="form-label fw-bold text-dark small mb-1">Student ID Number:</label>
                     <input type="text" class="form-control" name="student_id" required placeholder="Enter Student ID" autocomplete="off">
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-dark small">Full Name:</label>
+                    <label class="form-label fw-bold text-dark small mb-1">Full Name:</label>
                     <input type="text" class="form-control" name="full_name" required placeholder="Enter Full Name" autocomplete="off">
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-dark small">Course & Year / Grade & Section:</label>
+                    <label class="form-label fw-bold text-dark small mb-1">Course & Year / Grade & Section:</label>
                     <input type="text" class="form-control" name="course_year" required placeholder="e.g. BSIT 3rd Year" autocomplete="off">
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-dark small">Item to Borrow:</label>
+                    <label class="form-label fw-bold text-dark small mb-1">Item to Borrow:</label>
                     <input type="text" class="form-control" name="item_to_borrow" required placeholder="e.g. Keyboard or Projector" autocomplete="off">
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold text-dark small">Return Date:</label>
+                    <div class="col-6 mb-3">
+                        <label class="form-label fw-bold text-dark small mb-1">Return Date:</label>
                         <input type="date" class="form-control" name="return_date" required>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold text-dark small">Return Time:</label>
+                    <div class="col-6 mb-3">
+                        <label class="form-label fw-bold text-dark small mb-1">Return Time:</label>
                         <input type="time" class="form-control" name="return_time" required>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-green w-100 mt-3">Submit Registration</button>
+                <button type="submit" class="btn btn-green w-100 mt-2">Submit Registration</button>
             </form>
 
         </div>
@@ -207,20 +214,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Camera streaming para sa live selfie verification
+        // Camera streaming setup
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const capturedPreview = document.getElementById('captured-preview');
         const snapBtn = document.getElementById('snap-btn');
         const selfieInput = document.getElementById('selfie_image');
 
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then(stream => {
-                video.srcObject = stream;
-            })
-            .catch(err => {
-                console.log("Camera access error: " + err);
-            });
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+                .then(stream => {
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.log("Camera access error: " + err);
+                });
+        }
 
         snapBtn.addEventListener('click', function() {
             canvas.width = video.videoWidth || 320;

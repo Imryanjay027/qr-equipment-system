@@ -49,9 +49,9 @@ if (!$current_user && !empty($student_id_query)) {
 
 if (!$current_user) {$current_user = [
         'id' => 1,
-        'full_name' => 'Ryan Jay Leoligao',
-        'student_id' => !empty($student_id_query) ?$student_id_query : '123456',
-        'course_year' => 'BSIT 3rd Year',
+        'full_name' => 'System Custodian',
+        'student_id' => !empty($student_id_query) ?$student_id_query : 'CUST001',
+        'course_year' => 'Staff',
         'profile_pic' => ''
     ];
 }
@@ -113,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                 <div class="alert alert-danger py-2 small"><?= $error_msg; ?></div>
             <?php endif; ?>
 
-            <form method="POST" action="">
+            <form id="borrowForm" method="POST" action="">
                 <input type="hidden" name="student_id" value="<?= htmlspecialchars($current_user['student_id']); ?>">
                 <input type="hidden" name="full_name" value="<?= htmlspecialchars($current_user['full_name']); ?>">
                 <input type="hidden" name="course_year" value="<?= htmlspecialchars($current_user['course_year']); ?>">
@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
 
                 <div class="mb-3">
                     <label class="form-label fw-bold small">Equipment Name / Item to Borrow</label>
-                    <select name="item_to_borrow" class="form-select form-select-sm" required>
+                    <select name="item_to_borrow" id="item_to_borrow" class="form-select form-select-sm" required>
                         <option value="">-- Pili ng Kagamitan --</option>
                         <option value="Keyboard">Keyboard</option>
                         <option value="Mouse">Mouse</option>
@@ -144,11 +144,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold small">Return Date</label>
-                        <input type="date" name="return_date" class="form-control form-control-sm" required>
+                        <input type="date" name="return_date" id="return_date" class="form-control form-control-sm" required>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold small">Return Time</label>
-                        <input type="time" name="return_time" class="form-control form-control-sm" required>
+                        <input type="time" name="return_time" id="return_time" class="form-control form-control-sm" required>
                     </div>
                 </div>
 
@@ -158,14 +158,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                         <video id="video" autoplay playsinline></video>
                         <button type="button" id="snap" class="btn btn-dark btn-sm px-3">Capture Selfie</button>
                         <canvas id="canvas" style="display:none;"></canvas>
-                        <input type="hidden" name="selfie_image" id="selfie_image">
+                        <input type="hidden" name="selfie_image" id="selfie_image" required>
                         <div id="preview-container" class="mt-2"></div>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-green mt-3">Submit Borrow Request</button>
+                <!-- Trigger button para mag-pop up ang Terms & Conditions modal -->
+                <button type="button" id="openTermsBtn" class="btn btn-green mt-3">Submit Borrow Request</button>
             </form>
         </div>
+    </div>
+
+    <!-- Terms & Conditions Modal -->
+    <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fs-6 fw-bold" id="termsModalLabel">Terms & Conditions</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-dark mb-3">
+              By proceeding with this equipment borrowing request, you agree to the following terms and conditions:
+            </p>
+            <div class="p-3 bg-light border rounded small text-secondary mb-3">
+              <strong>"If the borrowed equipment is damaged, lost, or misplaced while in your possession, you are strictly required to replace it with an exact, identical item of the same brand, model, and quality."</strong>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="agreeCheck">
+              <label class="form-check-label small fw-bold" for="agreeCheck">
+                I have read, understood, and agree to the Terms & Conditions.
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" id="confirmSubmitBtn" class="btn btn-success btn-sm" disabled>Confirm & Submit</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -192,6 +223,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
             const dataURL = canvas.toDataURL('image/png');
             selfieInput.value = dataURL;
             previewContainer.innerHTML = `<img src="${dataURL}" style="width:120px; border-radius:6px; border:2px solid #217835;" alt="Selfie Preview"><br><small class="text-success">Selfie Captured Successfully!</small>`;
+        });
+
+        // Modal elements logic
+        const openTermsBtn = document.getElementById('openTermsBtn');
+        const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
+        const agreeCheck = document.getElementById('agreeCheck');
+        const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
+        const borrowForm = document.getElementById('borrowForm');
+
+        openTermsBtn.addEventListener('click', function() {
+            // Validation bago buksan ang popup
+            const item = document.getElementById('item_to_borrow').value;
+            const rDate = document.getElementById('return_date').value;
+            const rTime = document.getElementById('return_time').value;
+            const selfie = selfieInput.value;
+
+            if (!item || !rDate || !rTime || !selfie) {
+                alert("Please complete all required fields and capture your selfie first.");
+                return;
+            }
+
+            // Buksan ang modal kung kumpleto na
+            termsModal.show();
+        });
+
+        agreeCheck.addEventListener('change', function() {
+            confirmSubmitBtn.disabled = !this.checked;
+        });
+
+        confirmSubmitBtn.addEventListener('click', function() {
+            borrowForm.submit();
         });
     </script>
 </body>

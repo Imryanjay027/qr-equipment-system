@@ -29,7 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        $stmt = $conn->prepare("SELECT id, role, full_name FROM users WHERE TRIM(otp_code) = TRIM(?)");
+        // Binago mula sa 'users' patungong 'tbl_users' para mag-match sa login.php at register.php
+        $stmt = $conn->prepare("SELECT id, role, full_name FROM tbl_users WHERE TRIM(otp_code) = TRIM(?) AND otp_expiry >= NOW()");
         $stmt->bind_param("s", $user_otp);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -41,15 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role']      = strtolower(trim($user['role']));
             $_SESSION['full_name'] = $user['full_name'];
 
-            $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
+            // Linisin ang OTP sa tbl_users pagkatapos mag-match
+            $clear = $conn->prepare("UPDATE tbl_users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
             $clear->bind_param("i", $user['id']);
             $clear->execute();
 
-            // PINAIGTING NA PAG-CHECK NG ROLE (Sinisiguro na kahit 'Custodian', 'ADMIN', o 'custodian' ay papasok)
             $user_role = strtolower(trim($user['role']));
             
+            // Piliin ang tamang dashboard base sa role
             if (strpos($user_role, 'custodian') !== false || strpos($user_role, 'admin') !== false) {
-                $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
+                $redirect_url = "index.php?uid=" . $user['id'];
             } else {
                 $redirect_url = "borrower.php?uid=" . $user['id'];
             }

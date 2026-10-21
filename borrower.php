@@ -4,7 +4,6 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// DATABASE CONNECTION
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
@@ -20,7 +19,6 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Subukang kunin ang User ID sa Session O sa URL Parameter (?uid=)
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
 
 if (empty($user_id)) {
@@ -28,7 +26,6 @@ if (empty($user_id)) {
     exit();
 }
 
-// Kunin ang mga detalye ng user mula sa DB
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -39,10 +36,12 @@ if (!$current_user) {
     exit();
 }
 
-// I-refresh ang session para secure
 $_SESSION['user_id'] = $current_user['id'];
 $_SESSION['role']    = strtolower(trim($current_user['role']));
 $_SESSION['full_name'] = $current_user['full_name'];
+
+// Kunin ang mga available equipment mula sa database kung meron man
+$equipments = $conn->query("SELECT * FROM equipment");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -55,7 +54,6 @@ $_SESSION['full_name'] = $current_user['full_name'];
 </head>
 <body class="bg-light">
 
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="#">
@@ -73,7 +71,6 @@ $_SESSION['full_name'] = $current_user['full_name'];
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="container my-5">
         <div class="row">
             <div class="col-md-12 mb-4">
@@ -84,8 +81,7 @@ $_SESSION['full_name'] = $current_user['full_name'];
             </div>
         </div>
 
-        <div class="row g-4">
-            <!-- Quick Actions / Cards -->
+        <div class="row g-4 mb-4">
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100 p-3 rounded-4">
                     <div class="card-body text-center">
@@ -94,7 +90,7 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">Available Equipment</h5>
                         <p class="text-muted small">Tignan ang mga available na kagamitan na maaari mong hiramin.</p>
-                        <a href="#" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Listahan</a>
+                        <button class="btn btn-success btn-sm w-100 fw-semibold" data-bs-toggle="modal" data-bs-target="#equipmentModal">Tignan ang Listahan</button>
                     </div>
                 </div>
             </div>
@@ -107,7 +103,7 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">My Borrowing History</h5>
                         <p class="text-muted small">I-check ang katayuan ng iyong mga hiniram na kagamitan.</p>
-                        <a href="#" class="btn btn-outline-primary btn-sm w-100 fw-semibold">Tignan ang History</a>
+                        <button class="btn btn-outline-primary btn-sm w-100 fw-semibold" data-bs-toggle="modal" data-bs-target="#historyModal">Tignan ang History</button>
                     </div>
                 </div>
             </div>
@@ -120,7 +116,82 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">My QR Code</h5>
                         <p class="text-muted small">I-display ang iyong QR code para sa mabilisang transaksiyon.</p>
-                        <a href="#" class="btn btn-outline-warning btn-sm w-100 fw-semibold text-dark">Tignan ang QR</a>
+                        <button class="btn btn-outline-warning btn-sm w-100 fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#qrModal">Tignan ang QR</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para sa Equipment List -->
+    <div class="modal fade" id="equipmentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-box-open me-2"></i>Available Equipment List</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Equipment Name</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($equipments && $equipments->num_rows > 0): ?>
+                                    <?php while($row = $equipments->fetch_assoc()): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($row['name'] ?? 'Equipment'); ?></td>
+                                            <td><?= htmlspecialchars($row['category'] ?? 'General'); ?></td>
+                                            <td><span class="badge bg-success">Available</span></td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-4">Wala pang nakarehistrong equipment sa database.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para sa History -->
+    <div class="modal fade" id="historyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-history me-2"></i>My Borrowing History</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                    <div class="modal-body text-center py-4 text-muted">
+                    Wala ka pang naitalang mga hiniram na kagamitan sa kasaysayan.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para sa QR Code -->
+    <div class="modal fade" id="qrModal" tabindex="-1">
+        <div class="modal-dialog text-center">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title text-dark fw-bold"><i class="fas fa-id-card me-2"></i>My Digital QR Code</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="text-muted small">Ipakita ang QR code na ito sa Custodian para sa pag-borrow ng item.</p>
+                    <div class="p-3 bg-light border d-inline-block rounded shadow-sm">
+                        <!-- Pwede mong palitan ng actual QR image o text -->
+                        <h3 class="fw-bold text-success mb-0">UID: <?= $current_user['id']; ?></h3>
+                        <p class="small text-muted mb-0"><?= htmlspecialchars($current_user['full_name']); ?></p>
                     </div>
                 </div>
             </div>

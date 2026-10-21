@@ -4,9 +4,7 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// ==========================================
-// DATABASE CONNECTION (COOLIFY ENVIRONMENT)
-// ==========================================
+// DATABASE CONNECTION
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
@@ -23,6 +21,7 @@ if ($conn->connect_error) {
 }
 
 $error = "";
+$success_msg = "";
 $redirect_url = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -31,34 +30,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        // Gagamitin ang NOW() ng MySQL para siguruhing tama ang pagbasa ng expiry oras
-        $stmt = $conn->prepare("SELECT * FROM users WHERE otp_code = ? AND otp_expiry >= NOW()");
+        // Hanapin sa database ang user gamit ang OTP code
+        $stmt = $conn->prepare("SELECT id, role, full_name FROM users WHERE TRIM(otp_code) = TRIM(?)");
         $stmt->bind_param("s", $user_otp);
         $stmt->execute();
         $result = $stmt->get_result();
 
-        if ($result->num_rows > 0) {
+        if ($result && $result->num_rows > 0) {
             $user = $result->fetch_assoc();
 
-            // TAMA ANG OTP! I-set ang session
+            // TAMA ANG OTP! Itatalaga ang session ng user
             $_SESSION['user_id']   = $user['id'];
             $_SESSION['role']      = strtolower(trim($user['role']));
             $_SESSION['full_name'] = $user['full_name'];
 
-            // Linisin ang OTP sa database para hindi na magamit ulit
+            // Burahin ang OTP sa database para hindi na magamit ulit
             $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
             $clear->bind_param("i", $user['id']);
             $clear->execute();
 
-            // Tukuyin ang redirection batay sa role
+            // ITINERARY NG REDIRECTION BATAY SA ROLE
             $user_role = strtolower(trim($user['role']));
             if ($user_role === 'custodian') {
                 $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
             } else {
                 $redirect_url = "borrower.php?uid=" . $user['id'];
             }
+
+            $success_msg = "OTP Verified Successfully!";
         } else {
-            $error = "Mali o expired na ang OTP code na inilagay mo.";
+            $error = "Mali o expired ang OTP code na inilagay mo.";
         }
     }
 }
@@ -82,17 +83,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="alert alert-danger py-2 small"><?= htmlspecialchars($error); ?></div>
                     <?php endif; ?>
 
-                    <?php if (!empty($redirect_url)): ?>
+                    <?php if (!empty($success_msg)): ?>
                         <div class="alert alert-success py-3 text-center">
-                            <p class="mb-2 fw-semibold">OTP Verified Successfully!</p>
+                            <p class="mb-2 fw-semibold"><?= htmlspecialchars($success_msg); ?></p>
                             <div class="spinner-border spinner-border-sm text-success"></div>
                             <span class="small text-muted ms-1">Redirecting to dashboard...</span>
                         </div>
                         <script>
-                            setTimeout(function() { window.location.href = "<?= $redirect_url; ?>"; }, 1000);
+                            setTimeout(function() { 
+                                window.location.href = "<?= $redirect_url; ?>"; 
+                            }, 800);
                         </script>
                     <?php else: ?>
-                        <p class="text-muted text-center small">Inilagay namin ang 6-digit code sa iyong email. Pakilagay sa ibaba:</p>
+                        <p class="text-muted text-center small">Ilagay ang 6-digit code na ipinadala sa iyong email:</p>
                         <form action="verify_otp.php" method="POST">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Enter 6-Digit OTP</label>

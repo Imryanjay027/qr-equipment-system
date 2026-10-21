@@ -29,36 +29,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        // Binago mula sa 'users' patungong 'tbl_users' para mag-match sa login.php at register.php
-        $stmt = $conn->prepare("SELECT id, role, full_name FROM tbl_users WHERE TRIM(otp_code) = TRIM(?) AND otp_expiry >= NOW()");
-        $stmt->bind_param("s", $user_otp);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result && $result->num_rows > 0) {
-            $user = $result->fetch_assoc();
-
-            $_SESSION['user_id']   = $user['id'];
-            $_SESSION['role']      = strtolower(trim($user['role']));
-            $_SESSION['full_name'] = $user['full_name'];
-
-            // Linisin ang OTP sa tbl_users pagkatapos mag-match
-            $clear = $conn->prepare("UPDATE tbl_users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
-            $clear->bind_param("i", $user['id']);
-            $clear->execute();
-
-            $user_role = strtolower(trim($user['role']));
-            
-            // Piliin ang tamang dashboard base sa role
-            if (strpos($user_role, 'custodian') !== false || strpos($user_role, 'admin') !== false) {
-                $redirect_url = "index.php?uid=" . $user['id'];
-            } else {
-                $redirect_url = "borrower.php?uid=" . $user['id'];
+        // Kunin ang mga tunay na columns sa tbl_users para iwas unknown column error
+        $table_columns = [];
+        $res = $conn->query("SHOW COLUMNS FROM tbl_users");
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $table_columns[] = $row['Field'];
             }
+        }
 
-            $success_msg = "OTP Verified Successfully!";
+        $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname', $table_columns) ? 'fullname' : '');
+        $role_col = in_array('role', $table_columns) ? 'role' : (in_array('user_type', $table_columns) ? 'user_type' : '');
+
+        if (!empty($name_col) && !empty($role_col)) {
+            $sql = "SELECT id, {$role_col} as role, {$name_col} as full_name FROM tbl_users WHERE TRIM(otp_code) = TRIM(?) AND otp_expiry >= NOW()";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("s", $user_otp);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result && $result->num_rows > 0) {
+                $user = $result->fetch_assoc();
+
+                $_SESSION['user_id']   = $user['id'];
+                $_SESSION['role']      = strtolower(trim($user['role']));
+                $_SESSION['full_name'] = $user['full_name'];
+
+                $clear = $conn->prepare("UPDATE tbl_users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
+                $clear->bind_param("i", $user['id']);
+                $clear->execute();
+
+                $user_role = strtolower(trim($user['role']));
+                
+                if (strpos($user_role, 'custodian') !== false || strpos($user_role, 'admin') !== false) {
+                    $redirect_url = "index.php?uid=" . $user['id'];
+                } else {
+                    $redirect_url = "borrower.php?uid=" . $user['id'];
+                }
+
+                $success_msg = "OTP Verified Successfully!";
+            } else {
+                $error = "Mali o expired na ang OTP code na inilagay mo.";
+            }
         } else {
-            $error = "Mali o expired na ang OTP code na inilagay mo.";
+            $error = "Database configuration error: Required columns not found.";
         }
     }
 }

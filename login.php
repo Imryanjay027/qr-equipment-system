@@ -20,6 +20,7 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
+// Siguraduhing may OTP columns
 try { @$conn->query("ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL"); } catch (Exception $e) {}
 try { @$conn->query("ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL"); } catch (Exception $e) {}
 
@@ -38,6 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
             
+            // I-save ang email sa session para madaling ma-track
+            $_SESSION['otp_email'] = $user['email'];
+
             // Generate 6-digit OTP
             $otp = sprintf("%06d", rand(0, 999999));
             $expiry = date('Y-m-d H:i:s', strtotime('+15 minutes'));
@@ -75,7 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_close($ch);
 
             if ($http_code >= 200 && $http_code < 300) {
-                // Diretsong pumunta sa verify page nang walang kailangang i-pasa na uid sa URL
                 $redirect_url = "verify_otp.php";
             } else {
                 $error = "Failed to send OTP via email.";

@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
         .main-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); background: #ffffff; }
         .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; width: 100%; cursor: pointer; }
         .btn-green:hover { background-color: #1a602a; color: #ffffff; }
-        #video, #canvas { width: 100%; max-width: 320px; border-radius: 8px; border: 2px solid #217835; }
+        #video, #canvas { width: 100%; max-width: 320px; height: 240px; object-fit: cover; border-radius: 8px; border: 2px solid #217835; background: #000; }
         .system-logo { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid #217835; display: inline-block; }
     </style>
 </head>
@@ -135,7 +135,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                     <input type="text" class="form-control form-control-sm" value="<?= htmlspecialchars($current_user['student_id'] . ' - ' .$current_user['course_year']); ?>" disabled>
                 </div>
 
-                <!-- Text field input para i-type ang kagamitang hihiramin -->
                 <div class="mb-3">
                     <label class="form-label fw-bold small">Equipment Name / Item to Borrow</label>
                     <input type="text" name="item_to_borrow" id="item_to_borrow" class="form-control form-control-sm" placeholder="e.g. Projector, HDMI Cable, Keyboard" required>
@@ -152,11 +151,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                     </div>
                 </div>
 
+                <!-- Live Camera Section -->
                 <div class="mb-3 text-center">
                     <label class="form-label fw-bold small d-block">Selfie Verification</label>
                     <div class="d-flex flex-column align-items-center gap-2">
-                        <video id="video" autoplay playsinline></video>
-                        <button type="button" id="snap" class="btn btn-dark btn-sm px-3">Capture Selfie</button>
+                        <div id="cam-box" style="position: relative;">
+                            <video id="video" autoplay playsinline muted></video>
+                        </div>
+                        <button type="button" id="startCamera" class="btn btn-outline-success btn-sm px-3">Turn On Camera</button>
+                        <button type="button" id="snap" class="btn btn-dark btn-sm px-3" style="display:none;">Capture Selfie</button>
+                        
                         <canvas id="canvas" style="display:none;"></canvas>
                         <input type="hidden" name="selfie_image" id="selfie_image" required>
                         <div id="preview-container" class="mt-2"></div>
@@ -170,4 +174,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
     </div>
 
     <!-- Terms & Conditions Modal -->
-    <div class="modal fade" id="
+    <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fs-6 fw-bold" id="termsModalLabel">Terms & Conditions</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-dark mb-3">
+              By proceeding with this equipment borrowing request, you agree to the following terms and conditions:
+            </p>
+            <div class="p-3 bg-light border rounded small text-secondary mb-3">
+              <strong>"If the borrowed equipment is damaged, lost, or misplaced while in your possession, you are strictly required to replace it with an exact, identical item of the same brand, model, and quality."</strong>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="agreeCheck">
+              <label class="form-check-label small fw-bold" for="agreeCheck">
+                I have read, understood, and agree to the Terms & Conditions.
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" id="confirmSubmitBtn" class="btn btn-success btn-sm" disabled>Confirm & Submit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snap = document.getElementById('snap');
+        const startCameraBtn = document.getElementById('startCamera');
+        const selfieInput = document.getElementById('selfie_image');
+        const previewContainer =- document.getElementById('preview-container');
+
+        let mediaStream = null;
+
+        startCameraBtn.addEventListener('click', async function() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: false 
+                });
+                video.srcObject = mediaStream;
+                startCameraBtn.style.display = 'none';
+                snap.style.display = 'inline-block';
+            } catch (err) {
+                alert("Camera permission denied or not supported by browser: " + err.message);
+                console.error(err);
+            }
+        });
+
+        snap.addEventListener('click', function() {
+            if (!video.srcObject) {
+                alert("Please turn on the camera first.");
+                return;
+            }
+            canvas.width = video.videoWidth || 320;
+            canvas.height = video.videoHeight || 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/png');
+            selfieInput.value = dataURL;
+            
+            // Itigil ang stream pagka-capture para kusang mapatay ang camera light
+            mediaStream.getTracks().forEach(track => track.stop());
+            video.style.display = 'none';
+            snap.style.display = 'none';
+
+            document.getElementById('preview-container').innerHTML = `<img src="${dataURL}" style="width:120px; height:90px; object-fit:cover; border-radius:6px; border:2px solid #217835;" alt="Selfie Preview"><br><small class="text-success fw-bold">Live Selfie Captured Successfully!</small>`;
+        });
+
+        // Modal logic
+        const openTermsBtn = document.getElementById('openTermsBtn');
+        const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
+        const agreeCheck = document.getElementById('agreeCheck');
+        const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
+        const borrowForm = document.getElementById('borrowForm');
+
+        openTermsBtn.addEventListener('click', function() {
+            const item = document.getElementById('item_to_borrow').value.trim();
+            const rDate = document.getElementById('return_date').value;
+            const rTime = document.getElementById('return_time').value;
+            const selfie = selfieInput.value;
+
+            if (!item || !rDate || !rTime || !selfie) {
+                alert("Please complete all required fields and capture your live selfie first.");
+                return;
+            }
+
+            termsModal.show();
+        });
+
+        agreeCheck.addEventListener('change', function() {
+            confirmSubmitBtn.disabled = !this.checked;
+        });
+
+        confirmSubmitBtn.addEventListener('click', function() {
+            borrowForm.submit();
+        });
+    </script>
+</body>
+</html>

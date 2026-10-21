@@ -151,9 +151,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-12 col-sm-10 col-md-6 col-lg-4">
                 <div class="card login-card text-center">
                     
-                    <!-- School Logo -->
+                    <!-- School Logo with Fallback -->
                     <div class="mb-3">
-                        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png/220px-Mary_the_Queen_College_of_Quezon_City_logo.png" alt="MQCQC Logo" class="logo-img">
+                        <img src="https://upload.wikimedia.org/wikipedia/en/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png" 
+                             onerror="this.onerror=null; this.src='logo.jpg';" 
+                             alt="MQCQC Logo" 
+                             class="logo-img">
                     </div>
 
                     <!-- System Header -->

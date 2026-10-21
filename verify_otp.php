@@ -29,7 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        // Kunin ang mga tunay na columns sa tbl_users para iwas unknown column error
         $table_columns = [];
         $res = $conn->query("SHOW COLUMNS FROM tbl_users");
         if ($res) {
@@ -51,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($result && $result->num_rows > 0) {
                 $user = $result->fetch_assoc();
 
+                // I-save nang maayos sa session
                 $_SESSION['user_id']   = $user['id'];
                 $_SESSION['role']      = strtolower(trim($user['role']));
                 $_SESSION['full_name'] = $user['full_name'];
@@ -61,8 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $user_role = strtolower(trim($user['role']));
                 
+                // Ituro nang tuwiran sa custodian_dashboard.php kung ito ay custodian o admin
                 if (strpos($user_role, 'custodian') !== false || strpos($user_role, 'admin') !== false) {
-                    $redirect_url = "index.php?uid=" . $user['id'];
+                    $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
                 } else {
                     $redirect_url = "borrower.php?uid=" . $user['id'];
                 }

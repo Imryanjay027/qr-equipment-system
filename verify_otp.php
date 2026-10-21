@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        // Hanapin sa database ang user gamit ang OTP code
+        // Hahanapin sa database ang user gamit ang OTP code
         $stmt = $conn->prepare("SELECT id, role, full_name FROM users WHERE TRIM(otp_code) = TRIM(?)");
         $stmt->bind_param("s", $user_otp);
         $stmt->execute();
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result && $result->num_rows > 0) {
             $user = $result->fetch_assoc();
 
-            // TAMA ANG OTP! Itatalaga ang session ng user
+            // TAMA ANG OTP! Itatalaga ang opisyal na session ng user
             $_SESSION['user_id']   = $user['id'];
             $_SESSION['role']      = strtolower(trim($user['role']));
             $_SESSION['full_name'] = $user['full_name'];
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $clear->bind_param("i", $user['id']);
             $clear->execute();
 
-            // ITINERARY NG REDIRECTION BATAY SA ROLE
+            // ITINERARY NG DIREKTANG REDIRECTION BATAY SA ROLE
             $user_role = strtolower(trim($user['role']));
             if ($user_role === 'custodian') {
                 $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $success_msg = "OTP Verified Successfully!";
         } else {
-            $error = "Mali o expired ang OTP code na inilagay mo.";
+            $error = "Mali o expired na ang OTP code na inilagay mo. Pakisubukan ulit.";
         }
     }
 }

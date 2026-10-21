@@ -1,72 +1,63 @@
 <?php
-// registration.php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+session_start();
+date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-$conn = mysqli_connect("localhost", "root", "", "qrcode");
-if (!$conn) {
-    die("Database Connection Failed: " . mysqli_connect_error());
+$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+
+$conn = @new mysqli($host, $username, $password, $database, (int)$port);
+if ($conn->connect_error) {
+    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
 }
 
-$get_student_id = isset($_GET['student_id']) ? trim($_GET['student_id']) : '';
+if ($conn->connect_error) {
+    die("Database Connection Failed: " . $conn->connect_error);
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['student_id'])) {
-    $student_id     = mysqli_real_escape_string($conn, $_POST['student_id']);
-    $fullname       = mysqli_real_escape_string($conn, $_POST['fullname']);
-    $course_year    = mysqli_real_escape_string($conn, $_POST['course_year']);
-    $item_to_borrow = mysqli_real_escape_string($conn, $_POST['item_to_borrow']);
-    $return_date    = mysqli_real_escape_string($conn, $_POST['return_date']);
-    $return_time    = mysqli_real_escape_string($conn, $_POST['return_time']);
-    
-    $selfie_data    = $_POST['selfie_image'] ?? '';
-    $filename       = '';
+// Siguraduhing may borrow_requests table para sa mga hiram na kagamitan
+$conn->query("CREATE TABLE IF NOT EXISTS borrow_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(50) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    course_year VARCHAR(100) NOT NULL,
+    item_to_borrow VARCHAR(255) NOT NULL,
+    return_date DATE NOT NULL,
+    return_time VARCHAR(50) NOT NULL,
+    selfie_image TEXT,
+    status VARCHAR(50) DEFAULT 'Pending'
+)");
 
-    if (!empty($selfie_data)) {
-        $image_parts = explode(";base64,", $selfie_data);
-        if (count($image_parts) == 2) {
-            $image_type_aux = explode("image/", $image_parts[0]);
-            $image_type = $image_type_aux[1] ?? 'jpeg';
-            $image_base64 = base64_decode($image_parts[1]);
-            
-            $filename = 'selfie_' . $student_id . '_' . time() . '.' . $image_type;
-            
-            $upload_folder = 'uploads/';
-            if (!is_dir($upload_folder)) {
-                mkdir($upload_folder, 0777, true);
-            }
-            file_put_contents($upload_folder . $filename, $image_base64);
+$success_msg = "";
+$error_msg = "";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $student_id = trim($_POST['student_id'] ?? '');
+    $full_name = trim($_POST['full_name'] ?? '');
+    $course_year = trim($_POST['course_year'] ?? '');
+    $item_to_borrow = trim($_POST['item_to_borrow'] ?? '');
+    $return_date = trim($_POST['return_date'] ?? '');
+    $return_time = trim($_POST['return_time'] ?? '');
+    $selfie_image = $_POST['selfie_image'] ?? '';
+
+    if (!empty($student_id) && !empty($full_name) && !empty($item_to_borrow)) {
+        $stmt = $conn->prepare("INSERT INTO borrow_requests (student_id, full_name, course_year, item_to_borrow, return_date, return_time, selfie_image, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')");
+        $stmt->bind_param("sssssss", $student_id, $full_name, $course_year, $item_to_borrow, $return_date, $return_time, $selfie_image);
+        
+        if ($stmt->execute()) {
+            $last_id = $conn->insert_id;
+            $success_msg = "Borrow request submitted successfully! Redirecting to dashboard...";
+            echo "<script>setTimeout(function() { window.location.href = 'borrower.php?uid={$last_id}'; }, 1500);</script>";
+        } else {
+            $error_msg = "Database error: " . $conn->error;
         }
-    }
-
-    date_default_timezone_set('Asia/Manila');
-    $borrow_date    = date('Y-m-d H:i:s');
-    $status         = 'Pending';
-
-    // 1. Safe query check for users table
-    $user_check = mysqli_query($conn, "SELECT * FROM users WHERE username = '$student_id'");
-    if ($user_check && mysqli_num_rows($user_check) > 0) {
-        mysqli_query($conn, "UPDATE users SET fullname = '$fullname', course_year = '$course_year' WHERE username = '$student_id'");
     } else {
-        mysqli_query($conn, "INSERT INTO users (username, fullname, course_year) VALUES ('$student_id', '$fullname', '$course_year')");
+        $error_msg = "Please fill in all required fields.";
     }
-
-    // 2. Save to borrowers table
-    $query_borrower = "INSERT INTO borrowers (student_id, fullname, course_year, item_to_borrow, return_date, return_time, status, selfie_image) VALUES ('$student_id', '$fullname', '$course_year', '$item_to_borrow', '$return_date', '$return_time', '$status', '$filename')";
-    if (!mysqli_query($conn, $query_borrower)) {
-        die("Error on borrowers query: " . mysqli_error($conn));
-    }
-
-    // 3. Save to borrowed_equipment table for custodian dashboard reflection
-    $query_equipment = "INSERT INTO borrowed_equipment (student_id, equipment_name, item_to_borrow, borrow_date, return_date, return_time, status) 
-                        VALUES ('$student_id', '$item_to_borrow', '$item_to_borrow', '$borrow_date', '$return_date', '$return_time', '$status')";
-    
-    if (!mysqli_query($conn, $query_equipment)) {
-        die("Error on borrowed_equipment query: " . mysqli_error($conn));
-    }
-
-    echo "<script>window.location.href = 'borrower.php?student_id=" . urlencode($student_id) . "&tab=active';</script>";
-    exit();
 }
 ?>
 <!DOCTYPE html>
@@ -74,232 +65,176 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['student_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Borrower Registration Form - Mary The Queen College</title>
+    <title>Student Borrower Registration Form - MQCQC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding-bottom: 40px; }
-        .top-header { background: #28a745; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-wrap: wrap; gap: 10px; }
-        .top-header-title { font-weight: bold; font-size: 14px; text-transform: uppercase; }
-        .header-btns { display: flex; gap: 10px; align-items: center; }
-        .btn-dashboard { background: #007bff; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
-        .btn-dashboard:hover { background: #0056b3; }
-        .btn-back-login { background: white; color: #28a745; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
-        .btn-back-login:hover { background: #f8f9fa; }
-        
-        .container { max-width: 600px; width: 100%; margin: 30px auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; }
-        .school-logo { width: 85px; height: 85px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #28a745; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h2 { color: #1a365d; margin: 5px 0 3px 0; font-size: 22px; }
-        .system-subtitle { font-size: 11px; color: #555; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 0.5px; line-height: 1.3; }
-        .sub-instruction { text-align: left; color: #666; font-size: 13px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .form-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px; }
-        input[type="text"], input[type="date"], input[type="time"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
-        input:focus { border-color: #28a745; outline: none; }
-        .row { display: flex; gap: 15px; }
-        .col { flex: 1; }
-        
-        .webcam-box { text-align: center; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border: 1px dashed #ccc; border-radius: 4px; }
-        #video, #canvas, #snapshot-preview { width: 100%; max-width: 320px; height: 240px; border-radius: 4px; object-fit: cover; background: #000; }
-        .btn-capture { background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 8px; width: 100%; max-width: 320px; }
-        .btn-capture:hover { background: #0056b3; }
-        .btn-submit { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 15px; margin-top: 15px; }
-        .btn-submit:hover { background: #218838; }
-
-        /* Modal Styles for Terms and Conditions */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 10px; }
-        .modal-content { background: #fff; width: 100%; max-width: 500px; padding: 25px; border-radius: 8px; text-align: left; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        .modal-content h3 { color: #1a365d; margin-top: 0; margin-bottom: 10px; font-size: 18px; text-align: center; }
-        .terms-body { font-size: 12px; color: #444; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 15px; background: #f9f9f9; line-height: 1.5; }
-        .checkbox-group { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 15px; font-size: 12px; color: #333; }
-        .modal-btns { display: flex; justify-content: flex-end; gap: 10px; }
-        .btn-cancel { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-agree { background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-agree:disabled { background: #cbd5e1; cursor: not-allowed; }
-
-        /* Mobile Responsive Media Queries */
-        @media (max-width: 768px) {
-            body { padding: 0; }
-            .container { margin: 10px auto; padding: 15px; width: 95% !important; box-shadow: none; border-radius: 0; }
-            .top-header { padding: 10px; flex-direction: column; align-items: flex-start; gap: 8px; }
-            .header-btns { width: 100%; justify-content: space-between; }
-            .row { flex-direction: column; gap: 0; }
-            .col { width: 100%; }
-            #video, #canvas, #snapshot-preview { width: 100% !important; max-width: 100% !important; height: 200px; }
-            .btn-capture { width: 100% !important; max-width: 100% !important; }
+        body {
+            background-color: #f4f6f9;
+        }
+        .top-navbar {
+            background-color: #217835;
+            color: #ffffff;
+            padding: 12px 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .form-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            background: #ffffff;
+            padding: 30px;
+            max-width: 700px;
+            margin: 30px auto;
+        }
+        .logo-img {
+            width: 75px;
+            height: 75px;
+            object-fit: contain;
+        }
+        .btn-green {
+            background-color: #217835;
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .btn-green:hover {
+            background-color: #1a602a;
+            color: #ffffff;
+        }
+        .camera-box {
+            border: 2px dashed #ced4da;
+            border-radius: 8px;
+            background: #000;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        video, canvas, #captured-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
     </style>
 </head>
 <body>
-    <div class="top-header">
-        <span class="top-header-title">MARY THE QUEEN COLLEGE - BORROWER PORTAL</span>
-        <div class="header-btns">
-            <a href="<?php echo !empty($get_student_id) ? 'borrower.php?student_id=' . htmlspecialchars($get_student_id) . '&tab=active' : 'borrower.php'; ?>" id="topDashboardBtn" class="btn-dashboard">Back to your Dashboard</a>
-            <a href="login.php" class="btn-back-login">Log in</a>
+
+    <!-- Top Header Bar -->
+    <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
+        <div>MARY THE QUEEN COLLEGE - BORROWER PORTAL</div>
+        <div class="d-flex gap-2">
+            <a href="borrower.php" class="btn btn-dark btn-sm px-3">Back to your Dashboard</a>
+            <a href="login.php" class="btn btn-danger btn-sm px-3">Log In</a>
         </div>
     </div>
 
-    <div class="container">
-        <img src="logo.jpg" alt="School Logo" class="school-logo" onerror="this.style.display='none';">
-        <h2>Student Borrower Registration Form</h2>
-        <div class="system-subtitle">QR - BASED SCHOOL EQUIPMENT BORROWING, RETURN, AND CONDITION MONITORING SYSTEM</div>
-        
-        <div class="sub-instruction">
-            Please complete the registration form below, take a live selfie, and submit to borrow an item.
-        </div>
+    <div class="container my-4">
+        <div class="card form-card">
+            
+            <div class="text-center mb-4">
+                <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png/220px-Mary_the_Queen_College_of_Quezon_City_logo.png" alt="Logo" class="logo-img mb-2">
+                <h4 class="fw-bold text-dark mb-1">Student Borrower Registration Form</h4>
+                <p class="text-muted small mb-0">QR - BASED SCHOOL EQUIPMENT BORROWING, RETURN, AND CONDITION MONITORING SYSTEM</p>
+                <p class="text-muted small">Please complete the registration form below, take a live selfie, and submit to borrow an item.</p>
+            </div>
 
-        <form action="" method="POST" id="registrationForm" onsubmit="return handleFormSubmit(event);">
-            <div class="form-group">
-                <label>Live Selfie Verification:</label>
-                <div class="webcam-box">
-                    <video id="video" autoplay playsinline></video>
-                    <canvas id="canvas" style="display:none;"></canvas>
-                    <img id="snapshot-preview" style="display:none;" alt="Live Selfie Preview">
-                    <br>
-                    <button type="button" id="captureBtn" class="btn-capture" onclick="takeSnapshot()">Capture Selfie</button>
+            <?php if (!empty($success_msg)): ?>
+                <div class="alert alert-success text-center"><?= $success_msg; ?></div>
+            <?php endif; ?>
+
+            <?php if (!empty($error_msg)): ?>
+                <div class="alert alert-danger text-center"><?= $error_msg; ?></div>
+            <?php endif; ?>
+
+            <form action="registration.php" method="POST">
+                <!-- Live Selfie Verification -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark small">Live Selfie Verification:</label>
+                    <div class="camera-box mb-2">
+                        <video id="video" autoplay playsinline></video>
+                        <canvas id="canvas" style="display:none;"></canvas>
+                        <img id="captured-preview" style="display:none;" alt="Captured Selfie"/>
+                    </div>
+                    <input type="hidden" name="selfie_image" id="selfie_image">
+                    <div class="text-center">
+                        <button type="button" id="snap-btn" class="btn btn-outline-secondary btn-sm px-4">Retake Selfie</button>
+                    </div>
                 </div>
-                <input type="hidden" name="selfie_image" id="selfie_image" required>
-            </div>
 
-            <div class="form-group">
-                <label>Student ID Number:</label>
-                <input type="text" name="student_id" id="student_id_input" value="<?php echo htmlspecialchars($get_student_id); ?>" placeholder="e.g. 4561239" required>
-            </div>
-
-            <div class="form-group">
-                <label>Full Name:</label>
-                <input type="text" name="fullname" placeholder="First Name and Last Name" required>
-            </div>
-
-            <div class="form-group">
-                <label>Course & Year:</label>
-                <input type="text" name="course_year" placeholder="e.g. BSIT - 3rd Year" required>
-            </div>
-
-            <div class="form-group">
-                <label>Item to Borrow:</label>
-                <input type="text" name="item_to_borrow" placeholder="e.g. Projector, Multimeter" required>
-            </div>
-
-            <div class="row">
-                <div class="col form-group">
-                    <label>Return Date:</label>
-                    <input type="date" name="return_date" required>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark small">Student ID Number:</label>
+                    <input type="text" class="form-control" name="student_id" required placeholder="Enter Student ID" autocomplete="off">
                 </div>
-                <div class="col form-group">
-                    <label>Return Time:</label>
-                    <input type="time" name="return_time" required>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark small">Full Name:</label>
+                    <input type="text" class="form-control" name="full_name" required placeholder="Enter Full Name" autocomplete="off">
                 </div>
-            </div>
 
-            <button type="submit" class="btn-submit">Submit Registration</button>
-        </form>
-    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark small">Course & Year / Grade & Section:</label>
+                    <input type="text" class="form-control" name="course_year" required placeholder="e.g. BSIT 3rd Year" autocomplete="off">
+                </div>
 
-    <!-- Terms and Conditions Modal -->
-    <div id="termsModal" class="modal-overlay">
-        <div class="modal-content">
-            <h3>Terms and Conditions</h3>
-            <div class="terms-body">
-                <p><b>MARY THE QUEEN COLLEGE OF QUEZON CITY</b><br>Property Custodian Office - Equipment Borrowing Policy</p>
-                <br>
-                <p>By submitting this registration form, you (the borrower) agree to the following policies and guidelines:</p>
-                <ul>
-                    <li><b>Equipment Responsibility:</b> It is the student's responsibility to handle, secure, and maintain the borrowed equipment in proper condition while in their custody.</li>
-                    <li><b>Return Schedule:</b> Equipment must be returned on or before the scheduled return date and time. Delays or failure to return on time may incur penalties or account clearance flagging.</li>
-                    <li><b>Damage and Loss:</b> If the equipment is damaged, compromised, or lost due to negligence, the borrower is obliged to provide an appropriate replacement or settle repair fees as assessed by the Property Custodian Office.</li>
-                    <li><b>Live Verification:</b> The captured live selfie serves as official visual verification of your identity for this borrowing transaction.</li>
-                </ul>
-            </div>
-            <div class="checkbox-group">
-                <input type="checkbox" id="agreeCheckbox" onchange="toggleAgreeButton()">
-                <label for="agreeCheckbox" style="font-weight: normal; margin-bottom:0;">I have read and agree to the terms and conditions of the Mary The Queen College of Quezon City Property Custodian Office.</label>
-            </div>
-            <div class="modal-btns">
-                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="button" id="confirmSubmitBtn" class="btn-agree" disabled onclick="submitActualForm()">Agree & Submit</button>
-            </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark small">Item to Borrow:</label>
+                    <input type="text" class="form-control" name="item_to_borrow" required placeholder="e.g. Keyboard or Projector" autocomplete="off">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold text-dark small">Return Date:</label>
+                        <input type="date" class="form-control" name="return_date" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold text-dark small">Return Time:</label>
+                        <input type="time" class="form-control" name="return_time" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-green w-100 mt-3">Submit Registration</button>
+            </form>
+
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.getElementById('student_id_input').addEventListener('input', function() {
-            const val = this.value.trim();
-            const btn = document.getElementById('topDashboardBtn');
-            if (val !== '') {
-                btn.href = 'borrower.php?student_id=' + encodeURIComponent(val) + '&tab=active';
-            } else {
-                btn.href = 'borrower.php';
-            }
-        });
-
+        // Camera streaming para sa live selfie verification
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const snapshotPreview = document.getElementById('snapshot-preview');
-        const captureBtn = document.getElementById('captureBtn');
+        const capturedPreview = document.getElementById('captured-preview');
+        const snapBtn = document.getElementById('snap-btn');
         const selfieInput = document.getElementById('selfie_image');
 
-        window.addEventListener('DOMContentLoaded', () => {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false })
-                    .then(stream => {
-                        video.srcObject = stream;
-                    })
-                    .catch(err => {
-                        console.error("Webcam error: ", err);
-                        alert("Hindi ma-access ang webcam. Pakitiyak na pinayagan mo ito sa browser.");
-                    });
-            } else {
-                alert("Ang iyong browser ay hindi sumusuporta sa paggamit ng webcam.");
-            }
-        });
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.log("Camera access error: " + err);
+            });
 
-        function takeSnapshot() {
-            const context = canvas.getContext('2d');
+        snapBtn.addEventListener('click', function() {
             canvas.width = video.videoWidth || 320;
             canvas.height = video.videoHeight || 240;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            const dataURL = canvas.toDataURL('image/jpeg');
-            selfieInput.value = dataURL;
-            
-            snapshotPreview.src = dataURL;
-            snapshotPreview.style.display = 'block';
+            const dataURL = canvas.toDataURL('image/png');
+            capturedPreview.src = dataURL;
+            capturedPreview.style.display = 'block';
             video.style.display = 'none';
-            captureBtn.innerText = "Retake Selfie";
-            captureBtn.onclick = retakeSnapshot;
-        }
-
-        function retakeSnapshot() {
-            video.style.display = 'block';
-            snapshotPreview.style.display = 'none';
-            selfieInput.value = '';
-            captureBtn.innerText = "Capture Selfie";
-            captureBtn.onclick = takeSnapshot;
-        }
-
-        function handleFormSubmit(event) {
-            event.preventDefault();
-            if (!selfieInput.value) {
-                alert('Please capture a live selfie before submitting your registration.');
-                return false;
-            }
-            document.getElementById('termsModal').style.display = 'flex';
-            return false;
-        }
-
-        function toggleAgreeButton() {
-            const checkbox = document.getElementById('agreeCheckbox');
-            const submitBtn = document.getElementById('confirmSubmitBtn');
-            submitBtn.disabled = !checkbox.checked;
-        }
-
-        function closeModal() {
-            document.getElementById('termsModal').style.display = 'none';
-        }
-
-        function submitActualForm() {
-            document.getElementById('registrationForm').submit();
-        }
+            
+            selfieInput.value = dataURL;
+        });
     </script>
 </body>
 </html>

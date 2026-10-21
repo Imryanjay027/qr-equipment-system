@@ -39,9 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
             
-            // I-save ang email sa session para madaling ma-track
-            $_SESSION['otp_email'] = $user['email'];
-
             // Generate 6-digit OTP
             $otp = sprintf("%06d", rand(0, 999999));
             $expiry = date('Y-m-d H:i:s', strtotime('+15 minutes'));
@@ -98,12 +95,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - MQCQC Equipment System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="d-flex align-items-center justify-content-center min-vh-100 bg-light">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-5">
-                <div class="card p-4 shadow-sm">
+                <div class="card p-4 shadow-sm rounded-4">
                     <h4 class="fw-bold text-success text-center mb-3">System Login</h4>
                     
                     <?php if (!empty($error)): ?>
@@ -125,8 +123,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <label class="form-label fw-semibold">Email or Student ID</label>
                                 <input type="text" class="form-control" name="email_or_id" required placeholder="Enter email or ID" autocomplete="off">
                             </div>
-                            <button type="submit" class="btn btn-success w-100 fw-bold">Send OTP / Login</button>
+                            <button type="submit" class="btn btn-success w-100 fw-bold mb-3">Send OTP / Login</button>
                         </form>
+
+                        <!-- English text link patungo sa register.php -->
+                        <div class="text-center mt-3 border-top pt-3">
+                            <p class="text-muted small mb-0">Don't have an account yet? 
+                                <a href="register.php" class="text-success fw-bold text-decoration-none">Register an account</a>
+                            </p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>

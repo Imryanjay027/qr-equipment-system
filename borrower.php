@@ -1,130 +1,132 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// I-check kung nakapag-login at kung student ang role
-if (!isset($_SESSION['user_id']) || strtolower(trim($_SESSION['role'] ?? '')) !== 'student') {
+// DATABASE CONNECTION
+$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+
+$conn = @new mysqli($host, $username, $password, $database, (int)$port);
+if ($conn->connect_error) {
+    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
+}
+
+if ($conn->connect_error) {
+    die("Database Connection Failed: " . $conn->connect_error);
+}
+
+// Subukang kunin ang User ID sa Session O sa URL Parameter (?uid=)
+$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
+
+if (empty($user_id)) {
     header("Location: login.php");
     exit();
 }
 
-// Alamin kung aling tab ang pinili
-$tab = $_GET['tab'] ?? 'active';
+// Kunin ang mga detalye ng user mula sa DB
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$current_user = $stmt->get_result()->fetch_assoc();
+
+if (!$current_user) {
+    header("Location: login.php");
+    exit();
+}
+
+// I-refresh ang session para secure
+$_SESSION['user_id'] = $current_user['id'];
+$_SESSION['role']    = strtolower(trim($current_user['role']));
+$_SESSION['full_name'] = $current_user['full_name'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary The Queen College - Borrower's Portal</title>
-    <!-- Bootstrap 5 CSS -->
+    <title>Borrower Dashboard - MQCQC Equipment System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { background-color: #f4f7f6; font-family: Arial, sans-serif; }
-        .navbar-custom { background-color: #198754; }
-        .profile-card { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 25px; margin-top: 30px; border-left: 6px solid #198754; }
-        .table-custom th { background-color: #198754; color: white; }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="bg-light">
 
-    <!-- Green Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 shadow-sm">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold fs-6 text-white" href="#">MARY THE QUEEN COLLEGE - BORROWER'S PORTAL</a>
-            <div class="d-flex align-items-center">
-                <a href="index.php" class="btn btn-light btn-sm fw-bold text-success me-2">Back to your dashboard</a>
-                <a href="logout.php" class="btn btn-danger btn-sm fw-bold">Logout</a>
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-qrcode me-2"></i>MQCQC Borrower Dashboard
+            </a>
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3 small">
+                    <i class="fas fa-user-circle me-1"></i><?= htmlspecialchars($current_user['full_name']); ?> 
+                    <span class="badge bg-light text-success ms-1 text-uppercase"><?= htmlspecialchars($current_user['role']); ?></span>
+                </span>
+                <a href="login.php" class="btn btn-outline-light btn-sm fw-semibold">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
             </div>
         </div>
     </nav>
 
-    <div class="container py-4">
-        <!-- Profile Card Section with QR Code -->
-        <div class="profile-card d-flex flex-wrap align-items-center justify-content-between">
-            <div class="d-flex align-items-center mb-3 mb-md-0">
-                <div class="rounded-circle bg-secondary text-white d-flex justify-content-center align-items-center me-4" style="width: 75px; height: 75px; font-size: 32px;">
-                    <i class="fa-solid fa-user"></i>
-                </div>
-                <div>
-                    <h4 class="fw-bold mb-1" style="color: #1a365d;"><?= htmlspecialchars($_SESSION['full_name'] ?? 'Ryan Jay Leoligao'); ?></h4>
-                    <p class="text-muted mb-0 small">Student ID: <?= htmlspecialchars($_SESSION['student_id'] ?? '903324454'); ?></p>
-                    <p class="text-muted mb-0 small">Course / Year: <?= htmlspecialchars($_SESSION['course_year'] ?? 'BSIT-3B'); ?></p>
-                </div>
-            </div>
-            <div class="text-center">
-                <span class="text-muted small d-block mb-1 fw-bold">Your QR Code</span>
-                <div class="p-1 bg-white border rounded shadow-sm d-inline-block">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=<?= urlencode($_SESSION['student_id'] ?? '903324454'); ?>" alt="Student QR Code" style="width: 90px; height: 90px;">
+    <!-- Main Content -->
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <div class="card border-0 shadow-sm p-4 bg-white rounded-4">
+                    <h3 class="fw-bold text-success mb-1">Welcome back, <?= htmlspecialchars($current_user['full_name']); ?>!</h3>
+                    <p class="text-muted mb-0">Maaari ka nang mag-borrow at mag-monitor ng mga school equipment gamit ang system.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Tab Navigation Buttons -->
-        <div class="mt-4 mb-3">
-            <a href="borrower.php?tab=active" class="btn <?= $tab === 'active' ? 'btn-success' : 'btn-secondary'; ?> btn-sm fw-bold px-3 text-decoration-none">My Borrowed Equipment</a>
-            
-            <a href="borrower.php?tab=history" class="btn <?= $tab === 'history' ? 'btn-success' : 'btn-secondary'; ?> btn-sm fw-bold px-3 text-white text-decoration-none" <?= $tab !== 'history' ? 'style="background-color: #adb5bd; border: none;"' : ''; ?>>Returned Items History / Remarks</a>
+        <div class="row g-4">
+            <!-- Quick Actions / Cards -->
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100 p-3 rounded-4">
+                    <div class="card-body text-center">
+                        <div class="mb-3 text-success fs-1">
+                            <i class="fas fa-box-open"></i>
+                        </div>
+                        <h5 class="fw-bold">Available Equipment</h5>
+                        <p class="text-muted small">Tignan ang mga available na kagamitan na maaari mong hiramin.</p>
+                        <a href="#" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Listahan</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100 p-3 rounded-4">
+                    <div class="card-body text-center">
+                        <div class="mb-3 text-primary fs-1">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <h5 class="fw-bold">My Borrowing History</h5>
+                        <p class="text-muted small">I-check ang katayuan ng iyong mga hiniram na kagamitan.</p>
+                        <a href="#" class="btn btn-outline-primary btn-sm w-100 fw-semibold">Tignan ang History</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100 p-3 rounded-4">
+                    <div class="card-body text-center">
+                        <div class="mb-3 text-warning fs-1">
+                            <i class="fas fa-id-card"></i>
+                        </div>
+                        <h5 class="fw-bold">My QR Code</h5>
+                        <p class="text-muted small">I-display ang iyong QR code para sa mabilisang transaksiyon.</p>
+                        <a href="#" class="btn btn-outline-warning btn-sm w-100 fw-semibold text-dark">Tignan ang QR</a>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <?php if ($tab === 'active'): ?>
-            <!-- TAB 1: Active Borrowed Equipment -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-0">
-                    <table class="table table-bordered mb-0 table-custom text-center align-middle">
-                        <thead>
-                            <tr>
-                                <th class="py-3">Student ID</th>
-                                <th class="py-3">Equipment Name</th>
-                                <th class="py-3">Borrow Date / Due Date</th>
-                                <th class="py-3">Status / Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="4" class="py-4 text-muted">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Borrow Action Section - Nakaturo na sa registration.php -->
-            <div class="card shadow-sm border-0 p-4 text-center bg-white">
-                <p class="text-muted mb-2 small fw-bold">Need to borrow an item?</p>
-                <div>
-                    <a href="registration.php" class="btn btn-success px-4 py-2 fw-bold shadow-sm text-decoration-none">Borrow an Item</a>
-                </div>
-            </div>
-
-        <?php elseif ($tab === 'history'): ?>
-            <!-- TAB 2: Returned Items History / Remarks -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-0">
-                    <table class="table table-bordered mb-0 table-custom text-center align-middle">
-                        <thead>
-                            <tr>
-                                <th class="py-3">Equipment Name</th>
-                                <th class="py-3">Borrow Date</th>
-                                <th class="py-3">Return Date</th>
-                                <th class="py-3">Equipment Status (Good / Damaged / Replaced)</th>
-                                <th class="py-3">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="5" class="py-4 text-muted">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        <?php endif; ?>
-
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -28,20 +28,22 @@ if (empty($user_id)) {
     exit();
 }
 
-// Kunin ang mga detalye ng user mula sa DB at i-verify kung custodian
+// Kunin ang mga detalye ng user mula sa DB
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $current_user = $stmt->get_result()->fetch_assoc();
 
-if (!$current_user || strtolower(trim($current_user['role'])) !== 'custodian') {
+// PINAIGTING NA PAG-CHECK NG ROLE: Pinapayagan ang custodian, Property Custodian, o admin nang hindi nagreredirect sa login
+$role_lower = strtolower(trim($current_user['role'] ?? ''));
+if (!$current_user || (strpos($role_lower, 'custodian') === false && strpos($role_lower, 'admin') === false)) {
     header("Location: login.php");
     exit();
 }
 
 // I-refresh ang session para secure
 $_SESSION['user_id'] = $current_user['id'];
-$_SESSION['role']    = 'custodian';
+$_SESSION['role']    = $current_user['role'];
 $_SESSION['full_name'] = $current_user['full_name'];
 ?>
 <!DOCTYPE html>
@@ -120,7 +122,7 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">QR Scanner</h5>
                         <p class="text-muted small">I-scan ang QR code ng mga borrower para sa mabilis na transaksiyon.</p>
-                        <a href="#" class="btn btn-primary btn-sm w-100 fw-semibold">Buksan ang Scanner</a>
+                        <a href="index.php?uid=<?= $current_user['id']; ?>" class="btn btn-primary btn-sm w-100 fw-semibold">Buksan ang Scanner</a>
                     </div>
                 </div>
             </div>

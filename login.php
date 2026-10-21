@@ -20,19 +20,6 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Table Creation
-$conn->query("CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    full_name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    student_id VARCHAR(50) DEFAULT NULL,
-    course_year VARCHAR(100) DEFAULT NULL,
-    role VARCHAR(20) NOT NULL DEFAULT 'borrower',
-    otp_code VARCHAR(10) DEFAULT NULL,
-    otp_expiry DATETIME DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)");
-
 try { @$conn->query("ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL"); } catch (Exception $e) {}
 try { @$conn->query("ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL"); } catch (Exception $e) {}
 
@@ -43,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email_or_id = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($email_or_id)) {
-        $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? OR student_id = ?");
+        $stmt = $conn->prepare("SELECT * FROM users WHERE TRIM(email) = TRIM(?) OR TRIM(student_id) = TRIM(?)");
         $stmt->bind_param("ss", $email_or_id, $email_or_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -51,19 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
             
-            // Format guaranteed 6-digit string
+            // Generate 6-digit OTP
             $otp = sprintf("%06d", rand(0, 999999));
-            $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+            $expiry = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-            // SAVE TO DATABASE
+            // Update OTP sa database
             $update_stmt = $conn->prepare("UPDATE users SET otp_code = ?, otp_expiry = ? WHERE id = ?");
             $update_stmt->bind_param("ssi", $otp, $expiry, $user['id']);
             $update_stmt->execute();
 
-            setcookie("temp_user_id", $user['id'], time() + 600, "/");
-            $_SESSION['temp_user_id'] = $user['id'];
-
-            $target_email = $user['email'];
+            $target_email = trim($user['email']);
             $brevo_api_key = "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"; 
             
             $email_data = [
@@ -73,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ],
                 "to" => [ ["email" => $target_email] ],
                 "subject" => "Your Login OTP Code",
-                "htmlContent" => "<p>Hello {$user['full_name']},</p><p>Your 6-digit OTP code is: <strong>{$otp}</strong></p><p>This code will expire in 10 minutes.</p>"
+                "htmlContent" => "<p>Hello {$user['full_name']},</p><p>Your 6-digit OTP code is: <strong>{$otp}</strong></p><p>This code will expire in 15 minutes.</p>"
             ];
 
             $ch = curl_init('https://api.brevo.com/v3/smtp/email');
@@ -91,12 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_close($ch);
 
             if ($http_code >= 200 && $http_code < 300) {
-                $redirect_url = "verify_otp.php?uid=" . $user['id'];
+                // Diretsong pumunta sa verify page nang walang kailangang i-pasa na uid sa URL
+                $redirect_url = "verify_otp.php";
             } else {
                 $error = "Failed to send OTP via email.";
             }
         } else {
-            $error = "Email or Student ID not found.";
+            $error = "Email or Student ID not found in database.";
         }
     } else {
         $error = "Please enter your email or Student ID.";
@@ -126,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="alert alert-success py-3 text-center">
                             <p class="mb-2 fw-semibold">OTP sent to your email!</p>
                             <div class="spinner-border spinner-border-sm text-success"></div>
-                            <span class="small text-muted ms-1">Redirecting...</span>
+                            <span class="small text-muted ms-1">Redirecting to OTP verification...</span>
                         </div>
                         <script>
                             setTimeout(function() { window.location.href = "<?= $redirect_url; ?>"; }, 1000);
@@ -135,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <form action="login.php" method="POST">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Email or Student ID</label>
-                                <input type="text" class="form-control" name="email_or_id" required placeholder="Enter email or ID">
+                                <input type="text" class="form-control" name="email_or_id" required placeholder="Enter email or ID" autocomplete="off">
                             </div>
                             <button type="submit" class="btn btn-success w-100 fw-bold">Send OTP / Login</button>
                         </form>

@@ -6,19 +6,24 @@ ini_set('display_errors', 1);
 session_start();
 include('db_connection.php');
 
-$message = '';$status = '';
+$message = ''; $status = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'] ?? '');$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $full_name = trim($_POST['full_name'] ?? '');
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
     $role = trim($_POST['role'] ?? 'student');
     $academic_info = trim($_POST['academic_info'] ?? '');
-    $image_data =$_POST['image_data'] ?? '';
+    $image_data = $_POST['image_data'] ?? '';
 
-    if ($email && !empty($full_name)) {$photo_filename = '';
+    if ($email && !empty($full_name)) {
+        $photo_filename = '';
 
         // Live selfie para sa Student
         if ($role === 'student' && !empty($image_data)) {
             $image_parts = explode(";base64,", $image_data);
-            if (count($image_parts) == 2) {$image_base64 = base64_decode($image_parts[1]);$target_dir = __DIR__ . "/uploads/";
+            if (count($image_parts) == 2) {
+                $image_base64 = base64_decode($image_parts[1]);
+                $target_dir = __DIR__ . "/uploads/";
                 
                 if (!file_exists($target_dir)) {
                     @mkdir($target_dir, 0777, true);
@@ -26,82 +31,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
                 @chmod($target_dir, 0777);
 
                 $photo_filename = 'student_' . time() . '.png';
-                $destination = $target_dir .$photo_filename;
+                $destination = $target_dir . $photo_filename;
                 
-                @file_put_contents($destination,$image_base64);
+                @file_put_contents($destination, $image_base64);
                 @chmod($destination, 0666);
             }
         }
 
         // Awtomatikong gumawa ng username mula sa email para hindi mag-error ang NOT NULL constraint
-        $username = strtolower(explode('@',$email)[0]) . '_' . rand(100, 999);
+        $username = strtolower(explode('@', $email)[0]) . '_' . rand(100, 999);
 
         // Kunin ang tunay na columns ng tbl_users sa live database
         $table_columns = [];
-        $res =$conn->query("SHOW COLUMNS FROM tbl_users");
+        $res = $conn->query("SHOW COLUMNS FROM tbl_users");
         if ($res) {
-            while ($row =$res->fetch_assoc()) {
-                $table_columns[] =$row['Field'];
+            while ($row = $res->fetch_assoc()) {
+                $table_columns[] = $row['Field'];
             }
         }
 
         // Alamin kung anong column ang gagamitin sa pangalan
-        $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname',$table_columns) ? 'fullname' : '');
+        $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname', $table_columns) ? 'fullname' : '');
         
         // Alamin kung anong column ang gagamitin sa academic info
-        $acad_col = in_array('academic_info', $table_columns) ? 'academic_info' : (in_array('course_year',$table_columns) ? 'course_year' : '');
+        $acad_col = in_array('academic_info', $table_columns) ? 'academic_info' : (in_array('course_year', $table_columns) ? 'course_year' : '');
 
         $inserted = false;
         $db_error = '';
 
         if (!empty($name_col)) {
             // Unahin nating i-check kung umiiral na ang email sa database para maiwasan ang duplicate entry error
-            $check_stmt =$conn->prepare("SELECT id FROM tbl_users WHERE email = ? OR Email = ?");
-            $check_stmt->bind_param("ss", $email,$email);
-            $check_stmt->execute();$check_stmt->store_result();
+            $check_stmt = $conn->prepare("SELECT id FROM tbl_users WHERE email = ? OR Email = ?");
+            $check_stmt->bind_param("ss", $email, $email);
+            $check_stmt->execute();
+            $check_stmt->store_result();
 
-            if ($check_stmt->num_rows > 0) {$db_error = "Ang email address na ito ay nakarehistro na sa sistema.";
+            if ($check_stmt->num_rows > 0) {
+                // Isinalin sa Ingles at pinaikli ang error message dito:
+                $db_error = "Database error: Email already registered.";
                 $check_stmt->close();
             } else {
                 $check_stmt->close();
 
                 $cols = [$name_col, 'email', 'role', 'photo'];
-                $vals = [$full_name, $email,$role, $photo_filename];$types = "ssss";
+                $vals = [$full_name, $email, $role, $photo_filename];
+                $types = "ssss";
 
                 // Isama ang username kung mayroon nitong column sa database
-                if (in_array('username', $table_columns)) {$cols[] = 'username';
-                    $vals[] =$username;
+                if (in_array('username', $table_columns)) {
+                    $cols[] = 'username';
+                    $vals[] = $username;
                     $types .= "s";
                 }
 
                 // Isama ang academic info kung student at may column para dito
-                if (!empty($acad_col) &&$role === 'student') {
-                    $cols[] =$acad_col;
-                    $vals[] =$academic_info;
+                if (!empty($acad_col) && $role === 'student') {
+                    $cols[] = $acad_col;
+                    $vals[] = $academic_info;
                     $types .= "s";
                 }
 
                 $placeholders = implode(',', array_fill(0, count($cols), '?'));
-                $col_string = implode(',',$cols);
+                $col_string = implode(',', $cols);
 
                 $sql = "INSERT INTO tbl_users ($col_string) VALUES ($placeholders)";
                 $stmt = $conn->prepare($sql);
 
-                if ($stmt) {$stmt->bind_param($types, ...$vals);
-                    if ($stmt->execute()) {$inserted = true;
+                if ($stmt) {
+                    $stmt->bind_param($types, ...$vals);
+                    if ($stmt->execute()) {
+                        $inserted = true;
                     } else {
-                        $db_error =$stmt->error;
+                        $db_error = $stmt->error;
                     }
                     $stmt->close();
                 } else {
-                    $db_error =$conn->error;
+                    $db_error = $conn->error;
                 }
             }
         } else {
-            $db_error = "Walang nahanap na name column (`full_name` o `fullname`) sa database table.";
+            $db_error = "Database error: Name column not found.";
         }
 
-        if ($inserted) {$message = "Registration successful! You can now log in.";
+        if ($inserted) {
+            $message = "Registration successful! You can now log in.";
             $status = "success";
         } else {
             $message = "Database error: " . $db_error;
@@ -143,7 +156,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
         .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         
-        /* Modal Styles para sa Terms & Conditions */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; text-align: left; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
         .modal-content h4 { color: #2e7d32; margin-bottom: 15px; }
@@ -182,7 +194,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$full_name = trim($_POST['full_name'
             </select>
         </div>
 
-        <!-- Student Specific Section (Live Selfie & Academic Info) -->
         <div id="studentSection" class="conditional-section" style="display: block;">
             <div class="form-group">
                 <label>Live Selfie Capture (Student Only)</label>

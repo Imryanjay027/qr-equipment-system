@@ -4,7 +4,6 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// DATABASE CONNECTION
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
@@ -30,7 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($user_otp)) {
         $error = "Mangyaring ilagay ang 6-digit OTP code.";
     } else {
-        // Hahanapin sa database ang user gamit ang OTP code
         $stmt = $conn->prepare("SELECT id, role, full_name FROM users WHERE TRIM(otp_code) = TRIM(?)");
         $stmt->bind_param("s", $user_otp);
         $stmt->execute();
@@ -39,19 +37,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result && $result->num_rows > 0) {
             $user = $result->fetch_assoc();
 
-            // TAMA ANG OTP! Itatalaga ang opisyal na session ng user
             $_SESSION['user_id']   = $user['id'];
             $_SESSION['role']      = strtolower(trim($user['role']));
             $_SESSION['full_name'] = $user['full_name'];
 
-            // Burahin ang OTP sa database para hindi na magamit ulit
             $clear = $conn->prepare("UPDATE users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
             $clear->bind_param("i", $user['id']);
             $clear->execute();
 
-            // ITINERARY NG DIREKTANG REDIRECTION BATAY SA ROLE
+            // PINAIGTING NA PAG-CHECK NG ROLE (Sinisiguro na kahit 'Custodian', 'ADMIN', o 'custodian' ay papasok)
             $user_role = strtolower(trim($user['role']));
-            if ($user_role === 'custodian') {
+            
+            if (strpos($user_role, 'custodian') !== false || strpos($user_role, 'admin') !== false) {
                 $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
             } else {
                 $redirect_url = "borrower.php?uid=" . $user['id'];
@@ -59,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $success_msg = "OTP Verified Successfully!";
         } else {
-            $error = "Mali o expired na ang OTP code na inilagay mo. Pakisubukan ulit.";
+            $error = "Mali o expired na ang OTP code na inilagay mo.";
         }
     }
 }

@@ -7,7 +7,7 @@ ini_set('display_errors', 1);
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD'] : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
 $conn = @new mysqli($host, $username, $password, $database, (int)$port);
@@ -189,10 +189,10 @@ $borrowed_items = $borrow_query->get_result();
                 </div>
             </div>
 
-            <!-- Direct HTML Anchor Link to registration.php -->
+            <!-- Absolute Path Link to registration.php -->
             <div class="text-center mt-4 pt-3 border-top">
                 <p class="text-muted small mb-2">Need to borrow an item?</p>
-                <a href="registration.php" class="btn-green-link">Borrow an Item</a>
+                <a href="registration.php" class="btn-green-link" onclick="window.location.href='registration.php'; return false;">Borrow an Item</a>
             </div>
 
         </div>

@@ -108,7 +108,8 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">Manage Equipment</h5>
                         <p class="text-muted small">Magdagdag, mag-update, o mag-monitor ng mga school equipment.</p>
-                        <a href="#" class="btn btn-warning btn-sm w-100 fw-semibold text-dark">Pamahalaan ang Items</a>
+                        <!-- Pinalitan ang href patungo sa management page o kaya ay index.php kung doon nakasalang -->
+                        <a href="manage_equipment.php?uid=<?= $current_user['id']; ?>" class="btn btn-warning btn-sm w-100 fw-semibold text-dark">Pamahalaan ang Items</a>
                     </div>
                 </div>
             </div>
@@ -121,7 +122,8 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">Borrow & Return Requests</h5>
                         <p class="text-muted small">Aprubahan o i-record ang pagbabalik ng mga kagamitan.</p>
-                        <a href="#" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Requests</a>
+                        <!-- Pinalitan ang href patungo sa requests page -->
+                        <a href="requests.php?uid=<?= $current_user['id']; ?>" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Requests</a>
                     </div>
                 </div>
             </div>
@@ -134,6 +136,7 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">QR Scanner</h5>
                         <p class="text-muted small">I-scan ang QR code ng mga borrower para sa mabilis na transaksiyon.</p>
+                        <!-- Nakakonekta na sa index.php (QR Scanner & Dashboard) -->
                         <a href="index.php?uid=<?= $current_user['id']; ?>" class="btn btn-primary btn-sm w-100 fw-semibold">Buksan ang Scanner</a>
                     </div>
                 </div>

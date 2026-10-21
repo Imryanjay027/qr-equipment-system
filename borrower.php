@@ -73,17 +73,17 @@ $equipments = $conn->query("SELECT * FROM equipment");
             color: #ffffff;
             padding: 12px 20px;
             font-weight: bold;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
         .main-card {
             border: none;
-            border-radius: 8px;
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             background: #ffffff;
         }
         .profile-img {
-            width: 75px;
-            height: 75px;
+            width: 80px;
+            height: 80px;
             object-fit: cover;
             border-radius: 50%;
             border: 2px solid #217835;
@@ -94,7 +94,8 @@ $equipments = $conn->query("SELECT * FROM equipment");
             border: none;
             background-color: #e9ecef;
             margin-right: 5px;
-            border-radius: 4px 4px 0 0;
+            border-radius: 6px 6px 0 0;
+            font-size: 0.9rem;
         }
         .nav-tabs .nav-link.active {
             color: #ffffff;
@@ -103,7 +104,7 @@ $equipments = $conn->query("SELECT * FROM equipment");
         .table-custom th {
             background-color: #217835 !important;
             color: #ffffff !important;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             border: none;
         }
         .btn-green {
@@ -111,6 +112,8 @@ $equipments = $conn->query("SELECT * FROM equipment");
             color: #ffffff;
             font-weight: 600;
             border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
         }
         .btn-green:hover {
             background-color: #1a602a;
@@ -120,21 +123,23 @@ $equipments = $conn->query("SELECT * FROM equipment");
 </head>
 <body>
 
-    <!-- Top Header Bar -->
-    <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
+    <!-- Top Header Bar (Responsive) -->
+    <div class="top-navbar d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 shadow-sm text-center text-sm-start">
         <div>MARY THE QUEEN COLLEGE OF QUEZON CITY - BORROWER'S PORTAL</div>
         <div class="d-flex gap-2">
-            <a href="borrower.php?uid=<?= $current_user['id']; ?>" class="btn btn-dark btn-sm px-3">Back to your dashboard</a>
+            <a href="borrower.php?uid=<?= $current_user['id']; ?>" class="btn btn-dark btn-sm px-3">Dashboard</a>
             <a href="login.php" class="btn btn-danger btn-sm px-3">Logout</a>
         </div>
     </div>
 
     <div class="container my-4">
-        <div class="card main-card p-4 mx-auto" style="max-width: 1000px;">
+        <div class="card main-card p-3 p-md-4 mx-auto" style="max-width: 900px;">
             
-            <!-- Profile & QR Code Section -->
-            <div class="row align-items-center border-bottom pb-4 mb-4">
-                <div class="col-md-8 d-flex align-items-center gap-3">
+            <!-- Profile & QR Code Section (Mobile Responsive Flex) -->
+            <div class="d-flex flex-column flex-md-row align-items-center justify-content-between border-bottom pb-4 mb-4 gap-4 text-center text-md-start">
+                
+                <!-- Profile Details -->
+                <div class="d-flex flex-column flex-md-row align-items-center gap-3">
                     <div>
                         <?php if (!empty($current_user['profile_pic'])): ?>
                             <img src="<?= htmlspecialchars($current_user['profile_pic']); ?>" alt="Profile" class="profile-img">
@@ -151,22 +156,23 @@ $equipments = $conn->query("SELECT * FROM equipment");
                     </div>
                 </div>
                 
-                <!-- QR Code Box sa Kanan -->
-                <div class="col-md-4 text-md-end text-center mt-3 mt-md-0">
+                <!-- QR Code Box sa Mobile at Desktop -->
+                <div class="text-center">
                     <div class="d-inline-block p-2 bg-white border rounded shadow-sm">
                         <div id="qrcode" class="d-flex justify-content-center"></div>
-                        <span class="text-muted" style="font-size: 0.75rem;">Your QR Code</span>
+                        <span class="text-muted d-block mt-1" style="font-size: 0.75rem;">Your QR Code</span>
                     </div>
                 </div>
+
             </div>
 
             <!-- Tabs Navigation -->
-            <ul class="nav nav-tabs mb-3" id="portalTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="borrowed-tab" data-bs-toggle="tab" data-bs-target="#borrowed-content" type="button" role="tab">My Borrowed Equipment</button>
+            <ul class="nav nav-tabs mb-3 flex-column flex-sm-row" id="portalTabs" role="tablist">
+                <li class="nav-item flex-fill text-center mb-1 mb-sm-0" role="presentation">
+                    <button class="nav-link w-100 active" id="borrowed-tab" data-bs-toggle="tab" data-bs-target="#borrowed-content" type="button" role="tab">My Borrowed Equipment</button>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-content" type="button" role="tab">Returned Items History / Remarks</button>
+                <li class="nav-item flex-fill text-center" role="presentation">
+                    <button class="nav-link w-100" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-content" type="button" role="tab">Returned Items History / Remarks</button>
                 </li>
             </ul>
 
@@ -186,7 +192,7 @@ $equipments = $conn->query("SELECT * FROM equipment");
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="4" class="text-muted py-4">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
+                                    <td colspan="4" class="text-muted py-4 small">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -207,7 +213,7 @@ $equipments = $conn->query("SELECT * FROM equipment");
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="4" class="text-muted py-4">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
+                                    <td colspan="4" class="text-muted py-4 small">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -216,7 +222,7 @@ $equipments = $conn->query("SELECT * FROM equipment");
             </div>
 
             <!-- Need to Borrow an Item Section -->
-            <div class="text-center mt-5 pt-3 border-top">
+            <div class="text-center mt-4 pt-3 border-top">
                 <p class="text-muted small mb-2">Need to borrow an item?</p>
                 <button class="btn btn-green px-4 py-2" data-bs-toggle="modal" data-bs-target="#equipmentModal">Borrow an Item</button>
             </div>
@@ -226,15 +232,15 @@ $equipments = $conn->query("SELECT * FROM equipment");
 
     <!-- Modal para sa Borrow an Item / Equipment List -->
     <div class="modal fade" id="equipmentModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="fas fa-box-open me-2"></i>Available Equipment List</h5>
+                    <h5 class="modal-title fs-6"><i class="fas fa-box-open me-2"></i>Available Equipment List</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover">
+                        <table class="table table-striped table-hover align-middle small">
                             <thead>
                                 <tr>
                                     <th>Equipment Name</th>
@@ -268,15 +274,14 @@ $equipments = $conn->query("SELECT * FROM equipment");
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Automatic na pag-generate ng QR code sa loob ng box sa kanan
         document.addEventListener("DOMContentLoaded", function () {
             const qrDiv = document.getElementById('qrcode');
             qrDiv.innerHTML = "";
             
             new QRCode(qrDiv, {
                 text: "MQCQC-ID: <?= htmlspecialchars($current_user['student_id'] ?? $current_user['id']); ?> | Name: <?= htmlspecialchars($current_user['full_name']); ?>",
-                width: 90,
-                height: 90,
+                width: 85,
+                height: 85,
                 colorDark : "#000000",
                 colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H

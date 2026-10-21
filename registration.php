@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
         .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; width: 100%; cursor: pointer; }
         .btn-green:hover { background-color: #1a602a; color: #ffffff; }
         #video, #canvas { width: 100%; max-width: 320px; border-radius: 8px; border: 2px solid #217835; }
+        .system-logo { width: 70px; height: 70px; object-fit: contain; }
     </style>
 </head>
 <body>
@@ -107,7 +108,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
 
     <div class="container my-4">
         <div class="card main-card p-3 p-md-4 mx-auto" style="max-width: 700px;">
-            <h4 class="fw-bold mb-3 text-success text-center">Borrow Equipment Registration</h4>
+            
+            <!-- Logo Section & Subtitle -->
+            <div class="text-center mb-3">
+                <svg class="system-logo mb-2" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="48" fill="#217835" />
+                    <circle cx="50" cy="50" r="42" fill="#ffffff" />
+                    <path d="M 50,15 L 60,35 L 80,35 L 65,50 L 72,70 L 50,58 L 28,70 L 35,50 L 20,35 L 40,35 Z" fill="#217835" />
+                </svg>
+                <h5 class="fw-bold text-success mb-1" style="font-size: 0.95rem; letter-spacing: 0.5px;">QR-BASED EQUIPMENT MONITORING SYSTEM</h5>
+                <h4 class="fw-bold mb-0 text-dark fs-5">Borrow Equipment Registration</h4>
+            </div>
 
             <?php if (!empty($error_msg)): ?>
                 <div class="alert alert-danger py-2 small"><?= $error_msg; ?></div>
@@ -128,17 +139,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                     <input type="text" class="form-control form-control-sm" value="<?= htmlspecialchars($current_user['student_id'] . ' - ' .$current_user['course_year']); ?>" disabled>
                 </div>
 
+                <!-- Text field input para i-type lang ang kagamitang hihiramin -->
                 <div class="mb-3">
                     <label class="form-label fw-bold small">Equipment Name / Item to Borrow</label>
-                    <select name="item_to_borrow" id="item_to_borrow" class="form-select form-select-sm" required>
-                        <option value="">-- Pili ng Kagamitan --</option>
-                        <option value="Keyboard">Keyboard</option>
-                        <option value="Mouse">Mouse</option>
-                        <option value="Projector">Projector</option>
-                        <option value="Extension Cord">Extension Cord</option>
-                        <option value="HDMI Cable">HDMI Cable</option>
-                        <option value="VGA Cable">VGA Cable</option>
-                    </select>
+                    <input type="text" name="item_to_borrow" id="item_to_borrow" class="form-control form-control-sm" placeholder="e.g. Projector, HDMI Cable, Keyboard" required>
                 </div>
 
                 <div class="row">
@@ -225,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
             previewContainer.innerHTML = `<img src="${dataURL}" style="width:120px; border-radius:6px; border:2px solid #217835;" alt="Selfie Preview"><br><small class="text-success">Selfie Captured Successfully!</small>`;
         });
 
-        // Modal elements logic
+        // Modal logic
         const openTermsBtn = document.getElementById('openTermsBtn');
         const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
         const agreeCheck = document.getElementById('agreeCheck');
@@ -233,18 +237,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
         const borrowForm = document.getElementById('borrowForm');
 
         openTermsBtn.addEventListener('click', function() {
-            // Validation bago buksan ang popup
-            const item = document.getElementById('item_to_borrow').value;
+            const item = document.getElementById('item_to_borrow').value.trim();
             const rDate = document.getElementById('return_date').value;
             const rTime = document.getElementById('return_time').value;
             const selfie = selfieInput.value;
 
             if (!item || !rDate || !rTime || !selfie) {
-                alert("Please complete all required fields and capture your selfie first.");
+                alert("Please complete all required fields (type the equipment name) and capture your selfie first.");
                 return;
             }
 
-            // Buksan ang modal kung kumpleto na
             termsModal.show();
         });
 

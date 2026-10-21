@@ -7,7 +7,7 @@ ini_set('display_errors', 1);
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD'] : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
 $conn = @new mysqli($host, $username, $password, $database, (int)$port);
@@ -87,8 +87,8 @@ $borrowed_items = $borrow_query->get_result();
         .nav-tabs .nav-link { color: #495057; font-weight: 600; border: none; background-color: #e9ecef; border-radius: 6px 6px 0 0; font-size: 0.85rem; }
         .nav-tabs .nav-link.active { color: #ffffff; background-color: #217835; }
         .table-custom th { background-color: #217835 !important; color: #ffffff !important; font-size: 0.85rem; border: none; }
-        .btn-green-link { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; display: inline-block; text-decoration: none; }
-        .btn-green-link:hover { background-color: #1a602a; color: #ffffff; }
+        .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; display: inline-block; cursor: pointer; }
+        .btn-green:hover { background-color: #1a602a; color: #ffffff; }
     </style>
 </head>
 <body>
@@ -189,10 +189,12 @@ $borrowed_items = $borrow_query->get_result();
                 </div>
             </div>
 
-            <!-- Absolute Path Link to registration.php -->
+            <!-- Foolproof Form-Based Redirection Button -->
             <div class="text-center mt-4 pt-3 border-top">
                 <p class="text-muted small mb-2">Need to borrow an item?</p>
-                <a href="registration.php" class="btn-green-link" onclick="window.location.href='registration.php'; return false;">Borrow an Item</a>
+                <form action="registration.php" method="GET" class="d-inline">
+                    <button type="submit" class="btn btn-green">Borrow an Item</button>
+                </form>
             </div>
 
         </div>

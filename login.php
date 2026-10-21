@@ -93,46 +93,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - MQCQC Equipment System</title>
+    <title>Login - QR-Based Equipment Monitoring System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .login-card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            padding: 30px 25px;
+            background: #ffffff;
+        }
+        .logo-img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+        }
+        .system-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #111111;
+            letter-spacing: 0.5px;
+        }
+        .system-subtitle {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .btn-green {
+            background-color: #217835;
+            border-color: #217835;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .btn-green:hover {
+            background-color: #1a602a;
+            border-color: #1a602a;
+            color: #ffffff;
+        }
+        .form-control {
+            border-radius: 8px;
+            padding: 10px 14px;
+            border: 1px solid #ced4da;
+        }
+        .form-control:focus {
+            border-color: #217835;
+            box-shadow: 0 0 0 0.2rem rgba(33, 120, 53, 0.25);
+        }
+    </style>
 </head>
-<body class="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+<body class="d-flex align-items-center justify-content-center min-vh-100">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="card p-4 shadow-sm rounded-4">
-                    <h4 class="fw-bold text-success text-center mb-3">System Login</h4>
+            <div class="col-12 col-sm-10 col-md-6 col-lg-4">
+                <div class="card login-card text-center">
+                    
+                    <!-- School Logo -->
+                    <div class="mb-3">
+                        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png/220px-Mary_the_Queen_College_of_Quezon_City_logo.png" alt="MQCQC Logo" class="logo-img">
+                    </div>
+
+                    <!-- System Header -->
+                    <h5 class="system-title mb-1">"QR-BASED EQUIPMENT MONITORING SYSTEM"</h5>
+                    <p class="system-subtitle mb-4">Account Login (OTP Authentication)</p>
                     
                     <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger py-2 small"><?= htmlspecialchars($error); ?></div>
+                        <div class="alert alert-danger py-2 small text-start"><?= htmlspecialchars($error); ?></div>
                     <?php endif; ?>
 
                     <?php if (!empty($redirect_url)): ?>
                         <div class="alert alert-success py-3 text-center">
                             <p class="mb-2 fw-semibold">OTP sent to your email!</p>
                             <div class="spinner-border spinner-border-sm text-success"></div>
-                            <span class="small text-muted ms-1">Redirecting to OTP verification...</span>
+                            <span class="small text-muted ms-1">Redirecting...</span>
                         </div>
                         <script>
                             setTimeout(function() { window.location.href = "<?= $redirect_url; ?>"; }, 1000);
                         </script>
                     <?php else: ?>
-                        <form action="login.php" method="POST">
+                        <form action="login.php" method="POST" class="text-start">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Email or Student ID</label>
-                                <input type="text" class="form-control" name="email_or_id" required placeholder="Enter email or ID" autocomplete="off">
+                                <label class="form-label fw-bold text-dark small mb-1">Email Address</label>
+                                <input type="text" class="form-control" name="email_or_id" required placeholder="Enter your Email" autocomplete="off">
                             </div>
-                            <button type="submit" class="btn btn-success w-100 fw-bold mb-3">Send OTP / Login</button>
+                            <button type="submit" class="btn btn-green w-100 mt-2">Send OTP</button>
                         </form>
 
-                        <!-- English text link patungo sa register.php -->
-                        <div class="text-center mt-3 border-top pt-3">
-                            <p class="text-muted small mb-0">Don't have an account yet? 
-                                <a href="register.php" class="text-success fw-bold text-decoration-none">Register an account</a>
-                            </p>
+                        <div class="text-center mt-4">
+                            <span class="text-muted small">Don't have an account? </span>
+                            <a href="register.php" class="fw-bold text-decoration-none" style="color: #217835;">Register here</a>
                         </div>
                     <?php endif; ?>
+
                 </div>
             </div>
         </div>

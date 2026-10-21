@@ -20,9 +20,9 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Siguraduhing may OTP columns
-try { @$conn->query("ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL"); } catch (Exception $e) {}
-try { @$conn->query("ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+// Siguraduhing may OTP columns sa tbl_users
+try { @$conn->query("ALTER TABLE tbl_users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL"); } catch (Exception $e) {}
+try { @$conn->query("ALTER TABLE tbl_users ADD COLUMN otp_expiry DATETIME DEFAULT NULL"); } catch (Exception $e) {}
 
 $error = "";
 $redirect_url = "";
@@ -31,8 +31,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email_or_id = trim($_POST['email_or_id'] ?? '');
 
     if (!empty($email_or_id)) {
-        $stmt = $conn->prepare("SELECT * FROM users WHERE TRIM(email) = TRIM(?) OR TRIM(student_id) = TRIM(?)");
-        $stmt->bind_param("ss", $email_or_id, $email_or_id);
+        // Kunin ang mga tunay na columns sa tbl_users para sigurado sa pag-query
+        $table_columns = [];
+        $res = $conn->query("SHOW COLUMNS FROM tbl_users");
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $table_columns[] = $row['Field'];
+            }
+        }
+
+        // Bumuo ng dynamic query base sa kung anong columns ang mayroon sa tbl_users
+        $where_clauses = ["TRIM(email) = TRIM(?)"];
+        $bind_types = "s";
+        $bind_values = [$email_or_id];
+
+        if (in_array('student_id', $table_columns)) {
+            $where_clauses[] = "TRIM(student_id) = TRIM(?)";
+            $bind_types .= "s";
+            $bind_values[] = $email_or_id;
+        }
+
+        $sql = "SELECT * FROM tbl_users WHERE " . implode(" OR ", $where_clauses) . " LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($bind_types, ...$bind_values);
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -43,14 +64,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $otp = sprintf("%06d", rand(0, 999999));
             $expiry = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-            // Update OTP sa database
-            $update_stmt = $conn->prepare("UPDATE users SET otp_code = ?, otp_expiry = ? WHERE id = ?");
-            $update_stmt->bind_param("ssi", $otp, $expiry, $user['id']);
+            // Update OTP sa tbl_users gamit ang id
+            $user_id = $user['id'];
+            $update_stmt = $conn->prepare("UPDATE tbl_users SET otp_code = ?, otp_expiry = ? WHERE id = ?");
+            $update_stmt->bind_param("ssi", $otp, $expiry, $user_id);
             $update_stmt->execute();
 
             $target_email = trim($user['email']);
             $brevo_api_key = "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"; 
             
+            // Hanapin kung full_name o fullname ang column ng pangalan
+            $name_key = isset($user['full_name']) ? 'full_name' : (isset($user['fullname']) ? 'fullname' : 'full_name');
+            $user_name = $user[$name_key] ?? 'User';
+
             $email_data = [
                 "sender" => [
                     "name" => "MQCQC Equipment System",
@@ -58,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ],
                 "to" => [ ["email" => $target_email] ],
                 "subject" => "Your Login OTP Code",
-                "htmlContent" => "<p>Hello {$user['full_name']},</p><p>Your 6-digit OTP code is: <strong>{$otp}</strong></p><p>This code will expire in 15 minutes.</p>"
+                "htmlContent" => "<p>Hello {$user_name},</p><p>Your 6-digit OTP code is: <strong>{$otp}</strong></p><p>This code will expire in 15 minutes.</p>"
             ];
 
             $ch = curl_init('https://api.brevo.com/v3/smtp/email');
@@ -76,6 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_close($ch);
 
             if ($http_code >= 200 && $http_code < 300) {
+                // I-save ang user ID sa session para magamit sa verify_otp.php
+                $_SESSION['pending_user_id'] = $user_id;
                 $redirect_url = "verify_otp.php";
             } else {
                 $error = "Failed to send OTP via email.";
@@ -153,8 +181,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     <!-- School Logo with Fallback -->
                     <div class="mb-3">
-                        <img src="https://upload.wikimedia.org/wikipedia/en/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png" 
-                             onerror="this.onerror=null; this.src='logo.jpg';" 
+                        <img src="logo.jpg" 
+                             onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/en/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png';" 
                              alt="MQCQC Logo" 
                              class="logo-img">
                     </div>

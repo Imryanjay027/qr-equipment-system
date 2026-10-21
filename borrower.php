@@ -24,14 +24,6 @@ try { @$conn->query("ALTER TABLE users ADD COLUMN student_id VARCHAR(50) DEFAULT
 try { @$conn->query("ALTER TABLE users ADD COLUMN course_year VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
 try { @$conn->query("ALTER TABLE users ADD COLUMN profile_pic VARCHAR(255) DEFAULT NULL"); } catch (Exception $e) {}
 
-// Auto-create equipment table kung wala pa
-$conn->query("CREATE TABLE IF NOT EXISTS equipment (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    status VARCHAR(50) DEFAULT 'Available'
-)");
-
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
 
 if (empty($user_id)) {
@@ -52,8 +44,6 @@ if (!$current_user) {
 $_SESSION['user_id'] = $current_user['id'];
 $_SESSION['role']    = strtolower(trim($current_user['role']));
 $_SESSION['full_name'] = $current_user['full_name'];
-
-$equipments = $conn->query("SELECT * FROM equipment");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -114,6 +104,8 @@ $equipments = $conn->query("SELECT * FROM equipment");
             border: none;
             border-radius: 8px;
             padding: 10px 20px;
+            text-decoration: none;
+            display: inline-block;
         }
         .btn-green:hover {
             background-color: #1a602a;
@@ -123,7 +115,7 @@ $equipments = $conn->query("SELECT * FROM equipment");
 </head>
 <body>
 
-    <!-- Top Header Bar (Responsive) -->
+    <!-- Top Header Bar -->
     <div class="top-navbar d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 shadow-sm text-center text-sm-start">
         <div>MARY THE QUEEN COLLEGE OF QUEZON CITY - BORROWER'S PORTAL</div>
         <div class="d-flex gap-2">
@@ -135,10 +127,9 @@ $equipments = $conn->query("SELECT * FROM equipment");
     <div class="container my-4">
         <div class="card main-card p-3 p-md-4 mx-auto" style="max-width: 900px;">
             
-            <!-- Profile & QR Code Section (Mobile Responsive Flex) -->
+            <!-- Profile & QR Code Section -->
             <div class="d-flex flex-column flex-md-row align-items-center justify-content-between border-bottom pb-4 mb-4 gap-4 text-center text-md-start">
                 
-                <!-- Profile Details -->
                 <div class="d-flex flex-column flex-md-row align-items-center gap-3">
                     <div>
                         <?php if (!empty($current_user['profile_pic'])): ?>
@@ -156,7 +147,6 @@ $equipments = $conn->query("SELECT * FROM equipment");
                     </div>
                 </div>
                 
-                <!-- QR Code Box sa Mobile at Desktop -->
                 <div class="text-center">
                     <div class="d-inline-block p-2 bg-white border rounded shadow-sm">
                         <div id="qrcode" class="d-flex justify-content-center"></div>
@@ -178,7 +168,6 @@ $equipments = $conn->query("SELECT * FROM equipment");
 
             <!-- Tabs Content -->
             <div class="tab-content" id="portalTabsContent">
-                <!-- My Borrowed Equipment Tab -->
                 <div class="tab-pane fade show active" id="borrowed-content" role="tabpanel">
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped align-middle text-center">
@@ -199,7 +188,6 @@ $equipments = $conn->query("SELECT * FROM equipment");
                     </div>
                 </div>
 
-                <!-- Returned Items History Tab -->
                 <div class="tab-pane fade" id="history-content" role="tabpanel">
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped align-middle text-center">
@@ -221,54 +209,12 @@ $equipments = $conn->query("SELECT * FROM equipment");
                 </div>
             </div>
 
-            <!-- Need to Borrow an Item Section -->
+            <!-- Need to Borrow an Item Button (Direct Link to registration.php) -->
             <div class="text-center mt-4 pt-3 border-top">
                 <p class="text-muted small mb-2">Need to borrow an item?</p>
-                <button class="btn btn-green px-4 py-2" data-bs-toggle="modal" data-bs-target="#equipmentModal">Borrow an Item</button>
+                <a href="registration.php" class="btn btn-green">Borrow an Item</a>
             </div>
 
-        </div>
-    </div>
-
-    <!-- Modal para sa Borrow an Item / Equipment List -->
-    <div class="modal fade" id="equipmentModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title fs-6"><i class="fas fa-box-open me-2"></i>Available Equipment List</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover align-middle small">
-                            <thead>
-                                <tr>
-                                    <th>Equipment Name</th>
-                                    <th>Category</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if ($equipments && $equipments->num_rows > 0): ?>
-                                    <?php while($row = $equipments->fetch_assoc()): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($row['name'] ?? 'Equipment'); ?></td>
-                                            <td><?= htmlspecialchars($row['category'] ?? 'General'); ?></td>
-                                            <td><span class="badge bg-success"><?= htmlspecialchars($row['status'] ?? 'Available'); ?></span></td>
-                                            <td><button class="btn btn-sm btn-success">Request Borrow</button></td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">Wala pang nakarehistrong equipment sa database.</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 

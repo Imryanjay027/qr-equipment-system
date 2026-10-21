@@ -51,7 +51,7 @@ if (!$current_user && !empty($student_id_query)) {
     $current_user = $stmt->get_result()->fetch_assoc();
 }
 
-// Fallback user details
+// Fallback user details kung walang session
 if (!$current_user) {
     $current_user = [
         'id' => 1,
@@ -87,7 +87,7 @@ $borrowed_items = $borrow_query->get_result();
         .nav-tabs .nav-link { color: #495057; font-weight: 600; border: none; background-color: #e9ecef; border-radius: 6px 6px 0 0; font-size: 0.85rem; }
         .nav-tabs .nav-link.active { color: #ffffff; background-color: #217835; }
         .table-custom th { background-color: #217835 !important; color: #ffffff !important; font-size: 0.85rem; border: none; }
-        .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; text-decoration: none; display: inline-block; cursor: pointer; }
+        .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; display: inline-block; cursor: pointer; }
         .btn-green:hover { background-color: #1a602a; color: #ffffff; }
     </style>
 </head>
@@ -189,10 +189,10 @@ $borrowed_items = $borrow_query->get_result();
                 </div>
             </div>
 
-            <!-- Direct Navigation Link to registration.php -->
+            <!-- Direct JavaScript Button for registration.php Redirection -->
             <div class="text-center mt-4 pt-3 border-top">
                 <p class="text-muted small mb-2">Need to borrow an item?</p>
-                <a href="registration.php" id="borrowBtnLink" class="btn btn-green">Borrow an Item</a>
+                <button type="button" onclick="window.location.href='registration.php';" class="btn btn-green">Borrow an Item</button>
             </div>
 
         </div>
@@ -212,15 +212,6 @@ $borrowed_items = $borrow_query->get_result();
                     colorDark : "#000000",
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
-                });
-            }
-
-            // Direct Redirection Assurance on Click
-            const borrowBtnLink = document.getElementById('borrowBtnLink');
-            if (borrowBtnLink) {
-                borrowBtnLink.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.location.href = 'registration.php';
                 });
             }
         });

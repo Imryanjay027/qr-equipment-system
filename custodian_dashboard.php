@@ -28,13 +28,25 @@ if (empty($user_id)) {
     exit();
 }
 
-// Kunin ang mga detalye ng user mula sa DB
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+// Kunin ang mga tunay na columns sa tbl_users para iwas error sa columns
+$table_columns = [];
+$res = $conn->query("SHOW COLUMNS FROM tbl_users");
+if ($res) {
+    while ($row = $res->fetch_assoc()) {
+        $table_columns[] = $row['Field'];
+    }
+}
+
+$name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname', $table_columns) ? 'fullname' : 'full_name');
+$role_col = in_array('role', $table_columns) ? 'role' : (in_array('user_type', $table_columns) ? 'user_type' : 'role');
+
+// Kunin ang mga detalye ng user mula sa tbl_users
+$stmt = $conn->prepare("SELECT *, {$name_col} as full_name, {$role_col} as role FROM tbl_users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $current_user = $stmt->get_result()->fetch_assoc();
 
-// PINAIGTING NA PAG-CHECK NG ROLE: Pinapayagan ang custodian, Property Custodian, o admin nang hindi nagreredirect sa login
+// PINAIGTING NA PAG-CHECK NG ROLE
 $role_lower = strtolower(trim($current_user['role'] ?? ''));
 if (!$current_user || (strpos($role_lower, 'custodian') === false && strpos($role_lower, 'admin') === false)) {
     header("Location: login.php");

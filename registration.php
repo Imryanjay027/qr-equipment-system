@@ -17,7 +17,7 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Ensure borrow_requests table exists
+// Ensure borrow_requests table exists and modify selfie_image to LONGTEXT to prevent data too long error
 $conn->query("CREATE TABLE IF NOT EXISTS borrow_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id VARCHAR(50) NOT NULL,
@@ -30,6 +30,9 @@ $conn->query("CREATE TABLE IF NOT EXISTS borrow_requests (
     status VARCHAR(50) DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
+
+// Safety alter table para sa mga umiiral nang table
+$conn->query("ALTER TABLE borrow_requests MODIFY COLUMN selfie_image LONGTEXT");
 
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
 $student_id_query =$_GET['sid'] ?? '';
@@ -109,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
     <div class="container my-4">
         <div class="card main-card p-3 p-md-4 mx-auto" style="max-width: 700px;">
             
-            <!-- Logo Section & Subtitle -->
             <div class="text-center mb-3">
                 <img src="logo.jpg" alt="Logo" class="system-logo mb-2 shadow-sm" onerror="this.onerror=null; this.src='https://via.placeholder.com/80/217835/FFFFFF?text=MQCQC';">
                 <h5 class="fw-bold text-success mb-1" style="font-size: 0.95rem; letter-spacing: 0.5px;">QR-BASED EQUIPMENT MONITORING SYSTEM</h5>
@@ -117,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
             </div>
 
             <?php if (!empty($error_msg)): ?>
-                <div class="alert alert-danger py-2 small"><?= $error_msg; ?></div>
+                <div class="alert alert-danger py-2 small"><?= htmlspecialchars($error_msg); ?></div>
             <?php endif; ?>
 
             <form id="borrowForm" method="POST" action="">
@@ -151,7 +153,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                     </div>
                 </div>
 
-                <!-- Live Camera Section -->
                 <div class="mb-3 text-center">
                     <label class="form-label fw-bold small d-block">Selfie Verification</label>
                     <div class="d-flex flex-column align-items-center gap-2">
@@ -167,7 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                     </div>
                 </div>
 
-                <!-- Trigger button para mag-pop up ang Terms & Conditions modal -->
                 <button type="button" id="openTermsBtn" class="btn btn-green mt-3">Submit Borrow Request</button>
             </form>
         </div>
@@ -210,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
         const snap = document.getElementById('snap');
         const startCameraBtn = document.getElementById('startCamera');
         const selfieInput = document.getElementById('selfie_image');
-        const previewContainer =- document.getElementById('preview-container');
+        const previewContainer = document.getElementById('preview-container');
 
         let mediaStream = null;
 
@@ -238,18 +238,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
             canvas.height = video.videoHeight || 240;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/png');
+            const dataURL = canvas.toDataURL('image/png', 0.8); // Compress nang konti para iwas oversizing
             selfieInput.value = dataURL;
             
-            // Itigil ang stream pagka-capture para kusang mapatay ang camera light
             mediaStream.getTracks().forEach(track => track.stop());
             video.style.display = 'none';
             snap.style.display = 'none';
 
-            document.getElementById('preview-container').innerHTML = `<img src="${dataURL}" style="width:120px; height:90px; object-fit:cover; border-radius:6px; border:2px solid #217835;" alt="Selfie Preview"><br><small class="text-success fw-bold">Live Selfie Captured Successfully!</small>`;
+            previewContainer.innerHTML = `<img src="${dataURL}" style="width:120px; height:90px; object-fit:cover; border-radius:6px; border:2px solid #217835;" alt="Selfie Preview"><br><small class="text-success fw-bold">Live Selfie Captured Successfully!</small>`;
         });
 
-        // Modal logic
         const openTermsBtn = document.getElementById('openTermsBtn');
         const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
         const agreeCheck = document.getElementById('agreeCheck');

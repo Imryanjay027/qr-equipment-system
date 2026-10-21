@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
         .btn-green { background-color: #217835; color: #ffffff; font-weight: 600; border: none; border-radius: 8px; padding: 12px 24px; width: 100%; cursor: pointer; }
         .btn-green:hover { background-color: #1a602a; color: #ffffff; }
         #video, #canvas { width: 100%; max-width: 320px; border-radius: 8px; border: 2px solid #217835; }
-        .system-logo { width: 70px; height: 70px; object-fit: contain; }
+        .system-logo { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid #217835; display: inline-block; }
     </style>
 </head>
 <body>
@@ -111,11 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
             
             <!-- Logo Section & Subtitle -->
             <div class="text-center mb-3">
-                <svg class="system-logo mb-2" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="48" fill="#217835" />
-                    <circle cx="50" cy="50" r="42" fill="#ffffff" />
-                    <path d="M 50,15 L 60,35 L 80,35 L 65,50 L 72,70 L 50,58 L 28,70 L 35,50 L 20,35 L 40,35 Z" fill="#217835" />
-                </svg>
+                <img src="logo.jpg" alt="Logo" class="system-logo mb-2 shadow-sm" onerror="this.onerror=null; this.src='https://via.placeholder.com/80/217835/FFFFFF?text=MQCQC';">
                 <h5 class="fw-bold text-success mb-1" style="font-size: 0.95rem; letter-spacing: 0.5px;">QR-BASED EQUIPMENT MONITORING SYSTEM</h5>
                 <h4 class="fw-bold mb-0 text-dark fs-5">Borrow Equipment Registration</h4>
             </div>
@@ -139,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
                     <input type="text" class="form-control form-control-sm" value="<?= htmlspecialchars($current_user['student_id'] . ' - ' .$current_user['course_year']); ?>" disabled>
                 </div>
 
-                <!-- Text field input para i-type lang ang kagamitang hihiramin -->
+                <!-- Text field input para i-type ang kagamitang hihiramin -->
                 <div class="mb-3">
                     <label class="form-label fw-bold small">Equipment Name / Item to Borrow</label>
                     <input type="text" name="item_to_borrow" id="item_to_borrow" class="form-control form-control-sm" placeholder="e.g. Projector, HDMI Cable, Keyboard" required>
@@ -174,89 +170,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {$student_id = $_POST['student_id'] ?
     </div>
 
     <!-- Terms & Conditions Modal -->
-    <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header bg-success text-white">
-            <h5 class="modal-title fs-6 fw-bold" id="termsModalLabel">Terms & Conditions</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p class="small text-dark mb-3">
-              By proceeding with this equipment borrowing request, you agree to the following terms and conditions:
-            </p>
-            <div class="p-3 bg-light border rounded small text-secondary mb-3">
-              <strong>"If the borrowed equipment is damaged, lost, or misplaced while in your possession, you are strictly required to replace it with an exact, identical item of the same brand, model, and quality."</strong>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="" id="agreeCheck">
-              <label class="form-check-label small fw-bold" for="agreeCheck">
-                I have read, understood, and agree to the Terms & Conditions.
-              </label>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" id="confirmSubmitBtn" class="btn btn-success btn-sm" disabled>Confirm & Submit</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const snap = document.getElementById('snap');
-        const selfieInput = document.getElementById('selfie_image');
-        const previewContainer = document.getElementById('preview-container');
-
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then(stream => {
-                video.srcObject = stream;
-            })
-            .catch(err => {
-                console.error("Camera access denied or unavailable: ", err);
-            });
-
-        snap.addEventListener('click', function() {
-            canvas.width = video.videoWidth || 320;
-            canvas.height = video.videoHeight || 240;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/png');
-            selfieInput.value = dataURL;
-            previewContainer.innerHTML = `<img src="${dataURL}" style="width:120px; border-radius:6px; border:2px solid #217835;" alt="Selfie Preview"><br><small class="text-success">Selfie Captured Successfully!</small>`;
-        });
-
-        // Modal logic
-        const openTermsBtn = document.getElementById('openTermsBtn');
-        const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
-        const agreeCheck = document.getElementById('agreeCheck');
-        const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
-        const borrowForm = document.getElementById('borrowForm');
-
-        openTermsBtn.addEventListener('click', function() {
-            const item = document.getElementById('item_to_borrow').value.trim();
-            const rDate = document.getElementById('return_date').value;
-            const rTime = document.getElementById('return_time').value;
-            const selfie = selfieInput.value;
-
-            if (!item || !rDate || !rTime || !selfie) {
-                alert("Please complete all required fields (type the equipment name) and capture your selfie first.");
-                return;
-            }
-
-            termsModal.show();
-        });
-
-        agreeCheck.addEventListener('change', function() {
-            confirmSubmitBtn.disabled = !this.checked;
-        });
-
-        confirmSubmitBtn.addEventListener('click', function() {
-            borrowForm.submit();
-        });
-    </script>
-</body>
-</html>
+    <div class="modal fade" id="

@@ -43,7 +43,8 @@ $raw_student_id = $_GET['student_id'] ?? '';$student_id = trim($raw_student_id);
 $borrowed_items = [];
 
 if (!empty($student_id)) {
-    $clean_sid = str_replace(['MQCQC-ID:', ' '], '',$student_id);
+    $clean_sid = str_replace('MQCQC-ID:', '',$student_id);
+    $clean_sid = trim(str_replace(' ', '',$clean_sid));
     if (strpos($clean_sid, '|') !== false) {
         $parts = explode('\vert{}',$clean_sid);
         $clean_sid = trim($parts[0]);
@@ -242,4 +243,16 @@ if (!empty($student_id)) {
             
             html5QrCode.scanFile(imageFile, true)
             .then(decodedText => {
-                playBeep
+                playBeep();
+                setTimeout(() => {
+                    window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                }, 300);
+            })
+            .catch(err => {
+                alert("Error scanning QR image. Make sure the uploaded image is clear and contains a valid QR code.");
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

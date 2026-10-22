@@ -4,174 +4,56 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$host = getenv('MYSQL_HOST');
-if (!$host) {
-    $host = getenv('DB_HOST');
-    if (!$host) {
-        $host = 'mysql';
-    }
-}
-
-$port = getenv('MYSQL_PORT');
-if (!$port) {
-    $port = getenv('DB_PORT');
-    if (!$port) {
-        $port = 3306;
-    }
-}
-
-$username = getenv('MYSQL_USER');
-if (!$username) {
-    $username = getenv('DB_USER');
-    if (!$username) {
-        $username = 'root';
-    }
-}
-
-$password = getenv('MYSQL_PASSWORD');
-if ($password === false) {
-    $password = getenv('DB_PASSWORD');
-    if ($password === false) {
-        $password = '';
-    }
-}
-
-$database = getenv('MYSQL_DATABASE');
-if (!$database) {
-    $database = getenv('DB_NAME');
-    if (!$database) {
-        $database = 'qrcode';
-    }
-}
+$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
 $conn = @new mysqli($host, $username, $password, $database, (int)$port);
 if ($conn->connect_error) {
     $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
 }
-if ($conn->connect_error) {
-    $conn = @new mysqli('127.0.0.1', $username, $password, $database, (int)$port);
-}
 
 if ($conn->connect_error) {
-    die("<div class='alert alert-danger m-4'><strong>Database Connection Failed:</strong> Hindi makakonekta sa database server.</div>");
+    die("Database Connection Failed: " . $conn->connect_error);
 }
 
-$action_param = isset($_GET['action']) ? $_GET['action'] : '';
-$req_id_param = isset($_GET['req_id']) ? $_GET['req_id'] : '';
-$student_id_param = isset($_GET['student_id']) ? $_GET['student_id'] : '';
+$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? 1);
+$scanned_student_id = $_GET['student_id'] ?? '';
 
-if ($action_param AND $req_id_param AND $student_id_param) {
-    $req_id = intval($req_id_param);
-    $action = $action_param;
-    $redirect_sid = $student_id_param;
-
-    $new_status = 'Good';
-    if ($action == 'good') {
-        $new_status = 'Good';
-    } elseif ($action == 'damaged') {
-        $new_status = 'Damaged';
-    } elseif ($action == 'replaced') {
-        $new_status = 'Replaced';
+// Kunin ang impormasyon ng estudyante batay sa na-scan o na-input na ID
+$student_data = null;
+if (!empty($scanned_student_id)) {
+    // Kung ang na-scan ay JSON o URL, linisin natin kung sakali
+    if (strpos($scanned_student_id, 'ID:') !== false) {
+        // Parsing logic kung sakaling naka-format string ang QR data
+        preg_match('/ID:\s*([A-Za-z0-9-]+)/', $scanned_student_id, $matches);
+        if (!empty($matches[1])) {
+            $scanned_student_id = trim($matches[1]);
+        }
     }
 
-    $stmt = $conn->prepare("UPDATE borrow_requests SET status = ? WHERE id = ?");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ? OR full_name LIKE ? LIMIT 1");
     if ($stmt) {
-        $stmt->bind_param("si", $new_status, $req_id);
+        $like_term = "%" . $scanned_student_id . "%";
+        $stmt->bind_param("ss", $scanned_student_id, $like_term);
         $stmt->execute();
+        $student_data = $stmt->get_result()->fetch_assoc();
         $stmt->close();
     }
-
-    $get_uid = isset($_GET['uid']) ? $_GET['uid'] : 1;
-    header("Location: index.php?uid=" . $get_uid . "&student_id=" . urlencode($redirect_sid));
-    exit();
 }
 
-$raw_student_id = isset($_GET['student_id']) ? $_GET['student_id'] : '';
-$decoded_student_id = urldecode($raw_student_id);
-$student_id = trim($decoded_student_id);
-$borrower_data = null;
-$borrowed_items = array();
-
-if ($student_id !== '') {
-    $clean_sid = str_replace('MQCQC-ID:', '', $student_id);
-    $clean_sid = trim(str_replace(' ', '', $clean_sid));
-    $pipe_char = chr(124);
-    $pos = strpos($clean_sid, $pipe_char);
-    if ($pos !== false) {
-        $parts = explode($pipe_char, $clean_sid);
-        $clean_sid = trim($parts[0]);
-    }
-
-    $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ? OR id = ?");
-    if ($stmt) {
-        $stmt->bind_param("ss", $clean_sid, $clean_sid);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        $borrower_data = $res->fetch_assoc();
-        $stmt->close();
-    }
-
-    if (!$borrower_data) {
-        $stmt2 = $conn->prepare("SELECT * FROM borrowers WHERE student_id = ?");
-        if ($stmt2) {
-            $stmt2->bind_param("s", $clean_sid);
-            $stmt2->execute();
-            $res2 = $stmt2->get_result();
-            $borrower_data = $res2->fetch_assoc();
-            $stmt2->close();
-        }
-    }
-
-    $search_name = isset($borrower_data['full_name']) ? $borrower_data['full_name'] : (isset($borrower_data['fullname']) ? $borrower_data['fullname'] : '');
-
-    // Ang pag-filter kung saan ang mga Damaged o Pending lang ang lalabas sa active table
-    $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND LOWER(status) NOT LIKE '%good%' AND LOWER(status) NOT LIKE '%replaced%' AND LOWER(status) NOT LIKE '%cleared%' ORDER BY id DESC";
-    $stmt_req = $conn->prepare($sql);
-    if ($stmt_req) {
-        $stmt_req->bind_param("ss", $clean_sid, $search_name);
-        $stmt_req->execute();
-        $res_req = $stmt_req->get_result();
-        while($row = $res_req->fetch_assoc()) {
-            $borrowed_items[] = $row;
-        }
-        $stmt_req->close();
-    }
+// Kung walang nahanap o default view
+if (!$student_data && !empty($scanned_student_id)) {
+    $student_data = [
+        'full_name' => $scanned_student_id,
+        'student_id' => $scanned_student_id,
+        'course' => 'Not Specified',
+        'year_level' => 'N/A',
+        'profile_pic' => ''
+    ];
 }
-
-$portal_uid = isset($_GET['uid']) ? $_GET['uid'] : 1;
-$full_name_display = 'N/A';
-$profile_selfie = '';
-
-if ($borrower_data) {
-    if (isset($borrower_data['full_name'])) {
-        $full_name_display = $borrower_data['full_name'];
-    } elseif (isset($borrower_data['fullname'])) {
-        $full_name_display = $borrower_data['fullname'];
-    }
-    
-    $possible_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
-    foreach ($possible_keys as $pkey) {
-        if (!empty($borrower_data[$pkey])) {
-            $profile_selfie = $borrower_data[$pkey];
-            break;
-        }
-    }
-}
-
-if ($profile_selfie === '' && !empty($borrowed_items)) {
-    foreach ($borrowed_items as $b_item) {
-        $possible_b_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
-        foreach ($possible_b_keys as $pbkey) {
-            if (!empty($b_item[$pbkey])) {
-                $profile_selfie = $b_item[$pbkey];
-                break 2;
-            }
-        }
-    }
-}
-
-$student_id_display = $borrower_data ? (isset($borrower_data['student_id']) ? $borrower_data['student_id'] : $student_id) : $student_id;
-$course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? $borrower_data['course_year'] : (isset($borrower_data['grade_section']) ? $borrower_data['grade_section'] : 'N/A')) : 'N/A';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -181,230 +63,153 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
     <title>QR Scanner Portal - MQCQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .main-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); background: #ffffff; max-width: 950px; margin: 30px auto; padding: 25px; }
-        .top-navbar { background-color: #217835; color: #ffffff; padding: 12px 20px; font-weight: bold; font-size: 0.9rem; }
-        #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 8px; overflow: hidden; border: 2px solid #e9ecef; }
-        .zoomable-img { cursor: pointer; transition: transform 0.2s; }
-        .zoomable-img:hover { transform: scale(1.05); opacity: 0.9; }
+        :root { --sidebar-width: 260px; --primary-color: #217835; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
+        
+        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.05); }
+        .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0c1e35; }
+        .sidebar-brand img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ffc107; }
+        .sidebar-brand h5 { font-size: 12px; font-weight: 700; line-height: 1.4; margin: 0; }
+        
+        .sidebar-menu { padding: 15px 10px; flex-grow: 1; }
+        .sidebar-menu a { display: flex; align-items: center; color: rgba(255,255,255,0.8); padding: 12px 15px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500; margin-bottom: 5px; transition: all 0.2s; cursor: pointer; }
+        .sidebar-menu a:hover, .sidebar-menu a.active { background-color: rgba(255,255,255,0.15); color: white; }
+        .sidebar-menu a i { width: 25px; font-size: 15px; }
+
+        .sidebar-footer { padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: rgba(255,255,255,0.7); text-align: center; }
+
+        .main-content { margin-left: var(--sidebar-width); padding: 25px; }
+        
+        .top-navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 25px; }
+        .top-navbar h4 { font-size: 15px; font-weight: 700; color: #0c1e35; margin: 0; }
+        .top-navbar p { font-size: 11px; color: #777; margin: 0; }
+
+        .main-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); padding: 25px; margin-bottom: 25px; }
+        
+        .profile-section { display: flex; align-items: center; gap: 20px; }
+        .profile-avatar { width: 70px; height: 70px; background-color: #6c757d; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; object-fit: cover; border: 2px solid #217835; }
+
+        .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 12px 20px; align-items: center; justify-content: space-between; }
+        
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 15px; }
+            .mobile-header { display: flex; }
+        }
     </style>
 </head>
 <body>
 
-    <audio id="beepAudio" src="beep.mp3" preload="auto"></audio>
+    <!-- Mobile Header with Hamburger Toggle -->
+    <div class="mobile-header">
+        <button class="btn text-white p-0 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="fas fa-bars fs-4"></i>
+        </button>
+        <span class="fw-bold" style="font-size: 13px;">MQCQC QR SCANNER PORTAL</span>
+        <span class="badge bg-warning text-dark" style="font-size: 10px;">SCANNER</span>
+    </div>
 
-    <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
-        <div>MQCQC - QR SCANNER PORTAL</div>
-        <div>
-            <a href="custodian_dashboard.php?uid=<?php echo $portal_uid; ?>" class="btn btn-light btn-sm text-success fw-bold">Custodian Dashboard</a>
+    <!-- Offcanvas Mobile Sidebar -->
+    <div class="offcanvas offcanvas-start bg-success text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+        <div class="offcanvas-header border-bottom border-light border-opacity-10" style="background-color: #0c1e35;">
+            <h5 class="offcanvas-title fs-6 fw-bold" id="mobileSidebarLabel">MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column justify-content-between p-3">
+            <div class="sidebar-menu">
+                <a href="custodian_dashboard.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrow_requests.php?uid=<?= $user_id; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
+                <a href="index.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
+                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+            <div class="text-center py-2 border-top border-light border-opacity-10" style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                <p class="mb-0">"Discipline today, excellence tomorrow."</p>
+            </div>
         </div>
     </div>
 
-    <div class="container my-4">
+    <!-- Desktop Sidebar -->
+    <div class="sidebar d-none d-md-flex">
+        <div>
+            <div class="sidebar-brand">
+                <img src="logo.jpg" alt="School Logo" onerror="this.src='uploads/default.png';">
+                <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
+            </div>
+            <div class="sidebar-menu">
+                <a href="custodian_dashboard.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrow_requests.php?uid=<?= $user_id; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
+                <a href="index.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
+                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+        <div class="sidebar-footer">
+            <p class="mb-0">"Discipline today, excellence tomorrow."</p>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <div class="top-navbar d-none d-md-flex">
+            <div>
+                <h4>QR CODE SCANNER PORTAL</h4>
+                <p>Scan student QR codes for equipment monitoring & verification</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-success px-3 py-2" style="font-size: 11px;">CUSTODIAN</span>
+            </div>
+        </div>
+
         <div class="main-card">
-            <h4 class="fw-bold text-dark mb-3 text-center"><i class="fas fa-qrcode me-2 text-success"></i>Scan or Upload Student QR Code</h4>
+            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-camera me-2 text-success"></i>QR Scanner</h5>
             
-            <div id="reader"></div>
-
-            <div class="text-center mt-3">
-                <button id="start-camera" class="btn btn-primary btn-sm px-4 fw-bold">Start Camera</button>
-                <button id="stop-camera" class="btn btn-danger btn-sm px-4 fw-bold" style="display:none;">Stop Camera</button>
+            <!-- Scanner Placeholder / Interface -->
+            <div class="text-center mb-4">
+                <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto;"></div>
+                <a href="index.php?uid=<?= $user_id; ?>&student_id=CUST001" class="btn btn-success btn-sm mt-3">Simulate Scan (Test Student)</a>
             </div>
 
-            <hr class="my-4">
-
-            <div class="mb-3 p-3 bg-light rounded border">
-                <label for="qr-image-input" class="form-label fw-bold text-secondary small mb-1"><i class="fas fa-upload me-1"></i> Or Upload QR Image File</label>
-                <input class="form-control form-control-sm" type="file" id="qr-image-input" accept="image/*">
-            </div>
-
-            <div class="card p-3 border-0 bg-light">
-                <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-user-shield me-2"></i>Student Verification & Condition Monitoring</h5>
-                
-                <?php if ($raw_student_id !== ''): ?>
-                    <?php if ($borrower_data): ?>
-                        <div class="alert alert-success mb-3 d-flex align-items-center">
-                            <div class="me-3 text-center">
-                                <?php if ($profile_selfie !== ''): ?>
-                                    <img src="<?php echo $profile_selfie; ?>" width="80" height="80" class="zoomable-img rounded-circle" style="object-fit: cover; border: 2px solid #217835;" alt="Live Selfie" data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showLargeImage('<?php echo $profile_selfie; ?>', '<?php echo htmlspecialchars($full_name_display); ?>')">
-                                    <div style="font-size: 9px;" class="text-success fw-bold mt-1">Click to enlarge</div>
-                                <?php else: ?>
-                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 11px;">No Selfie</div>
-                                <?php endif; ?>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold mb-1 text-success">Student Verified (Live Selfie Record)</h6>
-                                <p class="mb-1"><strong>Borrower Name:</strong> <?php echo htmlspecialchars($full_name_display); ?></p>
-                                <p class="mb-1"><strong>Student ID:</strong> <?php echo htmlspecialchars($student_id_display); ?></p>
-                                <p class="mb-0"><strong>Course / Year:</strong> <?php echo htmlspecialchars($course_year_display); ?></p>
-                            </div>
-                        </div>
-
-                        <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-laptop me-1 text-success"></i> Active Borrowed Equipment Records (Pending / Damaged)</h6>
-                        
-                        <?php if (!empty($borrowed_items)): ?>
-                            <div class="table-responsive">
-                                <table class="table table-bordered align-middle text-center bg-white">
-                                    <thead class="table-success">
-                                        <tr style="font-size: 11px;">
-                                            <th>Selfie Picture</th>
-                                            <th>Borrower Name</th>
-                                            <th>Student ID</th>
-                                            <th>Course / Year</th>
-                                            <th>Equipment Name</th>
-                                            <th>Condition Status</th>
-                                            <th>Update Condition</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($borrowed_items as $item): ?>
-                                            <?php 
-                                                $st = isset($item['status']) ? trim($item['status']) : 'Good';
-                                                $lower_st = strtolower($st);
-                                                
-                                                $badge_class = 'bg-warning text-dark';
-                                                $display_status = 'Pending / Active';
-                                                
-                                                if (strpos($lower_st, 'damage') !== false || strpos($lower_st, 'sira') !== false) {
-                                                    $badge_class = 'bg-danger text-white';
-                                                    $display_status = 'Damaged';
-                                                } else {
-                                                    $display_status = $st;
-                                                }
-
-                                                $item_id = isset($item['id']) ? $item['id'] : 0;
-                                                $item_selfie = $profile_selfie;
-                                                $possible_item_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
-                                                foreach ($possible_item_keys as $pik) {
-                                                    if (!empty($item[$pik])) {
-                                                        $item_selfie = $item[$pik];
-                                                        break;
-                                                    }
-                                                }
-
-                                                $item_borrower_name = isset($item['full_name']) ? $item['full_name'] : $full_name_display;
-                                                $item_sid = isset($item['student_id']) ? $item['student_id'] : $student_id_display;
-                                                $item_course = isset($item['course_year']) ? $item['course_year'] : (isset($item['grade_section']) ? $item['grade_section'] : $course_year_display);
-                                                $item_name = isset($item['item_to_borrow']) ? $item['item_to_borrow'] : '';
-                                            ?>
-                                            <tr style="font-size: 11px;">
-                                                <td>
-                                                    <?php if ($item_selfie !== ''): ?>
-                                                        <img src="<?php echo $item_selfie; ?>" width="45" height="45" class="zoomable-img rounded-circle" style="object-fit: cover; border: 1px solid #ccc;" alt="Selfie" data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showLargeImage('<?php echo $item_selfie; ?>', '<?php echo htmlspecialchars($item_borrower_name); ?>')">
-                                                    <?php else: ?>
-                                                        <span class="text-muted">No Image</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="fw-semibold"><?php echo htmlspecialchars($item_borrower_name); ?></td>
-                                                <td class="text-secondary"><?php echo htmlspecialchars($item_sid); ?></td>
-                                                <td class="text-secondary"><?php echo htmlspecialchars($item_course); ?></td>
-                                                <td class="fw-bold text-success"><?php echo htmlspecialchars($item_name); ?></td>
-                                                <td>
-                                                    <span class="badge <?php echo $badge_class; ?> px-3 py-2" style="font-size: 11px;"><?php echo htmlspecialchars($display_status); ?></span>
-                                                </td>
-                                                <td>
-                                                    <a href="index.php?uid=<?php echo $portal_uid; ?>&student_id=<?php echo urlencode($raw_student_id); ?>&action=good&req_id=<?php echo $item_id; ?>" class="btn btn-success btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Good">Good</a>
-                                                    <a href="index.php?uid=<?php echo $portal_uid; ?>&student_id=<?php echo urlencode($raw_student_id); ?>&action=damaged&req_id=<?php echo $item_id; ?>" class="btn btn-danger btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Damaged">Damaged</a>
-                                                    <a href="index.php?uid=<?php echo $portal_uid; ?>&student_id=<?php echo urlencode($raw_student_id); ?>&action=replaced&req_id=<?php echo $item_id; ?>" class="btn btn-warning btn-sm text-dark px-2 py-1" style="font-size: 9px;" title="Mark as Replaced">Replaced</a>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php else: ?>
-                            <div class="alert alert-success py-2 small mb-3">No active or damaged equipment found for this student (All items are in good condition or have been replaced).</div>
-                        <?php endif; ?>
-
+            <!-- Student Verification & Condition Monitoring Section -->
+            <h5 class="fw-bold text-dark mb-3 mt-4"><i class="fas fa-user-check me-2 text-success"></i>Student Verification & Condition Monitoring</h5>
+            
+            <div class="card p-3 border-0 bg-light shadow-sm mb-4">
+                <div class="profile-section">
+                    <?php if (!empty($student_data) && !empty($student_data['profile_pic'])): ?>
+                        <img src="<?= htmlspecialchars($student_data['profile_pic']); ?>" class="profile-avatar" alt="Student Selfie">
                     <?php else: ?>
-                        <div class="alert alert-danger mb-0">
-                            <i class="fas fa-exclamation-triangle me-1"></i> No borrower record found for Student ID: <strong><?php echo htmlspecialchars($student_id); ?></strong>
+                        <div class="profile-avatar">
+                            <i class="fas fa-user-slash"></i>
                         </div>
                     <?php endif; ?>
-                <?php else: ?>
-                    <div class="text-muted text-center py-2 small">Please use the camera or upload a QR image file above to scan.</div>
-                <?php endif; ?>
+                    <div>
+                        <span class="text-success fw-bold small"><i class="fas fa-check-circle me-1"></i>Student Verified (Live Selfie Record)</span>
+                        <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($student_data['full_name'] ?? 'No Student Scanned'); ?></h5>
+                        <p class="text-muted mb-0 small">Student ID: <strong><?= htmlspecialchars($student_data['student_id'] ?? '---'); ?></strong></p>
+                        <p class="text-muted mb-0 small">Course / Year: <strong><?= htmlspecialchars($student_data['course'] ?? '---'); ?> / <?= htmlspecialchars($student_data['year_level'] ?? '---'); ?></strong></p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-laptop me-2 text-success"></i>Active Borrowed Equipment Records (Pending / Damaged)</h5>
+            <div class="card p-3 border-0 bg-light shadow-sm">
+                <p class="text-muted small mb-0">No active or damaged equipment found for this student (All items are in good condition or have been replaced).</p>
             </div>
         </div>
     </div>
 
-    <!-- Modal para sa Pagpapalaki ng Larawan (Image Zoom Modal) -->
-    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content text-center p-3">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-success" id="imageModalLabel">Borrower Live Selfie</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <img id="modalImageSrc" src="" class="img-fluid rounded shadow" style="max-height: 450px; object-fit: contain;" alt="Enlarged Selfie">
-                    <p id="modalBorrowerName" class="mt-3 fw-bold text-secondary mb-0"></p>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- html5-qrcode library for real camera scanning -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script>
-        function showLargeImage(imgUrl, borrowerName) {
-            document.getElementById('modalImageSrc').src = imgUrl;
-            document.getElementById('modalBorrowerName').textContent = "Borrower: " + borrowerName;
+        function onScanSuccess(decodedText, decodedResult) {
+            // Redirect to index.php with the scanned student id/data
+            window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
         }
 
-        const html5QrCode = new Html5Qrcode("reader");
-
-        function playBeep() {
-            const audio = document.getElementById('beepAudio');
-            if (audio) {
-                audio.play().catch(e => console.log("Audio play blocked"));
-            }
-        }
-
-        document.getElementById('start-camera').addEventListener('click', function() {
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                (decodedText, decodedResult) => {
-                    playBeep();
-                    setTimeout(() => {
-                        window.location.href = "index.php?uid=" + <?php echo $portal_uid; ?> + "&student_id=" + encodeURIComponent(decodedText);
-                    }, 300);
-                },
-                (errorMessage) => {}
-            ).then(() => {
-                document.getElementById('start-camera').style.display = 'none';
-                document.getElementById('stop-camera').style.display = 'inline-block';
-            }).catch((err) => {
-                alert("Error starting camera: " + err);
-            });
-        });
-
-        document.getElementById('stop-camera').addEventListener('click', function() {
-            html5QrCode.stop().then(() => {
-                document.getElementById('start-camera').style.display = 'inline-block';
-                document.getElementById('stop-camera').style.display = 'none';
-            }).catch((err) => {
-                console.log("Failed to stop scanner.", err);
-            });
-        });
-
-        document.getElementById('qr-image-input').addEventListener('change', e => {
-            if (e.target.files.length == 0) return;
-            const imageFile = e.target.files[0];
-            
-            html5QrCode.scanFile(imageFile, true)
-            .then(decodedText => {
-                playBeep();
-                setTimeout(() => {
-                    window.location.href = "index.php?uid=" + <?php echo $portal_uid; ?> + "&student_id=" + encodeURIComponent(decodedText);
-                }, 300);
-            })
-            .catch(err => {
-                alert("Error scanning QR image. Make sure the uploaded image is clear and contains a valid QR code.");
-            });
-        });
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", { fps: 10, qrbox: 250 }, false);
+        html5QrcodeScanner.render(onScanSuccess);
     </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -53,6 +53,7 @@ if (isset($_GET['student_id'])) {
 </head>
 <body>
 
+    <!-- Audio Element na may preload para laging handa -->
     <audio id="beepAudio" src="beep.mp3" preload="auto"></audio>
 
     <div class="top-navbar">
@@ -95,20 +96,20 @@ if (isset($_GET['student_id'])) {
         const beepAudio = document.getElementById('beepAudio');
         const currentUid = "<?= htmlspecialchars($user_id); ?>";
 
-        function playBeepAndRedirect(url) {
+        // Function para i-play ang audio at siguraduhing tutunog bago mag-redirect
+        function handleSuccessfulScan(decodedText) {
+            // I-play ang audio nang may kasamang promise handling
             if (beepAudio) {
-                beepAudio.play().then(() => {
-                    // Maghintay ng 600ms para tumugtog muna ang beep bago mag-redirect
-                    setTimeout(() => { 
-                        window.location.href = url; 
-                    }, 600);
-                }).catch(e => {
-                    console.log("Audio playback blocked or failed:", e);
-                    window.location.href = url;
+                beepAudio.currentTime = 0; // I-reset sa simula ang audio
+                beepAudio.play().catch(error => {
+                    console.log("Audio autoplay prevented by browser:", error);
                 });
-            } else {
-                window.location.href = url;
             }
+
+            // Magbigay ng sapat na oras (700 milliseconds) para tumugtog ang audio bago lumipat ng pahina
+            setTimeout(() => {
+                window.location.href = "index.php?uid=" + currentUid + "&student_id=" + encodeURIComponent(decodedText);
+            }, 700);
         }
 
         // Camera Scanner Initialization
@@ -117,10 +118,15 @@ if (isset($_GET['student_id'])) {
         if(startCamBtn) {
             startCamBtn.addEventListener('click', function() {
                 if (!html5QrcodeScanner) {
+                    // I-unlock ang audio context sa unang pindot ng user sa Start Camera
+                    if (beepAudio) {
+                        beepAudio.play().then(() => { beepAudio.pause(); beepAudio.currentTime = 0; }).catch(e => {});
+                    }
+
                     html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
                     html5QrcodeScanner.render((decodedText) => {
                         html5QrcodeScanner.clear();
-                        playBeepAndRedirect("index.php?uid=" + currentUid + "&student_id=" + encodeURIComponent(decodedText));
+                        handleSuccessfulScan(decodedText);
                     }, (err) => {});
                     this.innerText = "Stop Camera";
                     this.className = "btn btn-danger btn-sm w-100 fw-semibold mb-3";
@@ -128,17 +134,22 @@ if (isset($_GET['student_id'])) {
             });
         }
 
-        // Safe File Upload QR Scanning with Audio Delay
+        // Safe File Upload QR Scanning with Audio
         const fileInput = document.getElementById('qr-input-file');
         if (fileInput) {
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;
                 const imageFile = e.target.files[0];
                 
+                // I-unlock din ang audio para sa file upload
+                if (beepAudio) {
+                    beepAudio.play().then(() => { beepAudio.pause(); beepAudio.currentTime = 0; }).catch(e => {});
+                }
+
                 const html5QrCode = new Html5Qrcode("reader");
                 html5QrCode.scanFile(imageFile, true)
                 .then(decodedText => {
-                    playBeepAndRedirect("index.php?uid=" + currentUid + "&student_id=" + encodeURIComponent(decodedText));
+                    handleSuccessfulScan(decodedText);
                 })
                 .catch(err => {
                     alert("Unable to read QR code from the uploaded image. Please try another clear image.");

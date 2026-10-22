@@ -69,12 +69,30 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
     exit();
 }
 
-// Query for Borrowing Requests Table with fallback
-$requests_query = "SELECT be.id as req_id, be.student_id, be.item_to_borrow, be.status, 
-                          b.fullname, b.course_year, b.selfie_image 
+// Dynamic Column Detection para sa Borrowed Equipment at Borrowers tables
+$eq_columns = [];
+$res_c = $conn->query("SHOW COLUMNS FROM borrowed_equipment");
+if ($res_c) {
+    while ($rc = $res_c->fetch_assoc()) { $eq_columns[] = $rc['Field']; }
+}
+
+$borrower_columns = [];
+$res_b = $conn->query("SHOW COLUMNS FROM borrowers");
+if ($res_b) {
+    while ($rb = $res_b->fetch_assoc()) { $borrower_columns[] = $rb['Field']; }
+}
+
+$be_stud_col = in_array('student_id', $eq_columns) ? 'student_id' : (in_array('stud_id', $eq_columns) ? 'stud_id' : 'student_id');
+$b_stud_col = in_array('student_id', $borrower_columns) ? 'student_id' : (in_array('stud_id', $borrower_columns) ? 'stud_id' : 'student_id');
+$b_name_col = in_array('fullname', $borrower_columns) ? 'fullname' : (in_array('full_name', $borrower_columns) ? 'full_name' : 'name');
+
+// Robust Query para sa Borrowing Requests Table
+$requests_query = "SELECT be.id as req_id, be.{$be_stud_col} as student_id, be.item_to_borrow, be.status, 
+                          b.{$b_name_col} as fullname, b.course_year, b.selfie_image 
                    FROM borrowed_equipment be 
-                   LEFT JOIN borrowers b ON be.student_id = b.student_id 
+                   LEFT JOIN borrowers b ON be.{$be_stud_col} = b.{$b_stud_col} 
                    ORDER BY be.id DESC";
+
 $result_requests = @$conn->query($requests_query);
 $total_active = ($result_requests) ? $result_requests->num_rows : 0;
 ?>
@@ -126,8 +144,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
         .badge-damaged { background-color: #f8d7da; color: #721c24; }
         .badge-replaced { background-color: #d1ecf1; color: #0c5460; }
 
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; background: #000; min-height: 200px; margin-bottom: 12px; }
-        
         @media (max-width: 768px) {
             .sidebar { width: 100%; height: auto; position: relative; }
             .main-content { margin-left: 0; }
@@ -147,7 +163,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
             <div class="sidebar-menu">
                 <a href="javascript:void(0);" class="active" onclick="switchTab('dashboard-section', this)"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="javascript:void(0);" onclick="switchTab('requests-section', this)"><i class="fas fa-clipboard-list"></i> Borrowing Requests</a>
-                <!-- Diretsong nakaturo sa index.php ang QR Scanner Portal button -->
                 <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
                 <a href="login.php" class="text-danger mt-4" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
@@ -196,32 +211,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
                             <p>System Portal Active</p>
                         </div>
                         <div class="stat-icon text-warning"><i class="fas fa-school"></i></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="content-card">
-                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-qrcode me-2 text-primary"></i>Quick QR Code & Student Verification</h5>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded border mb-3">
-                            <label class="form-label small fw-bold">Live Webcam Scanner</label>
-                            <div id="reader"></div>
-                            <button type="button" class="btn btn-primary btn-sm w-100 fw-semibold" id="start-camera-btn">Start Scanning</button>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded border mb-3">
-                            <label class="form-label small fw-bold">Manual Search / Upload Student Pass</label>
-                            <input type="file" id="qr-input-file" class="form-control form-control-sm mb-3" accept="image/*">
-                            <form method="GET" action="custodian_dashboard.php" onsubmit="playBeepAndSubmit(event, this)">
-                                <input type="hidden" name="uid" value="<?= $user_id; ?>">
-                                <div class="input-group input-group-sm mb-2">
-                                    <input type="text" name="search_id" class="form-control" placeholder="Enter Student ID...">
-                                    <button class="btn btn-success" type="submit">Verify</button>
-                                </div>
-                            </form>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -302,33 +291,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
             
             document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
             if(element) element.classList.add('active');
-        }
-
-        function playBeepAndRedirect(url) {
-            beepAudio.play().catch(e => console.log("Audio blocked:", e));
-            setTimeout(() => { window.location.href = url; }, 300);
-        }
-
-        function playBeepAndSubmit(event, form) {
-            event.preventDefault();
-            beepAudio.play().catch(e => console.log("Audio blocked:", e));
-            setTimeout(() => { form.submit(); }, 300);
-        }
-
-        let html5QrcodeScanner = null;
-        const startCamBtn = document.getElementById('start-camera-btn');
-        if(startCamBtn) {
-            startCamBtn.addEventListener('click', function() {
-                if (!html5QrcodeScanner) {
-                    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 200 });
-                    html5QrcodeScanner.render((decodedText) => {
-                        html5QrcodeScanner.clear();
-                        playBeepAndRedirect("index.php?uid=" + currentUid + "&student_id=" + encodeURIComponent(decodedText));
-                    }, (err) => {});
-                    this.innerText = "Stop Scanning";
-                    this.style.backgroundColor = "#d9534f";
-                }
-            });
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

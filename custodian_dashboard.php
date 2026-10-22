@@ -120,7 +120,8 @@ $active_tab = $_GET['tab'] ?? 'dashboard';
             <div class="sidebar-menu">
                 <a href="custodian_dashboard.php?uid=<?= $user_id; ?>&tab=dashboard" class="<?= ($active_tab == 'dashboard') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="custodian_dashboard.php?uid=<?= $user_id; ?>&tab=requests" class="<?= ($active_tab == 'requests') ? 'active' : ''; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
-                <a href="scanner.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
+                <!-- Updated link patungong index.php para sa QR Scanner Portal -->
+                <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
                 <a href="login.php" class="text-white mt-4" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>

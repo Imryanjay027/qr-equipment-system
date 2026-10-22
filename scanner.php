@@ -38,10 +38,13 @@ if ($conn->connect_error) {
 </head>
 <body>
 
+<!-- Audio element para sa beep sound kapag nag-scan -->
+<audio id="beep-sound" src="beep.mp3" preload="auto"></audio>
+
 <div class="container">
     <div class="scanner-card text-center">
-        <h4 class="fw-bold mb-1 text-success"><i class="fas fa-qrcode me-2"></i>QR Code Scanner</h4>
-        <p class="text-muted small mb-3">I-align ang QR code sa loob ng frame para mag-scan</p>
+        <h4 class="fw-bold mb-1 text-success"><i class="fas fa-qrcode me-2"></i>Custodian QR Scanner</h4>
+        <p class="text-muted small mb-3">I-align ang QR code sa loob ng frame para sa mabilisang pag-scan</p>
         
         <!-- Area para sa QR Reader -->
         <div id="reader" style="min-height: 280px;"></div>
@@ -54,14 +57,20 @@ if ($conn->connect_error) {
 
 <script>
     function onScanSuccess(decodedText, decodedResult) {
-        // I-stop muna ang scanner para hindi paulit-ulit mag-trigger habang nag-reredirect
+        // Patugtugin ang beep.mp3 kapag nagtagumpay ang pag-scan
+        var beep = document.getElementById('beep-sound');
+        if (beep) {
+            beep.play().catch(e => console.log("Audio play blocked:", e));
+        }
+
+        // Itigil muna ang scanner bago mag-redirect para mabilis at walang glitch
         html5QrCode.stop().then(() => {
             document.getElementById('scan-result').classList.remove('d-none');
             document.getElementById('result-text').innerText = "Scanned: " + decodedText;
 
             setTimeout(() => {
                 window.location.href = "registration.php?qr=" + encodeURIComponent(decodedText);
-            }, 500);
+            }, 300);
         }).catch(err => {
             console.error("Failed to stop scanner.", err);
             window.location.href = "registration.php?qr=" + encodeURIComponent(decodedText);
@@ -69,18 +78,16 @@ if ($conn->connect_error) {
     }
 
     function onScanFailure(error) {
-        // Hinahayaang tumahimik habang naghahanap para hindi bumagal ang console
+        // Tahimik na naghahanap para hindi bumagal ang performance ng mobile browser
     }
 
-    // Optimization para sa Mobile Phones
+    // Optimization para sa mabilis na pag-scan gamit ang mobile phone ng custodian
     const html5QrCode = new Html5Qrcode("reader");
     
-    // Configurations para mapabilis ang pagbasa ng camera sa mobile
     const qrConfig = {
-        fps: 20, // Ibinigay natin sa 20 para mas mabilis ang pagkuha ng frame rate
+        fps: 25, // Pinataas sa 25 fps para maging napakabilis at responsive sa mobile
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
-        // Dito nililimitahan ang resolution para hindi bumigat at mag-lag ang mobile browser
         videoConstraints: {
             facingMode: "environment",
             width: { ideal: 1280 },
@@ -88,7 +95,7 @@ if ($conn->connect_error) {
         }
     };
 
-    // Pag-start ng camera gamit ang optimized constraints
+    // Paganahin ang back camera gamit ang mga na-optimize na settings
     html5QrCode.start(
         { facingMode: "environment" }, 
         qrConfig, 
@@ -96,7 +103,6 @@ if ($conn->connect_error) {
         onScanFailure
     ).catch(err => {
         console.warn("Back camera fail, fallback to default camera:", err);
-        // Fallback sa user camera kung sakaling magka-error ang environment mode
         html5QrCode.start(
             { facingMode: "user" }, 
             qrConfig, 

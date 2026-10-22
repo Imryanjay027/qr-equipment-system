@@ -31,7 +31,21 @@ if (isset($_GET['action']) && $_GET['action'] == 'mark_replaced' && isset($_GET[
         $update_stmt->execute();
         $update_stmt->close();
     }
-    header("Location: borrower.php?uid=" . $user_id . (!empty($student_id_query) ? "&sid=" . $student_id_query : ""));
+    header("Location: borrower.php?uid=" . $user_id . (!empty($student_id_query) ? "&sid=" . $student_id_query : "") . "&tab=borrowed");
+    exit();
+}
+
+// Handle Dismiss / Clear action from history tab so it deletes or archives from list
+if (isset($_GET['action']) && $_GET['action'] == 'dismiss_history' && isset($_GET['req_id'])) {
+    $req_id = intval($_GET['req_id']);
+    // Maaari nating i-update ang status o i-delete para mawala sa listahan
+    $del_stmt = $conn->prepare("DELETE FROM borrow_requests WHERE id = ?");
+    if ($del_stmt) {
+        $del_stmt->bind_param("i", $req_id);
+        $del_stmt->execute();
+        $del_stmt->close();
+    }
+    header("Location: borrower.php?uid=" . $user_id . (!empty($student_id_query) ? "&sid=" . $student_id_query : "") . "&tab=history");
     exit();
 }
 
@@ -76,7 +90,7 @@ $borrow_query->execute();
 $borrowed_items = $borrow_query->get_result();
 $borrow_query->close();
 
-// 2. Kunin ang history ng mga returned o cleared items
+// 2. Kunin ang history ng mga returned o cleared items (kabilang ang mga galing sa damaged/replacement)
 $history_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND (status = 'Cleared' OR status = 'Replaced' OR status LIKE '%Good%') ORDER BY id DESC");
 $history_query->bind_param("ss", $sid, $current_user['full_name']);
 $history_query->execute();
@@ -203,6 +217,7 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                                 <th>Equipment Name</th>
                                 <th>Date Returned</th>
                                 <th>Status / Remarks</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -210,14 +225,20 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                                 <?php while($row = $history_items->fetch_assoc()): ?>
                                     <tr>
                                         <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
-                                        <td class="fw-bold"><i class="fas fa-laptop me-1 text-secondary"></i> <?= htmlspecialchars($row['item_to_borrow']); ?></td>
+                                        <td class="fw-bold"><?= htmlspecialchars($row['item_to_borrow']); ?></td>
                                         <td><?= htmlspecialchars($row['return_date']) . ' (' . htmlspecialchars($row['return_time']) . ')'; ?></td>
                                         <td><span class="badge bg-success px-3 py-2"><?= htmlspecialchars($row['status']); ?></span></td>
+                                        <td>
+                                            <!-- Clickable Cleared Button para mawala sa listahan at hindi matambakan -->
+                                            <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&req_id=<?= $row['id']; ?>&action=dismiss_history&tab=history" class="btn btn-success btn-sm px-3 py-1 fw-semibold" style="font-size: 11px;">
+                                                <i class="fas fa-check me-1"></i> Clear / Dismiss
+                                            </a>
+                                        </td>
                                     </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="4" class="text-muted py-4 small">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
+                                    <td colspan="5" class="text-muted py-4 small">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -252,7 +273,7 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                                     ?>
                                     <tr>
                                         <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
-                                        <td class="fw-bold"><i class="fas fa-laptop me-1 text-secondary"></i> <?= htmlspecialchars($row['item_to_borrow']); ?></td>
+                                        <td class="fw-bold"><?= htmlspecialchars($row['item_to_borrow']); ?></td>
                                         <td><?= htmlspecialchars($row['return_date']) . '<br><small class="text-muted">(' . htmlspecialchars($row['return_time']) . ')</small>'; ?></td>
                                         <td><span class="badge <?= $badge_bg; ?> px-3 py-2"><?= htmlspecialchars($st); ?></span></td>
                                         <td>

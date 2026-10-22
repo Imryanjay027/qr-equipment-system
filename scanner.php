@@ -1,98 +1,111 @@
 <?php
-// scanner.php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 session_start();
-include('db_connection.php');
+date_default_timezone_set('Asia/Manila');
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Pinaluwag natin para hindi ka ma-log out kung sakaling iba ang role name sa session mo
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
+$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+
+$conn = @new mysqli($host, $username, $password, $database, (int)$port);
+if ($conn->connect_error) {
+    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
 }
 
-$fullname =$_SESSION['fullname'] ?? 'Custodian';
+if ($conn->connect_error) {
+    die("Database Connection Failed: " . $conn->connect_error);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Scanner & Condition Monitoring - MTQC Custodian Portal</title>
+    <title>QR Scanner - Equipment Monitoring</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html5-qrcode library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f4f6f9; color: #333; }
-        
-        /* Top Navigation Bar */
-        .navbar { background-color: #1a365d; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-wrap: wrap; gap: 10px; }
-        .navbar h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
-        .nav-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .nav-links a { background-color: #2b4c7e; color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 500; transition: background 0.2s; }
-        .nav-links a:hover { background-color: #3b629e; }
-        .nav-links a.logout-btn { background-color: #d9534f; }
-        .nav-links a.logout-btn:hover { background-color: #c9302c; }
-
-        /* Main Container */
-        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; width: 100%; }
-
-        /* Scanner Module Box */
-        .module-box { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 30px; margin-bottom: 25px; text-align: center; }
-        .module-box h2 { font-size: 20px; color: #1a365d; margin-bottom: 10px; }
-        .module-box p { font-size: 13px; color: #666; margin-bottom: 20px; }
-
-        /* Camera / Scanner Frame Area */
-        .scanner-container { width: 100%; max-width: 500px; margin: 0 auto 20px auto; border: 2px dashed #cbd5e1; border-radius: 8px; background: #fafafa; padding: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 250px; }
-        .scanner-container p { margin-top: 15px; color: #555; font-weight: 500; font-size: 14px; }
-
-        /* Search / Manual Input Section */
-        .manual-section { display: flex; gap: 10px; max-width: 600px; margin: 0 auto; flex-wrap: wrap; }
-        .manual-section input { flex: 1; min-width: 200px; padding: 10px 15px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        .manual-section button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; cursor: pointer; width: 100%; max-width: 150px; margin: 0 auto; }
-        .manual-section button:hover { background: #218838; }
-
-        /* Records Table Section */
-        .table-section { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 25px; overflow-x: auto; }
-        .table-section h3 { font-size: 16px; color: #1a365d; margin-bottom: 15px; }
-        
-        .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; min-width: 600px; }
-        th, td { padding: 12px 15px; text-align: left; font-size: 13px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
-        th { background-color: #f7fafc; color: #4a5568; font-weight: 600; }
-        .no-record { text-align: center; color: #e53e3e; font-style: italic; padding: 25px; font-size: 13px; }
-
-        /* Mobile Responsive Media Queries */
-        @media (max-width: 768px) {
-            .navbar { padding: 12px 15px; flex-direction: column; align-items: flex-start; }
-            .nav-links { width: 100%; justify-content: space-between; }
-            .container { margin: 15px auto; padding: 0 10px; }
-            .module-box { padding: 15px; border-radius: 0; box-shadow: none; }
-            .table-section { padding: 15px; border-radius: 0; box-shadow: none; }
-            .manual-section { flex-direction: column; }
-            .manual-section button { max-width: 100%; }
-        }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .scanner-card { max-width: 500px; margin: 30px auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; background-color: #000; }
+        #reader video { object-fit: cover !important; }
     </style>
 </head>
 <body>
 
-<!-- Top Navigation -->
-<div class="navbar">
-    <h1>MTQC Custodian Portal (Welcome, <?php echo htmlspecialchars($fullname); ?>)</h1>
-    <div class="nav-links">
-        <a href="custodian_dashboard.php">Custodian Dashboard</a>
-        <a href="scanner.php">Scanner / Dashboard</a>
-        <a href="logout.php" class="logout-btn">Logout</a>
+<div class="container">
+    <div class="scanner-card text-center">
+        <h4 class="fw-bold mb-1 text-success"><i class="fas fa-qrcode me-2"></i>QR Code Scanner</h4>
+        <p class="text-muted small mb-3">I-align ang QR code sa loob ng frame para mag-scan</p>
+        
+        <!-- Area para sa QR Reader -->
+        <div id="reader" style="min-height: 280px;"></div>
+        
+        <div id="scan-result" class="mt-3 alert alert-info d-none" role="alert">
+            <span id="result-text">Scanning...</span>
+        </div>
     </div>
 </div>
 
-<div class="container">
+<script>
+    function onScanSuccess(decodedText, decodedResult) {
+        // I-stop muna ang scanner para hindi paulit-ulit mag-trigger habang nag-reredirect
+        html5QrCode.stop().then(() => {
+            document.getElementById('scan-result').classList.remove('d-none');
+            document.getElementById('result-text').innerText = "Scanned: " + decodedText;
 
-    <!-- QR Code Scanner & Verification Module -->
-    <div class="module-box">
-        <h2>QR Code Scanner & Verification</h2>
-        <p>I-scan ang QR code ng estudyante o kagamitan para sa pagbabalik (Return) at pag-check ng condition.</p>
-        
-        <div class="scanner-container">
-            <svg width="50" height="50" fill="none" stroke="#666" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7V5a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H6a2 2 0 0 1-2-2v-2"/></svg>
-            <p>Awtomatikong binubuksan ang Live
+            setTimeout(() => {
+                window.location.href = "registration.php?qr=" + encodeURIComponent(decodedText);
+            }, 500);
+        }).catch(err => {
+            console.error("Failed to stop scanner.", err);
+            window.location.href = "registration.php?qr=" + encodeURIComponent(decodedText);
+        });
+    }
+
+    function onScanFailure(error) {
+        // Hinahayaang tumahimik habang naghahanap para hindi bumagal ang console
+    }
+
+    // Optimization para sa Mobile Phones
+    const html5QrCode = new Html5Qrcode("reader");
+    
+    // Configurations para mapabilis ang pagbasa ng camera sa mobile
+    const qrConfig = {
+        fps: 20, // Ibinigay natin sa 20 para mas mabilis ang pagkuha ng frame rate
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        // Dito nililimitahan ang resolution para hindi bumigat at mag-lag ang mobile browser
+        videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        }
+    };
+
+    // Pag-start ng camera gamit ang optimized constraints
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        qrConfig, 
+        onScanSuccess, 
+        onScanFailure
+    ).catch(err => {
+        console.warn("Back camera fail, fallback to default camera:", err);
+        // Fallback sa user camera kung sakaling magka-error ang environment mode
+        html5QrCode.start(
+            { facingMode: "user" }, 
+            qrConfig, 
+            onScanSuccess, 
+            onScanFailure
+        );
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

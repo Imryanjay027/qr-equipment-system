@@ -23,14 +23,13 @@ if ($conn->connect_error) {
 // Get User ID from Session or URL Parameter
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '1');
 
-// Pilitin nating maging Custodian ang role para hindi maging 'STUDENT' ang badge sa panel
 $current_user = [
     'id' => $user_id,
     'full_name' => 'Property Custodian',
     'role' => 'Custodian'
 ];
 
-$user_result = $conn->query("SELECT * FROM tbl_users WHERE id = " . intval($user_id));
+$user_result = $conn->query("SELECT * FROM users WHERE id = " . intval($user_id));
 if ($user_result && $user_result->num_rows > 0) {
     $u_data = $user_result->fetch_assoc();
     $current_user['full_name'] = $u_data['full_name'] ?? ($u_data['fullname'] ?? ($u_data['name'] ?? 'Property Custodian'));
@@ -40,7 +39,7 @@ $_SESSION['user_id'] = $current_user['id'];
 $_SESSION['role'] = 'Custodian';
 $_SESSION['full_name'] = $current_user['full_name'];
 
-// Handle Status Updates (Mark Good / Damaged / Replaced)
+// Handle Status Updates (Mark Good / Damaged / Replaced) mula sa borrow_requests table
 if (isset($_GET['action']) && isset($_GET['req_id'])) {
     $req_id = intval($_GET['req_id']);
     $action = $_GET['action'];
@@ -54,7 +53,7 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
         $new_status = 'Replaced';
     }
 
-    $update_stmt = $conn->prepare("UPDATE borrowed_equipment SET status = ? WHERE id = ?");
+    $update_stmt = $conn->prepare("UPDATE borrow_requests SET status = ? WHERE id = ?");
     if ($update_stmt) {
         $update_stmt->bind_param("si", $new_status, $req_id);
         $update_stmt->execute();
@@ -64,12 +63,10 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
     exit();
 }
 
-// Query para makuha ang mga hiram na kagamitan at detalye ng estudyante
-$requests_query = "SELECT be.id as req_id, be.student_id, be.item_to_borrow, be.status, 
-                          b.fullname, b.course_year, b.selfie_image 
-                   FROM borrowed_equipment be 
-                   LEFT JOIN borrowers b ON be.student_id = b.student_id 
-                   ORDER BY be.id DESC";
+// Query galing sa borrow_requests table kung saan nakasulat ang hiram ng estudyante
+$requests_query = "SELECT id as req_id, student_id, full_name as fullname, course_year, item_to_borrow, status, selfie_image 
+                   FROM borrow_requests 
+                   ORDER BY id DESC";
 
 $result_requests = @$conn->query($requests_query);
 $total_active = ($result_requests) ? $result_requests->num_rows : 0;
@@ -83,12 +80,11 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --sidebar-width: 260px; --primary-color: #1a365d; }
+        :root { --sidebar-width: 260px; --primary-color: #217835; }
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
         
         .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.05); }
         .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-brand img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ffc107; }
         .sidebar-brand h5 { font-size: 13px; font-weight: 700; line-height: 1.4; margin: 0; }
         
         .sidebar-menu { padding: 15px 10px; flex-grow: 1; }
@@ -134,7 +130,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
     <div class="sidebar">
         <div>
             <div class="sidebar-brand">
-                <img src="logo.jpg" alt="School Logo" onerror="this.src='uploads/default.png';">
                 <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
             </div>
             <div class="sidebar-menu">
@@ -156,7 +151,7 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
                 <span class="small fw-semibold text-secondary me-3">
                     <i class="fas fa-user-shield text-warning me-1"></i> <?= htmlspecialchars($_SESSION['full_name']); ?>
                 </span>
-                <span class="badge bg-primary text-uppercase px-2 py-1"><?= htmlspecialchars($_SESSION['role']); ?></span>
+                <span class="badge bg-success text-uppercase px-2 py-1"><?= htmlspecialchars($_SESSION['role']); ?></span>
             </div>
         </div>
 
@@ -169,7 +164,7 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
                             <h3><?= $total_active; ?></h3>
                             <p>Total Active Requests</p>
                         </div>
-                        <div class="stat-icon text-primary"><i class="fas fa-boxes"></i></div>
+                        <div class="stat-icon text-success"><i class="fas fa-boxes"></i></div>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -196,7 +191,7 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
         <!-- REQUESTS TAB -->
         <div id="requests-section" class="tab-section" style="display: none;">
             <div class="content-card">
-                <h5 class="fw-bold text-dark mb-4"><i class="fas fa-clipboard-list me-2 text-primary"></i>Active Equipment Borrowing Requests & Monitoring</h5>
+                <h5 class="fw-bold text-dark mb-4"><i class="fas fa-clipboard-list me-2 text-success"></i>Active Equipment Borrowing Requests & Monitoring</h5>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle">
                         <thead>
@@ -226,14 +221,15 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
                                         }
 
                                         $photo = trim($row['selfie_image'] ?? '');
-                                        if (empty($photo)) {
-                                            $photo = 'uploads/default.png';
-                                        } elseif (strpos($photo, 'uploads/') === false) {
-                                            $photo = 'uploads/' . $photo;
-                                        }
                                     ?>
                                     <tr>
-                                        <td><img src="<?= htmlspecialchars($photo); ?>" alt="Selfie" class="student-avatar" onerror="this.src='uploads/default.png';"></td>
+                                        <td>
+                                            <?php if (!empty($photo)): ?>
+                                                <img src="<?= htmlspecialchars($photo); ?>" alt="Selfie" class="student-avatar">
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">No Image</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
                                         <td><?= htmlspecialchars($row['fullname'] ?? '---'); ?></td>
                                         <td><?= htmlspecialchars($row['course_year'] ?? '---'); ?></td>

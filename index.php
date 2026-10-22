@@ -78,20 +78,11 @@ if (!empty($student_id)) {
         }
     }
 
-    // Flexible query gamit ang LIKE at LOWER para makuha ang active requests kahit may spacing/casing issues
-    if ($borrower_data) {
-        $b_name = trim($borrower_data['full_name'] ?? ($borrower_data['fullname'] ?? ''));
-        $b_sid = trim($borrower_data['student_id'] ?? $student_id);
-        
-        $safe_sid = $conn->real_escape_string($b_sid);
-        $safe_name = $conn->real_escape_string($b_name);
-        $safe_orig = $conn->real_escape_string($student_id);
-        
-        $sql = "SELECT * FROM borrow_requests WHERE (student_id LIKE '%$safe_sid%' OR full_name LIKE '%$safe_name%' OR student_id LIKE '%$safe_orig%') AND LOWER(status) NOT LIKE '%cleared%' AND LOWER(status) NOT LIKE '%replaced%' ORDER BY id DESC";
-        $res_req = $conn->query($sql);
-        if ($res_req) {
-            $borrowed_items = $res_req->fetch_all(MYSQLI_ASSOC);
-        }
+    // Direktang kukunin ang lahat ng active borrow requests para matiyak na lumilitaw ang mga ito
+    $sql = "SELECT * FROM borrow_requests WHERE LOWER(status) NOT LIKE '%cleared%' AND LOWER(status) NOT LIKE '%replaced%' ORDER BY id DESC";
+    $res_req = $conn->query($sql);
+    if ($res_req) {
+        $borrowed_items = $res_req->fetch_all(MYSQLI_ASSOC);
     }
 }
 ?>
@@ -163,8 +154,8 @@ if (!empty($student_id)) {
                                     <thead class="table-success">
                                         <tr style="font-size: 11px;">
                                             <th>Selfie Picture</th>
+                                            <th>Borrower Name</th>
                                             <th>Equipment Name</th>
-                                            <th>Due Date / Time</th>
                                             <th>Status</th>
                                             <th>Custodian Actions</th>
                                         </tr>
@@ -189,8 +180,8 @@ if (!empty($student_id)) {
                                                         <span class="text-muted">No Image</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="fw-bold"><?= htmlspecialchars($item['item_to_borrow']); ?></td>
-                                                <td><?= htmlspecialchars($item['return_date']) . '<br><small>(' . htmlspecialchars($item['return_time']) . ')</small>'; ?></td>
+                                                <td class="fw-semibold"><?= htmlspecialchars($item['full_name'] ?? 'N/A'); ?></td>
+                                                <td class="fw-bold text-success"><?= htmlspecialchars($item['item_to_borrow']); ?></td>
                                                 <td><span class="badge <?= $badge_bg; ?> px-2 py-1"><?= htmlspecialchars($st); ?></span></td>
                                                 <td>
                                                     <?php if (strpos($lower_st, 'damage') !== false || strpos($lower_st, 'waiting') !== false): ?>
@@ -208,7 +199,7 @@ if (!empty($student_id)) {
                                 </table>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-info py-2 small mb-3">Walang kasalukuyang aktibong hiniram na kagamitan ang estudyanteng ito.</div>
+                            <div class="alert alert-info py-2 small mb-3">Walang kasalukuyang aktibong hiniram na kagamitan sa sistema.</div>
                         <?php endif; ?>
 
                         <a href="borrower.php?uid=<?= $borrower_data['id'] ?? 1; ?>&sid=<?= htmlspecialchars($borrower_data['student_id'] ?? $student_id); ?>" class="btn btn-success w-100 fw-bold mt-2">Proceed to Borrower Portal</a>

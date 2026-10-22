@@ -20,18 +20,27 @@ if ($conn->connect_error) {
 }
 
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? 1);
-$scanned_student_id = $_GET['student_id'] ?? '';
+$raw_scanned = $_GET['student_id'] ?? '';
+$scanned_student_id = $raw_scanned;
 
-// Kunin ang impormasyon ng estudyante batay sa na-scan o na-input na ID
-$student_data = null;
+// Linisin at i-parse ang QR text kung naglalaman ito ng format na "ID:" o "|"
 if (!empty($scanned_student_id)) {
-    if (strpos($scanned_student_id, 'ID:') !== false) {
-        preg_match('/ID:\s*([A-Za-z0-9-]+)/', $scanned_student_id, $matches);
-        if (!empty($matches[1])) {
+    if (stripos($scanned_student_id, 'ID:') !== false || strpos($scanned_student_id, '|') !== false) {
+        if (preg_match('/ID:\s*([A-Za-z0-9-]+)/i', $scanned_student_id, $matches)) {
             $scanned_student_id = trim($matches[1]);
+        } else {
+            $parts = explode('|', $scanned_student_id);
+            $subparts = explode(':', $parts[0]);
+            if (isset($subparts[1])) {
+                $scanned_student_id = trim($subparts[1]);
+            }
         }
     }
+}
 
+// Kunin ang impormasyon ng estudyante mula sa database
+$student_data = null;
+if (!empty($scanned_student_id)) {
     $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ? OR full_name LIKE ? LIMIT 1");
     if ($stmt) {
         $like_term = "%" . $scanned_student_id . "%";
@@ -42,14 +51,31 @@ if (!empty($scanned_student_id)) {
     }
 }
 
-if (!$student_data && !empty($scanned_student_id)) {
+// Kung sakaling hindi nahanap sa database pero may na-scan
+if (!$student_data && !empty($raw_scanned)) {
     $student_data = [
-        'full_name' => $scanned_student_id,
-        'student_id' => $scanned_student_id,
+        'full_name' => $raw_scanned,
+        'student_id' => $scanned_student_id ?: 'N/A',
         'course' => 'Not Specified',
         'year_level' => 'N/A',
         'profile_pic' => ''
     ];
+}
+
+// Kunin ang active borrowed equipment records ng estudyante na ito (Pending o Damaged)
+$active_equipments = array();
+if (!empty($student_data) && !empty($student_data['student_id'])) {
+    $sid_val = $student_data['student_id'];
+    $eq_stmt = $conn->prepare("SELECT * FROM borrow_requests WHERE student_id = ? AND (LOWER(status) LIKE '%pending%' OR LOWER(status) LIKE '%damage%') ORDER BY id DESC");
+    if ($eq_stmt) {
+        $eq_stmt->bind_param("s", $sid_val);
+        $eq_stmt->execute();
+        $eq_res = $eq_stmt->get_result();
+        while($eq_row = $eq_res->fetch_assoc()) {
+            $active_equipments[] = $eq_row;
+        }
+        $eq_stmt->close();
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -97,6 +123,9 @@ if (!$student_data && !empty($scanned_student_id)) {
     </style>
 </head>
 <body>
+
+    <!-- Hidden audio element for beep sound -->
+    <audio id="beep-audio" src="beep.mp3" preload="auto"></audio>
 
     <!-- Mobile Header with Hamburger Toggle -->
     <div class="mobile-header">
@@ -165,7 +194,7 @@ if (!$student_data && !empty($scanned_student_id)) {
                 <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto;"></div>
             </div>
 
-            <!-- Or Upload QR Image File Option -->
+            <!-- Upload QR Image File Option -->
             <div class="card p-3 border-0 bg-light shadow-sm mb-4">
                 <label for="qr-file-input" class="form-label fw-bold text-dark small mb-2"><i class="fas fa-upload me-1 text-success"></i> Or Upload QR Image File</label>
                 <input type="file" id="qr-file-input" accept="image/*" class="form-control form-control-sm">
@@ -198,7 +227,15 @@ if (!$student_data && !empty($scanned_student_id)) {
 
             <h5 class="fw-bold text-dark mb-3"><i class="fas fa-laptop me-2 text-success"></i>Active Borrowed Equipment Records (Pending / Damaged)</h5>
             <div class="card p-3 border-0 bg-light shadow-sm">
-                <p class="text-muted small mb-0">No active or damaged equipment found for this student (All items are in good condition or have been replaced).</p>
+                <?php if (!empty($active_equipments)): ?>
+                    <ul class="mb-0 ps-3">
+                        <?php foreach($active_equipments as $eq): ?>
+                            <li><strong><?= htmlspecialchars($eq['item_to_borrow']); ?></strong> - Status: <span class="badge bg-warning text-dark"><?= htmlspecialchars($eq['status']); ?></span> (Date: <?= htmlspecialchars($eq['return_date']); ?>)</li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <p class="text-muted small mb-0">No active or damaged equipment found for this student (All items are in good condition or have been replaced).</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -206,11 +243,21 @@ if (!$student_data && !empty($scanned_student_id)) {
     <!-- html5-qrcode library for camera scanning and file decoding -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script>
-        function onScanSuccess(decodedText, decodedResult) {
-            window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
+        function playBeepAndRedirect(decodedText) {
+            var audio = document.getElementById('beep-audio');
+            if (audio) {
+                audio.play().catch(e => console.log("Audio play failed:", e));
+            }
+            // Mag-delay nang kaunti para marinig ang beep bago mag-redirect
+            setTimeout(function() {
+                window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
+            }, 500);
         }
 
-        // Initialize camera scanner
+        function onScanSuccess(decodedText, decodedResult) {
+            playBeepAndRedirect(decodedText);
+        }
+
         let html5QrcodeScanner = new Html5QrcodeScanner(
             "reader", { fps: 10, qrbox: 250 }, false);
         html5QrcodeScanner.render(onScanSuccess);
@@ -226,7 +273,7 @@ if (!$student_data && !empty($scanned_student_id)) {
                 const html5QrCode = new Html5Qrcode("reader");
                 html5QrCode.scanFile(imageFile, true)
                     .then(decodedText => {
-                        window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
+                        playBeepAndRedirect(decodedText);
                     })
                     .catch(err => {
                         alert("Error scanning QR image: " + err);

@@ -77,6 +77,13 @@ if (!empty($student_data) && !empty($student_data['student_id'])) {
         $eq_stmt->close();
     }
 }
+
+// Kunin nang ligtas ang mga values mula sa iba't ibang posibleng pangalan ng column sa database
+$display_name = $student_data['full_name'] ?? ($student_data['name'] ?? 'No Student Scanned');
+$display_sid = $student_data['student_id'] ?? ($student_data['id_number'] ?? '---');
+$display_course = $student_data['course'] ?? ($student_data['program'] ?? ($student_data['department'] ?? '---'));
+$display_year = $student_data['year_level'] ?? ($student_data['year'] ?? ($student_data['year_lvl'] ?? '---'));
+$display_pic = $student_data['profile_pic'] ?? ($student_data['selfie'] ?? ($student_data['avatar'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -209,8 +216,8 @@ if (!empty($student_data) && !empty($student_data['student_id'])) {
             
             <div class="card p-3 border-0 bg-light shadow-sm mb-4">
                 <div class="profile-section">
-                    <?php if (!empty($student_data) && !empty($student_data['profile_pic'])): ?>
-                        <img src="<?= htmlspecialchars($student_data['profile_pic']); ?>" class="profile-avatar" alt="Student Selfie">
+                    <?php if (!empty($display_pic)): ?>
+                        <img src="<?= htmlspecialchars($display_pic); ?>" class="profile-avatar" alt="Student Selfie">
                     <?php else: ?>
                         <div class="profile-avatar">
                             <i class="fas fa-user-slash"></i>
@@ -218,9 +225,9 @@ if (!empty($student_data) && !empty($student_data['student_id'])) {
                     <?php endif; ?>
                     <div>
                         <span class="text-success fw-bold small"><i class="fas fa-check-circle me-1"></i>Student Verified (Live Selfie Record)</span>
-                        <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($student_data['full_name'] ?? 'No Student Scanned'); ?></h5>
-                        <p class="text-muted mb-0 small">Student ID: <strong><?= htmlspecialchars($student_data['student_id'] ?? '---'); ?></strong></p>
-                        <p class="text-muted mb-0 small">Course / Year: <strong><?= htmlspecialchars($student_data['course'] ?? '---'); ?> / <?= htmlspecialchars($student_data['year_level'] ?? '---'); ?></strong></p>
+                        <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($display_name); ?></h5>
+                        <p class="text-muted mb-0 small">Student ID: <strong><?= htmlspecialchars($display_sid); ?></strong></p>
+                        <p class="text-muted mb-0 small">Course / Year: <strong><?= htmlspecialchars($display_course); ?> / <?= htmlspecialchars($display_year); ?></strong></p>
                     </div>
                 </div>
             </div>
@@ -248,7 +255,6 @@ if (!empty($student_data) && !empty($student_data['student_id'])) {
             if (audio) {
                 audio.play().catch(e => console.log("Audio play failed:", e));
             }
-            // Mag-delay nang kaunti para marinig ang beep bago mag-redirect
             setTimeout(function() {
                 window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
             }, 500);

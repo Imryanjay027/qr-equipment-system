@@ -33,9 +33,21 @@ if ($stmt) {
 
 $display_name = $user_data['full_name'] ?? ($user_data['name'] ?? 'User');
 $display_sid = $user_data['student_id'] ?? ($user_data['id_number'] ?? '---');
-$display_course = $user_data['course'] ?? ($user_data['program'] ?? 'IT');
-$display_year = $user_data['year_level'] ?? ($user_data['year'] ?? '3rd Year');
 $display_pic = $user_data['profile_pic'] ?? ($user_data['selfie'] ?? '');
+
+// Aksyon kapag kinlik ang Cleared button para i-delete o i-update ang status
+if (isset($_POST['clear_item_id'])) {
+    $clear_id = intval($_POST['clear_item_id']);
+    // Maaari itong i-delete sa database o i-update ang status
+    $del_stmt = $conn->prepare("DELETE FROM borrow_requests WHERE id = ?");
+    if ($del_stmt) {
+        $del_stmt->bind_param("i", $clear_id);
+        $del_stmt->execute();
+        $del_stmt->close();
+    }
+    header("Location: borrower_history.php?uid=" . $user_id);
+    exit;
+}
 
 // Kunin ang history ng borrowing/returning ng user na ito
 $history_records = array();
@@ -176,7 +188,7 @@ if (!empty($display_sid)) {
                             <th>#</th>
                             <th>Equipment / Item</th>
                             <th>Return Date</th>
-                            <th>Status</th>
+                            <th>Status / Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -189,13 +201,15 @@ if (!empty($display_sid)) {
                                     <td>
                                         <?php 
                                             $st = strtolower($row['status'] ?? '');
-                                            $badge_class = 'bg-secondary';
-                                            if (strpos($st, 'pending') !== false) $badge_class = 'bg-warning text-dark';
-                                            elseif (strpos($st, 'good') !== false || strpos($st, 'returned') !== false) $badge_class = 'bg-success';
-                                            elseif (strpos($st, 'damage') !== false) $badge_class = 'bg-danger';
-                                            elseif (strpos($st, 'replace') !== false) $badge_class = 'bg-info text-dark';
+                                            if (strpos($st, 'clear') !== false || strpos($st, 'returned') !== false || strpos($st, 'good') !== false): 
                                         ?>
-                                        <span class="badge <?= $badge_class; ?>"><?= htmlspecialchars($row['status'] ?? 'Pending'); ?></span>
+                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Sigurado ka bang gusto mo nang i-clear/alisin ang item na ito sa listahan?');">
+                                                <input type="hidden" name="clear_item_id" value="<?= $row['id']; ?>">
+                                                <button type="submit" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 2px 10px;">Cleared</button>
+                                            </form>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark"><?= htmlspecialchars($row['status'] ?? 'Pending'); ?></span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

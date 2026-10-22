@@ -19,97 +19,57 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
-$student_id_query = $_GET['sid'] ?? '';
+$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? 1);
+$student_id = $_GET['sid'] ?? '';
+$tab = $_GET['tab'] ?? 'dashboard';
 
-// Handle Mark as Replaced action
-if (isset($_GET['action']) && $_GET['action'] == 'mark_replaced' && isset($_GET['req_id'])) {
-    $req_id = intval($_GET['req_id']);
-    $update_stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Waiting for Custodian approval' WHERE id = ?");
-    if ($update_stmt) {
-        $update_stmt->bind_param("i", $req_id);
-        $update_stmt->execute();
-        $update_stmt->close();
+// Kunin ang impormasyon ng borrower mula sa database
+$borrower_data = null;
+if (!empty($student_id)) {
+    $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ? LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("s", $student_id);
+        $stmt->execute();
+        $borrower_data = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
     }
-    header("Location: borrower.php?uid=" . $user_id . (!empty($student_id_query) ? "&sid=" . $student_id_query : "") . "&tab=borrowed");
-    exit();
 }
 
-// Handle Dismiss / Clear action from history tab
-if (isset($_GET['action']) && $_GET['action'] == 'dismiss_history' && isset($_GET['req_id'])) {
-    $req_id = intval($_GET['req_id']);
-    $del_stmt = $conn->prepare("DELETE FROM borrow_requests WHERE id = ?");
-    if ($del_stmt) {
-        $del_stmt->bind_param("i", $req_id);
-        $del_stmt->execute();
-        $del_stmt->close();
-    }
-    header("Location: borrower.php?uid=" . $user_id . (!empty($student_id_query) ? "&sid=" . $student_id_query : "") . "&tab=history");
-    exit();
-}
-
-$current_user = null;
-if (!empty($user_id)) {
-    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+if (!$borrower_data) {
+    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
     if ($stmt) {
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
-        $current_user = $stmt->get_result()->fetch_assoc();
+        $borrower_data = $stmt->get_result()->fetch_assoc();
         $stmt->close();
     }
 }
 
-if (!$current_user && !empty($student_id_query)) {
-    $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ?");
-    if ($stmt) {
-        $stmt->bind_param("s", $student_id_query);
-        $stmt->execute();
-        $current_user = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-    }
-}
-
-if (!$current_user) {
-    $current_user = [
-        'id' => !empty($user_id) ? $user_id : 1,
-        'full_name' => 'Ryan Jay Leoligao',
-        'student_id' => !empty($student_id_query) ? $student_id_query : '123456',
-        'course_year' => 'BSIT 3rd Year',
+if (!$borrower_data) {
+    $borrower_data = [
+        'full_name' => 'Student Borrower',
+        'student_id' => $student_id ?: 'STD001',
+        'course' => 'Information Technology',
+        'year_level' => '3rd Year',
         'profile_pic' => ''
     ];
 }
 
-$sid = $current_user['student_id'];
-$uid = $current_user['id'];
-$fullname = $current_user['full_name'];
-
-$borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ? OR student_id = ?) AND (status = 'Pending' OR status LIKE '%Damage%' OR status LIKE '%Waiting%') ORDER BY id DESC");
-$borrow_query->bind_param("sss", $sid, $fullname, $user_id);
-$borrow_query->execute();
-$borrowed_items = $borrow_query->get_result();
-$borrow_query->close();
-
-$history_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ? OR student_id = ?) AND (status = 'Cleared' OR status = 'Replaced' OR status LIKE '%Good%') ORDER BY id DESC");
-$history_query->bind_param("sss", $sid, $fullname, $user_id);
-$history_query->execute();
-$history_items = $history_query->get_result();
-$history_query->close();
-
-$active_tab = $_GET['tab'] ?? 'borrowed';
+$active_sid = $borrower_data['student_id'] ?? $student_id;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borrower's Dashboard - MQCQC</title>
+    <title>Borrower Dashboard - MQCQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --sidebar-width: 260px; --primary-color: #217835; }
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
         
+        /* Desktop Sidebar */
         .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.05); }
         .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0c1e35; }
         .sidebar-brand img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ffc107; }
@@ -130,37 +90,60 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
 
         .main-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); padding: 25px; margin-bottom: 25px; }
         
-        .profile-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .profile-info { display: flex; align-items: center; gap: 15px; }
-        .profile-avatar { width: 65px; height: 65px; background-color: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+        .profile-section { display: flex; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px; gap: 20px; }
+        .profile-avatar { width: 70px; height: 70px; background-color: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; object-fit: cover; border: 2px solid #217835; }
+
+        /* Mobile Responsive adjustments */
+        .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 12px 20px; align-items: center; justify-content: space-between; }
         
-        .qr-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-
-        .table th { background-color: var(--primary-color) !important; color: white !important; font-size: 12px; font-weight: 600; vertical-align: middle; border: none; }
-        .table td { font-size: 12px; vertical-align: middle; }
-
-        .action-banner { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-top: 25px; flex-wrap: wrap; gap: 15px; }
-        .btn-borrow { background-color: var(--primary-color); color: white; font-weight: 600; border-radius: 8px; padding: 10px 20px; font-size: 13px; border: none; }
-        .btn-borrow:hover { background-color: #1a602a; color: white; }
-
         @media (max-width: 768px) {
-            .sidebar { width: 100%; height: auto; position: relative; }
-            .main-content { margin-left: 0; }
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 15px; }
+            .mobile-header { display: flex; }
         }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
+    <!-- Mobile Header with Hamburger Toggle -->
+    <div class="mobile-header">
+        <button class="btn text-white p-0 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="fas fa-bars fs-4"></i>
+        </button>
+        <span class="fw-bold" style="font-size: 13px;">MQCQC BORROWER PORTAL</span>
+        <span class="badge bg-warning text-dark" style="font-size: 10px;">STUDENT</span>
+    </div>
+
+    <!-- Offcanvas Mobile Sidebar -->
+    <div class="offcanvas offcanvas-start bg-success text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+        <div class="offcanvas-header border-bottom border-light border-opacity-10" style="background-color: #0c1e35;">
+            <h5 class="offcanvas-title fs-6 fw-bold" id="mobileSidebarLabel">MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column justify-content-between p-3">
+            <div class="sidebar-menu">
+                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=dashboard" class="<?= ($tab == 'dashboard') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=borrow" class="<?= ($tab == 'borrow') ? 'active' : ''; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
+                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=history" class="<?= ($tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+            <div class="text-center py-2 border-top border-light border-opacity-10" style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                <p class="mb-0">"Discipline today, excellence tomorrow."</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Sidebar -->
+    <div class="sidebar d-none d-md-flex">
         <div>
             <div class="sidebar-brand">
                 <img src="logo.jpg" alt="School Logo" onerror="this.src='uploads/default.png';">
                 <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
             </div>
             <div class="sidebar-menu">
-                <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=borrowed" class="<?= ($active_tab == 'borrowed') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="registration.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
-                <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=history" class="<?= ($active_tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=dashboard" class="<?= ($tab == 'dashboard') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=borrow" class="<?= ($tab == 'borrow') ? 'active' : ''; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
+                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=history" class="<?= ($tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
@@ -169,163 +152,51 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
         </div>
     </div>
 
+    <!-- Main Content Area -->
     <div class="main-content">
-        <div class="top-navbar">
+        <div class="top-navbar d-none d-md-flex">
             <div>
                 <h4>BORROWER'S DASHBOARD</h4>
                 <p>Equipment Borrowing, Return & Monitoring Portal</p>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <span class="small fw-semibold text-secondary">
-                    <i class="fas fa-user-graduate text-success me-1"></i> <?= htmlspecialchars($current_user['full_name']); ?>
-                </span>
+                <span class="badge bg-success px-3 py-2" style="font-size: 11px;">STUDENT</span>
             </div>
         </div>
 
         <div class="main-card">
-            <!-- Profile & QR Section -->
+            <!-- Borrower Profile Information Section -->
             <div class="profile-section">
-                <div class="profile-info">
+                <?php if (!empty($borrower_data['profile_pic'])): ?>
+                    <img src="<?= htmlspecialchars($borrower_data['profile_pic']); ?>" class="profile-avatar" alt="Borrower Picture">
+                <?php else: ?>
                     <div class="profile-avatar">
-                        <i class="fas fa-user"></i>
+                        <i class="fas fa-user-graduate"></i>
                     </div>
-                    <div>
-                        <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($current_user['full_name']); ?></h5>
-                        <p class="text-muted mb-0 small">Student ID: <strong><?= htmlspecialchars($current_user['student_id']); ?></strong></p>
-                        <p class="text-muted mb-0 small">Course / Year: <strong><?= htmlspecialchars($current_user['course_year']); ?></strong></p>
-                    </div>
-                </div>
-                
-                <div class="qr-box">
-                    <div id="qrcode" class="d-flex justify-content-center"></div>
-                    <span class="text-muted d-block mt-1" style="font-size: 10px;">Your QR Code</span>
+                <?php endif; ?>
+                <div>
+                    <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($borrower_data['full_name']); ?></h5>
+                    <p class="text-muted mb-0 small">Student ID: <strong><?= htmlspecialchars($active_sid); ?></strong></p>
+                    <p class="text-muted mb-0 small">Course / Year: <strong><?= htmlspecialchars($borrower_data['course'] ?? 'IT'); ?> / <?= htmlspecialchars($borrower_data['year_level'] ?? '3rd Year'); ?></strong></p>
+                    <span class="badge bg-secondary mt-1" style="font-size: 10px;">Registered Borrower</span>
                 </div>
             </div>
 
-            <!-- Conditional Tab Display -->
-            <?php if ($active_tab == 'history'): ?>
-                <!-- Returned Items / History Tab -->
-                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-history me-2 text-success"></i>Returned Items History / Remarks</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle text-center">
-                        <thead>
-                            <tr>
-                                <th>Student ID</th>
-                                <th>Equipment Name</th>
-                                <th>Date Returned</th>
-                                <th>Status / Remarks</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($history_items && $history_items->num_rows > 0): ?>
-                                <?php while($row = $history_items->fetch_assoc()): ?>
-                                    <tr>
-                                        <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
-                                        <td class="fw-bold"><?= htmlspecialchars($row['item_to_borrow']); ?></td>
-                                        <td><?= htmlspecialchars($row['return_date']) . ' (' . htmlspecialchars($row['return_time']) . ')'; ?></td>
-                                        <td><span class="badge bg-success px-3 py-2"><?= htmlspecialchars($row['status']); ?></span></td>
-                                        <td>
-                                            <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&req_id=<?= $row['id']; ?>&action=dismiss_history&tab=history" class="btn btn-success btn-sm px-3 py-1 fw-semibold" style="font-size: 11px;">
-                                                <i class="fas fa-check me-1"></i> Clear / Dismiss
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="5" class="text-muted py-4 small">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Dynamic Tab Content View -->
+            <?php if ($tab == 'borrow'): ?>
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-plus-circle me-2 text-success"></i>Borrow an Equipment</h5>
+                <p class="text-muted small">Dito mo maaaring piliin at i-request ang mga kagamitang nais mong hiram.</p>
+                <!-- Ilagay ang borrow form code dito kung kinakailangan -->
+            <?php elseif ($tab == 'history'): ?>
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-history me-2 text-success"></i>Returned Items / History</h5>
+                <p class="text-muted small">Talaan ng iyong mga nakaraan at kasalukuyang hiniram na kagamitan.</p>
             <?php else: ?>
-                <!-- My Borrowed Equipment Tab -->
-                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-box me-2 text-success"></i>My Borrowed Equipment</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle text-center">
-                        <thead>
-                            <tr>
-                                <th>Student ID</th>
-                                <th>Equipment Name</th>
-                                <th>Borrow Date / Due Date</th>
-                                <th>Status / Action</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($borrowed_items && $borrowed_items->num_rows > 0): ?>
-                                <?php while($row = $borrowed_items->fetch_assoc()): ?>
-                                    <?php 
-                                        $st = trim($row['status'] ?? 'Pending');
-                                        $badge_bg = 'bg-warning text-dark';
-                                        $lower_st = strtolower($st);
-                                        if (strpos($lower_st, 'damage') !== false) {
-                                            $badge_bg = 'bg-danger text-white';
-                                        } elseif (strpos($lower_st, 'waiting') !== false) {
-                                            $badge_bg = 'bg-info text-dark';
-                                        }
-                                    ?>
-                                    <tr>
-                                        <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
-                                        <td class="fw-bold"><?= htmlspecialchars($row['item_to_borrow']); ?></td>
-                                        <td><?= htmlspecialchars($row['return_date']) . '<br><small class="text-muted">(' . htmlspecialchars($row['return_time']) . ')</small>'; ?></td>
-                                        <td><span class="badge <?= $badge_bg; ?> px-3 py-2"><?= htmlspecialchars($st); ?></span></td>
-                                        <td>
-                                            <?php if (strpos($lower_st, 'damage') !== false): ?>
-                                                <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&req_id=<?= $row['id']; ?>&action=mark_replaced" class="btn btn-primary btn-sm px-3 py-1 fw-semibold" style="font-size: 11px;">Mark as Replaced</a>
-                                            <?php else: ?>
-                                                <span class="text-muted small">---</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="5" class="text-muted py-4 small">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-tachometer-alt me-2 text-success"></i>Welcome sa iyong Borrower Portal</h5>
+                <p class="text-muted small">Gamitin ang menu sa gilid o ang hamburger menu sa itaas para mag-navigate sa mga seksyon.</p>
             <?php endif; ?>
-
-            <!-- Borrow Item Action Banner -->
-            <div class="action-banner">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-success text-white rounded p-3 fs-4">
-                        <i class="fas fa-box-open"></i>
-                    </div>
-                    <div>
-                        <h6 class="fw-bold mb-1 text-dark">Need to borrow an item?</h6>
-                        <p class="text-muted mb-0 small">Submit a new borrowing request from the inventory.</p>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-borrow" onclick="window.location.replace('registration.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>');">
-                    <i class="fas fa-plus me-1"></i> Borrow an Item
-                </button>
-            </div>
-
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const qrDiv = document.getElementById('qrcode');
-            if (qrDiv) {
-                qrDiv.innerHTML = "";
-                new QRCode(qrDiv, {
-                    text: "MQCQC-ID: <?= htmlspecialchars($current_user['student_id']); ?> | Name: <?= htmlspecialchars($current_user['full_name']); ?>",
-                    width: 75,
-                    height: 75,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-            }
-        });
-    </script>
 </body>
 </html>

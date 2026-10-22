@@ -28,7 +28,6 @@ if (empty($user_id)) {
     exit();
 }
 
-// Kunin ang mga tunay na columns sa tbl_users para iwas error sa columns
 $table_columns = [];
 $res = $conn->query("SHOW COLUMNS FROM tbl_users");
 if ($res) {
@@ -40,20 +39,17 @@ if ($res) {
 $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname', $table_columns) ? 'fullname' : 'full_name');
 $role_col = in_array('role', $table_columns) ? 'role' : (in_array('user_type', $table_columns) ? 'user_type' : 'role');
 
-// Kunin ang mga detalye ng user mula sa tbl_users
 $stmt = $conn->prepare("SELECT *, {$name_col} as full_name, {$role_col} as role FROM tbl_users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $current_user = $stmt->get_result()->fetch_assoc();
 
-// PINAIGTING NA PAG-CHECK NG ROLE
 $role_lower = strtolower(trim($current_user['role'] ?? ''));
 if (!$current_user || (strpos($role_lower, 'custodian') === false && strpos($role_lower, 'admin') === false)) {
     header("Location: login.php");
     exit();
 }
 
-// I-refresh ang session para secure
 $_SESSION['user_id'] = $current_user['id'];
 $_SESSION['role']    = $current_user['role'];
 $_SESSION['full_name'] = $current_user['full_name'];
@@ -108,8 +104,7 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">Manage Equipment</h5>
                         <p class="text-muted small">Magdagdag, mag-update, o mag-monitor ng mga school equipment.</p>
-                        <!-- Pinalitan ang href patungo sa management page o kaya ay index.php kung doon nakasalang -->
-                        <a href="manage_equipment.php?uid=<?= $current_user['id']; ?>" class="btn btn-warning btn-sm w-100 fw-semibold text-dark">Pamahalaan ang Items</a>
+                        <a href="index.php?uid=<?= $current_user['id']; ?>" class="btn btn-warning btn-sm w-100 fw-semibold text-dark">Pamahalaan ang Items</a>
                     </div>
                 </div>
             </div>
@@ -122,8 +117,7 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">Borrow & Return Requests</h5>
                         <p class="text-muted small">Aprubahan o i-record ang pagbabalik ng mga kagamitan.</p>
-                        <!-- Pinalitan ang href patungo sa requests page -->
-                        <a href="requests.php?uid=<?= $current_user['id']; ?>" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Requests</a>
+                        <a href="index.php?uid=<?= $current_user['id']; ?>" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Requests</a>
                     </div>
                 </div>
             </div>
@@ -136,7 +130,6 @@ $_SESSION['full_name'] = $current_user['full_name'];
                         </div>
                         <h5 class="fw-bold">QR Scanner</h5>
                         <p class="text-muted small">I-scan ang QR code ng mga borrower para sa mabilis na transaksiyon.</p>
-                        <!-- Nakakonekta na sa index.php (QR Scanner & Dashboard) -->
                         <a href="index.php?uid=<?= $current_user['id']; ?>" class="btn btn-primary btn-sm w-100 fw-semibold">Buksan ang Scanner</a>
                     </div>
                 </div>

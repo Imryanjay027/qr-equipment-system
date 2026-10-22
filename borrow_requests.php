@@ -27,9 +27,7 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
     $action = $_GET['action'];
     $new_status = 'Pending';
 
-    if ($action == 'approve') {
-        $new_status = 'Approved';
-    } elseif ($action == 'good') {
+    if ($action == 'good') {
         $new_status = 'Good';
     } elseif ($action == 'damaged') {
         $new_status = 'Damaged';
@@ -43,13 +41,13 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
         $update_stmt->execute();
         $update_stmt->close();
     }
-    header("Location: borrowing_requests.php?uid=" . $user_id);
+    header("Location: borrow_requests.php?uid=" . $user_id);
     exit();
 }
 
-// Kunin ang lahat ng borrow requests mula sa database
+// Kunin lamang ang mga active requests (Pending o hindi pa naka-Good/Damaged/Replaced) o ipakita lahat batay sa pangangailangan
 $requests = array();
-$result = $conn->query("SELECT * FROM borrow_requests ORDER BY id DESC");
+$result = $conn->query("SELECT * FROM borrow_requests WHERE LOWER(status) NOT LIKE '%good%' AND LOWER(status) NOT LIKE '%replaced%' AND LOWER(status) NOT LIKE '%damaged%' AND LOWER(status) NOT LIKE '%cleared%' ORDER BY id DESC");
 if ($result) {
     while ($row = $result->fetch_assoc()) {
         $requests[] = $row;
@@ -90,15 +88,47 @@ if ($result) {
         .table th { background-color: var(--primary-color) !important; color: white !important; font-size: 12px; font-weight: 600; vertical-align: middle; border: none; }
         .table td { font-size: 12px; vertical-align: middle; }
 
+        .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 12px 20px; align-items: center; justify-content: space-between; }
+        
         @media (max-width: 768px) {
-            .sidebar { width: 100%; height: auto; position: relative; }
-            .main-content { margin-left: 0; }
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 15px; }
+            .mobile-header { display: flex; }
         }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
+    <!-- Mobile Header with Hamburger Toggle -->
+    <div class="mobile-header">
+        <button class="btn text-white p-0 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="fas fa-bars fs-4"></i>
+        </button>
+        <span class="fw-bold" style="font-size: 13px;">MQCQC CUSTODIAN PANEL</span>
+        <span class="badge bg-warning text-dark" style="font-size: 10px;">STAFF</span>
+    </div>
+
+    <!-- Offcanvas Mobile Sidebar -->
+    <div class="offcanvas offcanvas-start bg-success text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+        <div class="offcanvas-header border-bottom border-light border-opacity-10" style="background-color: #0c1e35;">
+            <h5 class="offcanvas-title fs-6 fw-bold" id="mobileSidebarLabel">MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column justify-content-between p-3">
+            <div class="sidebar-menu">
+                <a href="custodian_dashboard.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrow_requests.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
+                <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
+                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+            <div class="text-center py-2 border-top border-light border-opacity-10" style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                <p class="mb-0">"Discipline today, excellence tomorrow."</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Sidebar -->
+    <div class="sidebar d-none d-md-flex">
         <div>
             <div class="sidebar-brand">
                 <img src="logo.jpg" alt="School Logo" onerror="this.src='uploads/default.png';">
@@ -106,7 +136,7 @@ if ($result) {
             </div>
             <div class="sidebar-menu">
                 <a href="custodian_dashboard.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="borrowing_requests.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
+                <a href="borrow_requests.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
                 <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
@@ -117,10 +147,10 @@ if ($result) {
     </div>
 
     <div class="main-content">
-        <div class="top-navbar">
+        <div class="top-navbar d-none d-md-flex">
             <div>
                 <h4>BORROWING REQUESTS MANAGEMENT</h4>
-                <p>View and manage all equipment borrowing requests</p>
+                <p>View and manage all active equipment borrowing requests</p>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <span class="badge bg-success px-3 py-2" style="font-size: 11px;">CUSTODIAN</span>
@@ -128,7 +158,7 @@ if ($result) {
         </div>
 
         <div class="main-card">
-            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-list-alt me-2 text-success"></i>All Borrowing Requests</h5>
+            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-list-alt me-2 text-success"></i>Active Borrowing Requests</h5>
             
             <div class="table-responsive">
                 <table class="table table-bordered align-middle text-center bg-white">
@@ -168,15 +198,15 @@ if ($result) {
                                         <span class="badge <?= $badge_class; ?> px-2 py-1" style="font-size: 10px;"><?= htmlspecialchars($st); ?></span>
                                     </td>
                                     <td>
-                                        <a href="borrowing_requests.php?uid=<?= $user_id; ?>&action=good&req_id=<?= $req['id']; ?>" class="btn btn-success btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Good">Good</a>
-                                        <a href="borrowing_requests.php?uid=<?= $user_id; ?>&action=damaged&req_id=<?= $req['id']; ?>" class="btn btn-danger btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Damaged">Damaged</a>
-                                        <a href="borrowing_requests.php?uid=<?= $user_id; ?>&action=replaced&req_id=<?= $req['id']; ?>" class="btn btn-warning btn-sm text-dark px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Replaced">Replaced</a>
+                                        <a href="borrow_requests.php?uid=<?= $user_id; ?>&action=good&req_id=<?= $req['id']; ?>" class="btn btn-success btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Good">Good</a>
+                                        <a href="borrow_requests.php?uid=<?= $user_id; ?>&action=damaged&req_id=<?= $req['id']; ?>" class="btn btn-danger btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Damaged">Damaged</a>
+                                        <a href="borrow_requests.php?uid=<?= $user_id; ?>&action=replaced&req_id=<?= $req['id']; ?>" class="btn btn-warning btn-sm text-dark px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Replaced">Replaced</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="text-muted py-4 small">Wala pang naitalang request sa sistema.</td>
+                                <td colspan="7" class="text-muted py-4 small">No active borrowing requests found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

@@ -25,9 +25,7 @@ $scanned_student_id = $_GET['student_id'] ?? '';
 // Kunin ang impormasyon ng estudyante batay sa na-scan o na-input na ID
 $student_data = null;
 if (!empty($scanned_student_id)) {
-    // Kung ang na-scan ay JSON o URL, linisin natin kung sakali
     if (strpos($scanned_student_id, 'ID:') !== false) {
-        // Parsing logic kung sakaling naka-format string ang QR data
         preg_match('/ID:\s*([A-Za-z0-9-]+)/', $scanned_student_id, $matches);
         if (!empty($matches[1])) {
             $scanned_student_id = trim($matches[1]);
@@ -44,7 +42,6 @@ if (!empty($scanned_student_id)) {
     }
 }
 
-// Kung walang nahanap o default view
 if (!$student_data && !empty($scanned_student_id)) {
     $student_data = [
         'full_name' => $scanned_student_id,
@@ -163,10 +160,19 @@ if (!$student_data && !empty($scanned_student_id)) {
         <div class="main-card">
             <h5 class="fw-bold text-dark mb-3"><i class="fas fa-camera me-2 text-success"></i>QR Scanner</h5>
             
-            <!-- Scanner Placeholder / Interface -->
-            <div class="text-center mb-4">
+            <!-- Camera Scanner Box -->
+            <div class="text-center mb-3">
                 <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto;"></div>
-                <a href="index.php?uid=<?= $user_id; ?>&student_id=CUST001" class="btn btn-success btn-sm mt-3">Simulate Scan (Test Student)</a>
+            </div>
+
+            <!-- Or Upload QR Image File Option -->
+            <div class="card p-3 border-0 bg-light shadow-sm mb-4">
+                <label for="qr-file-input" class="form-label fw-bold text-dark small mb-2"><i class="fas fa-upload me-1 text-success"></i> Or Upload QR Image File</label>
+                <input type="file" id="qr-file-input" accept="image/*" class="form-control form-control-sm">
+            </div>
+
+            <div class="text-center mb-4">
+                <a href="index.php?uid=<?= $user_id; ?>&student_id=CUST001" class="btn btn-success btn-sm">Simulate Scan (Test Student)</a>
             </div>
 
             <!-- Student Verification & Condition Monitoring Section -->
@@ -197,17 +203,36 @@ if (!$student_data && !empty($scanned_student_id)) {
         </div>
     </div>
 
-    <!-- html5-qrcode library for real camera scanning -->
+    <!-- html5-qrcode library for camera scanning and file decoding -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script>
         function onScanSuccess(decodedText, decodedResult) {
-            // Redirect to index.php with the scanned student id/data
             window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
         }
 
+        // Initialize camera scanner
         let html5QrcodeScanner = new Html5QrcodeScanner(
             "reader", { fps: 10, qrbox: 250 }, false);
         html5QrcodeScanner.render(onScanSuccess);
+
+        // File upload scanner integration
+        const fileInput = document.getElementById('qr-file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', e => {
+                if (e.target.files.length === 0) {
+                    return;
+                }
+                const imageFile = e.target.files[0];
+                const html5QrCode = new Html5Qrcode("reader");
+                html5QrCode.scanFile(imageFile, true)
+                    .then(decodedText => {
+                        window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
+                    })
+                    .catch(err => {
+                        alert("Error scanning QR image: " + err);
+                    });
+            });
+        }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

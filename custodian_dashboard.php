@@ -4,14 +4,16 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// DATABASE CONNECTION (Safe Environment Check)
+// DATABASE CONNECTION
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
-$conn = @new mysqli($host, $username,$password, $database, (int)$port);
-if ($conn->connect_error) {$conn = @new mysqli('mysql', $username,$password, $database, (int)$port);
+$conn = @new mysqli($host, $username, $password, $database, (int)$port);
+if ($conn->connect_error) {
+    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
 }
 
 if ($conn->connect_error) {
@@ -25,73 +27,56 @@ if (empty($user_id)) {
     exit();
 }
 
-// Dynamic Check for tbl_users columns
-$user_cols = [];
-$res_user_cols =$conn->query("SHOW COLUMNS FROM tbl_users");
-if ($res_user_cols) {
-    while ($row =$res_user_cols->fetch_assoc()) {
-        $user_cols[] =$row['Field'];
-    }
+// Safe User Details Fetching
+$current_user = [
+    'id' => $user_id,
+    'full_name' => 'Property Custodian',
+    'role' => 'Custodian'
+];
+
+$user_result = $conn->query("SELECT * FROM tbl_users WHERE id = " . intval($user_id));
+if ($user_result && $user_result->num_rows > 0) {
+    $u_data = $user_result->fetch_assoc();
+    $current_user['full_name'] = $u_data['full_name'] ?? ($u_data['fullname'] ?? ($u_data['name'] ?? 'Property Custodian'));
+    $current_user['role'] = $u_data['role'] ?? ($u_data['user_type'] ?? 'Custodian');
 }
 
-$name_col = in_array('full_name',$user_cols) ? 'full_name' : (in_array('fullname', $user_cols) ? 'fullname' : 'full_name');$role_col = in_array('role', $user_cols) ? 'role' : (in_array('user_type',$user_cols) ? 'user_type' : 'role');
-
-// Get User Details
-$stmt =$conn->prepare("SELECT *, {$name_col} as full_name, {$role_col} as role FROM tbl_users WHERE id = ?");
-if ($stmt) {
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();$current_user = $stmt->get_result()->fetch_assoc();$stmt->close();
-} else {
-    $current_user = null;
-}
-
-if (!$current_user) {
-    header("Location: login.php");
-    exit();
-}
-
-$_SESSION['user_id'] =$current_user['id'];
-$_SESSION['role'] =$current_user['role'] ?? 'Custodian';
-$_SESSION['full_name'] =$current_user['full_name'] ?? 'Property Custodian';
+$_SESSION['user_id'] = $current_user['id'];
+$_SESSION['role'] = $current_user['role'];
+$_SESSION['full_name'] = $current_user['full_name'];
 
 // Handle Status Updates (Mark Good / Damaged / Replaced)
-if (isset($_GET['action']) && isset($_GET['req_id'])) {$req_id = intval($_GET['req_id']);$action = $_GET['action'];$new_status = 'Pending';
+if (isset($_GET['action']) && isset($_GET['req_id'])) {
+    $req_id = intval($_GET['req_id']);
+    $action = $_GET['action'];
+    $new_status = 'Pending';
 
-    if ($action == 'good') {$new_status = 'Cleared';
-    } elseif ($action == 'damaged') {$new_status = 'Damage needs for replacement';
-    } elseif ($action == 'replaced') {$new_status = 'Replaced';
+    if ($action == 'good') {
+        $new_status = 'Cleared';
+    } elseif ($action == 'damaged') {
+        $new_status = 'Damage needs for replacement';
+    } elseif ($action == 'replaced') {
+        $new_status = 'Replaced';
     }
 
-    $update_stmt =$conn->prepare("UPDATE borrowed_equipment SET status = ? WHERE id = ?");
-    if ($update_stmt) {$update_stmt->bind_param("si", $new_status,$req_id);
-        $update_stmt->execute();$update_stmt->close();
+    $update_stmt = $conn->prepare("UPDATE borrowed_equipment SET status = ? WHERE id = ?");
+    if ($update_stmt) {
+        $update_stmt->bind_param("si", $new_status, $req_id);
+        $update_stmt->execute();
+        $update_stmt->close();
     }
     header("Location: custodian_dashboard.php?uid=" . $user_id);
     exit();
 }
 
-// Dynamic Check for borrowed_equipment columns
-$eq_cols = [];
-$res_eq_cols =$conn->query("SHOW COLUMNS FROM borrowed_equipment");
-if ($res_eq_cols) {
-    while ($row =$res_eq_cols->fetch_assoc()) {
-        $eq_cols[] =$row['Field'];
-    }
-}
-
-$date_col = 'id';
-if (in_array('borrow_date', $eq_cols)) {$date_col = 'borrow_date';
-} elseif (in_array('date_borrowed', $eq_cols)) {$date_col = 'date_borrowed';
-} elseif (in_array('created_at', $eq_cols)) {$date_col = 'created_at';
-}
-
-// Query for Borrowing Requests Table
-$requests_query = "SELECT be.id as req_id, be.student_id, be.item_to_borrow, be.{$date_col} as borrow_date, be.status, 
+// Query for Borrowing Requests Table with fallback
+$requests_query = "SELECT be.id as req_id, be.student_id, be.item_to_borrow, be.status, 
                           b.fullname, b.course_year, b.selfie_image 
                    FROM borrowed_equipment be 
                    LEFT JOIN borrowers b ON be.student_id = b.student_id 
                    ORDER BY be.id DESC";
-$result_requests =$conn->query($requests_query);$total_active = ($result_requests) ?$result_requests->num_rows : 0;
+$result_requests = @$conn->query($requests_query);
+$total_active = ($result_requests) ? $result_requests->num_rows : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -112,4 +97,252 @@ $result_requests =$conn->query($requests_query);$total_active = ($result_request
         .sidebar-brand h5 { font-size: 13px; font-weight: 700; line-height: 1.4; margin: 0; }
         
         .sidebar-menu { padding: 15px 10px; flex-grow: 1; }
-        .sidebar-menu a { display: flex; align-items: center; color: rgba(255,255,255,0.8); padding: 12px 1
+        .sidebar-menu a { display: flex; align-items: center; color: rgba(255,255,255,0.8); padding: 12px 15px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500; margin-bottom: 5px; transition: all 0.2s; cursor: pointer; }
+        .sidebar-menu a:hover, .sidebar-menu a.active { background-color: rgba(255,255,255,0.12); color: white; }
+        .sidebar-menu a i { width: 25px; font-size: 15px; }
+
+        .sidebar-footer { padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: rgba(255,255,255,0.6); text-align: center; }
+
+        .main-content { margin-left: var(--sidebar-width); padding: 25px; }
+        
+        .top-navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 25px; }
+        .top-navbar h4 { font-size: 16px; font-weight: 700; color: var(--primary-color); margin: 0; }
+        
+        .stat-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between; border-left: 4px solid var(--primary-color); }
+        .stat-card.warning { border-left-color: #ffc107; }
+        .stat-card.success { border-left-color: #28a745; }
+        .stat-info h3 { font-size: 22px; font-weight: 700; margin: 0; color: #333; }
+        .stat-info p { font-size: 12px; color: #777; margin: 0; font-weight: 500; }
+        .stat-icon { width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: #eef2f7; color: var(--primary-color); }
+
+        .content-card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 25px; }
+        
+        .table th { background-color: var(--primary-color) !important; color: white !important; font-size: 12px; font-weight: 600; vertical-align: middle; }
+        .table td { font-size: 12px; vertical-align: middle; }
+        .student-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: #ddd; }
+        .badge-status { padding: 5px 10px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+        .badge-pending { background-color: #fff3cd; color: #856404; }
+        .badge-cleared { background-color: #d4edda; color: #155724; }
+        .badge-damaged { background-color: #f8d7da; color: #721c24; }
+        .badge-replaced { background-color: #d1ecf1; color: #0c5460; }
+
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; background: #000; min-height: 200px; margin-bottom: 12px; }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: auto; position: relative; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="beepAudio" src="beep.mp3" preload="auto"></audio>
+
+    <div class="sidebar">
+        <div>
+            <div class="sidebar-brand">
+                <img src="logo.jpg" alt="School Logo" onerror="this.src='uploads/default.png';">
+                <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
+            </div>
+            <div class="sidebar-menu">
+                <a href="javascript:void(0);" class="active" onclick="switchTab('dashboard-section', this)"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="javascript:void(0);" onclick="switchTab('requests-section', this)"><i class="fas fa-clipboard-list"></i> Borrowing Requests</a>
+                <a href="javascript:void(0);" onclick="switchTab('scanner-section', this)"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
+                <a href="login.php" class="text-danger mt-4" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+        <div class="sidebar-footer">
+            <p class="mb-0">"Discipline today, excellence tomorrow."</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-navbar">
+            <h4>PROPERTY CUSTODIAN PANEL</h4>
+            <div class="d-flex align-items-center">
+                <span class="small fw-semibold text-secondary me-3">
+                    <i class="fas fa-user-shield text-warning me-1"></i> <?= htmlspecialchars($_SESSION['full_name']); ?>
+                </span>
+                <span class="badge bg-primary text-uppercase px-2 py-1"><?= htmlspecialchars($_SESSION['role']); ?></span>
+            </div>
+        </div>
+
+        <!-- DASHBOARD TAB -->
+        <div id="dashboard-section" class="tab-section">
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h3><?= $total_active; ?></h3>
+                            <p>Total Active Requests</p>
+                        </div>
+                        <div class="stat-icon text-primary"><i class="fas fa-boxes"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card success">
+                        <div class="stat-info">
+                            <h3>Active</h3>
+                            <p>Equipment Monitoring Status</p>
+                        </div>
+                        <div class="stat-icon text-success"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card warning">
+                        <div class="stat-info">
+                            <h3>MQCQC</h3>
+                            <p>System Portal Active</p>
+                        </div>
+                        <div class="stat-icon text-warning"><i class="fas fa-school"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-qrcode me-2 text-primary"></i>Quick QR Code & Student Verification</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded border mb-3">
+                            <label class="form-label small fw-bold">Live Webcam Scanner</label>
+                            <div id="reader"></div>
+                            <button type="button" class="btn btn-primary btn-sm w-100 fw-semibold" id="start-camera-btn">Start Scanning</button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded border mb-3">
+                            <label class="form-label small fw-bold">Manual Search / Upload Student Pass</label>
+                            <input type="file" id="qr-input-file" class="form-control form-control-sm mb-3" accept="image/*">
+                            <form method="GET" action="custodian_dashboard.php" onsubmit="playBeepAndSubmit(event, this)">
+                                <input type="hidden" name="uid" value="<?= $user_id; ?>">
+                                <div class="input-group input-group-sm mb-2">
+                                    <input type="text" name="search_id" class="form-control" placeholder="Enter Student ID...">
+                                    <button class="btn btn-success" type="submit">Verify</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REQUESTS TAB -->
+        <div id="requests-section" class="tab-section" style="display: none;">
+            <div class="content-card">
+                <h5 class="fw-bold text-dark mb-4"><i class="fas fa-clipboard-list me-2 text-primary"></i>Active Equipment Borrowing Requests & Monitoring</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>Selfie</th>
+                                <th>Student ID</th>
+                                <th>Full Name</th>
+                                <th>Course & Year</th>
+                                <th>Item to Borrow</th>
+                                <th>Status</th>
+                                <th>Actions / Condition Monitoring</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($result_requests && $result_requests->num_rows > 0): ?>
+                                <?php while ($row = $result_requests->fetch_assoc()): ?>
+                                    <?php 
+                                        $status = trim($row['status'] ?? 'Pending');
+                                        $badge_class = 'badge-pending';
+                                        $lower_st = strtolower($status);
+                                        if (strpos($lower_st, 'cleared') !== false || strpos($lower_st, 'good') !== false) {
+                                            $badge_class = 'badge-cleared';
+                                        } elseif (strpos($lower_st, 'damage') !== false) {
+                                            $badge_class = 'badge-damaged';
+                                        } elseif (strpos($lower_st, 'replaced') !== false) {
+                                            $badge_class = 'badge-replaced';
+                                        }
+
+                                        $photo = trim($row['selfie_image'] ?? '');
+                                        if (empty($photo)) {
+                                            $photo = 'uploads/default.png';
+                                        } elseif (strpos($photo, 'uploads/') === false) {
+                                            $photo = 'uploads/' . $photo;
+                                        }
+                                    ?>
+                                    <tr>
+                                        <td><img src="<?= htmlspecialchars($photo); ?>" alt="Selfie" class="student-avatar" onerror="this.src='uploads/default.png';"></td>
+                                        <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
+                                        <td><?= htmlspecialchars($row['fullname'] ?? '---'); ?></td>
+                                        <td><?= htmlspecialchars($row['course_year'] ?? '---'); ?></td>
+                                        <td><?= htmlspecialchars($row['item_to_borrow']); ?></td>
+                                        <td><span class="badge badge-status <?= $badge_class; ?>"><?= htmlspecialchars($status); ?></span></td>
+                                        <td>
+                                            <a href="custodian_dashboard.php?uid=<?= $user_id; ?>&req_id=<?= $row['req_id']; ?>&action=good" class="btn btn-success btn-sm px-2 py-1 fw-semibold" style="font-size: 11px;">Mark Good</a>
+                                            <a href="custodian_dashboard.php?uid=<?= $user_id; ?>&req_id=<?= $row['req_id']; ?>&action=damaged" class="btn btn-danger btn-sm px-2 py-1 fw-semibold" style="font-size: 11px;">Mark Damaged</a>
+                                            <a href="custodian_dashboard.php?uid=<?= $user_id; ?>&req_id=<?= $row['req_id']; ?>&action=replaced" class="btn btn-warning btn-sm px-2 py-1 fw-semibold text-dark" style="font-size: 11px;">Mark Replaced</a>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">No active borrowing requests recorded yet.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCANNER TAB -->
+        <div id="scanner-section" class="tab-section" style="display: none;">
+            <div class="content-card text-center py-5">
+                <h3 class="fw-bold text-primary mb-3"><i class="fas fa-qrcode me-2"></i>Dedicated QR Scanner Portal</h3>
+                <p class="text-muted mb-4">Scan the student's QR code for fast verification and processing of borrowing or returns.</p>
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <a href="index.php?uid=<?= $user_id; ?>" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">Open Full-Screen QR Scanner Page</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const beepAudio = document.getElementById('beepAudio');
+        const currentUid = "<?= $user_id; ?>";
+
+        function switchTab(sectionId, element) {
+            document.querySelectorAll('.tab-section').forEach(sec => sec.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+            
+            document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+            if(element) element.classList.add('active');
+        }
+
+        function playBeepAndRedirect(url) {
+            beepAudio.play().catch(e => console.log("Audio blocked:", e));
+            setTimeout(() => { window.location.href = url; }, 300);
+        }
+
+        function playBeepAndSubmit(event, form) {
+            event.preventDefault();
+            beepAudio.play().catch(e => console.log("Audio blocked:", e));
+            setTimeout(() => { form.submit(); }, 300);
+        }
+
+        let html5QrcodeScanner = null;
+        const startCamBtn = document.getElementById('start-camera-btn');
+        if(startCamBtn) {
+            startCamBtn.addEventListener('click', function() {
+                if (!html5QrcodeScanner) {
+                    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 200 });
+                    html5QrcodeScanner.render((decodedText) => {
+                        html5QrcodeScanner.clear();
+                        playBeepAndRedirect("index.php?uid=" + currentUid + "&student_id=" + encodeURIComponent(decodedText));
+                    }, (err) => {});
+                    this.innerText = "Stop Scanning";
+                    this.style.backgroundColor = "#d9534f";
+                }
+            });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

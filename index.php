@@ -3,16 +3,20 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$username = 'root';
-$password = '';
-$database = 'qrcode';
+// Kunin ang credentials mula sa environment variables o gamitin ang cloud/Docker default values
+$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: 'mysql');
+$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
 $conn = null;
-$hosts = ['127.0.0.1', 'localhost', 'mysql'];
+$possible_hosts = [$host, 'mysql', 'db', 'database', '127.0.0.1', 'localhost'];
 
-foreach ($hosts as $host) {
+foreach ($possible_hosts as $h) {
+    if (empty($h)) continue;
     try {
-        $conn = @new mysqli($host, $username, $password, $database);
+        $conn = @new mysqli($h, $username, $password, $database, (int)$port);
         if ($conn && !$conn->connect_error) {
             break;
         }
@@ -22,7 +26,7 @@ foreach ($hosts as $host) {
 }
 
 if (!$conn || $conn->connect_error) {
-    die("<div class='alert alert-danger m-4'><strong>Database Connection Failed:</strong> Tiyaking nakabukas o tumatakbo ang iyong MySQL/XAMPP server.</div>");
+    die("<div class='alert alert-danger m-4'><strong>Database Connection Failed:</strong> Hindi makakonekta sa database server sa cloud/container environment. Pakisuri ang iyong hosting environment variables (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME).</div>");
 }
 
 $student_id = $_GET['student_id'] ?? '';
@@ -54,7 +58,7 @@ if (!empty($student_id)) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>QR Scanner Portal</title>
+    <title>QR Scanner Portal - MQCQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light p-4">

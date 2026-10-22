@@ -45,8 +45,9 @@ $borrowed_items = [];
 if (!empty($student_id)) {
     $clean_sid = str_replace('MQCQC-ID:', '',$student_id);
     $clean_sid = trim(str_replace(' ', '',$clean_sid));
-    $pos = strpos($clean_sid, chr(124));
-    if ($pos !== false) {$clean_sid = trim(substr($clean_sid, 0,$pos));
+    $pipe_char = chr(124);$pos = strpos($clean_sid,$pipe_char);
+    if ($pos !== false) {$parts = explode($pipe_char,$clean_sid);
+        $clean_sid = trim($parts[0]);
     }
 
     $stmt =$conn->prepare("SELECT * FROM users WHERE student_id = ? OR id = ?");

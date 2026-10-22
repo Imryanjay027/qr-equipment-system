@@ -78,16 +78,16 @@ if (!empty($student_id)) {
         }
     }
 
-    // Kunin ang mga active borrow requests ng estudyante gamit ang diretsong safe query
+    // Flexible query gamit ang LIKE at LOWER para makuha ang active requests kahit may spacing/casing issues
     if ($borrower_data) {
-        $b_name = $borrower_data['full_name'] ?? ($borrower_data['fullname'] ?? '');
-        $b_sid = $borrower_data['student_id'] ?? $student_id;
+        $b_name = trim($borrower_data['full_name'] ?? ($borrower_data['fullname'] ?? ''));
+        $b_sid = trim($borrower_data['student_id'] ?? $student_id);
         
         $safe_sid = $conn->real_escape_string($b_sid);
         $safe_name = $conn->real_escape_string($b_name);
         $safe_orig = $conn->real_escape_string($student_id);
         
-        $sql = "SELECT * FROM borrow_requests WHERE (student_id = '$safe_sid' OR full_name = '$safe_name' OR student_id = '$safe_orig') AND status NOT IN ('Cleared', 'Replaced') ORDER BY id DESC";
+        $sql = "SELECT * FROM borrow_requests WHERE (student_id LIKE '%$safe_sid%' OR full_name LIKE '%$safe_name%' OR student_id LIKE '%$safe_orig%') AND LOWER(status) NOT LIKE '%cleared%' AND LOWER(status) NOT LIKE '%replaced%' ORDER BY id DESC";
         $res_req = $conn->query($sql);
         if ($res_req) {
             $borrowed_items = $res_req->fetch_all(MYSQLI_ASSOC);

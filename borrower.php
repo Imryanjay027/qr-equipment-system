@@ -36,25 +36,44 @@ $conn->query("CREATE TABLE IF NOT EXISTS borrow_requests (
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
 $student_id_query = $_GET['sid'] ?? '';
 
+// Handle Mark as Replaced action galing sa borrower portal
+if (isset($_GET['action']) && $_GET['action'] == 'mark_replaced' && isset($_GET['req_id'])) {
+    $req_id = intval($_GET['req_id']);
+    $update_stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Replaced' WHERE id = ?");
+    if ($update_stmt) {
+        $update_stmt->bind_param("i", $req_id);
+        $update_stmt->execute();
+        $update_stmt->close();
+    }
+    header("Location: borrower.php?uid=" . $user_id . (!empty($student_id_query) ? "&sid=" . $student_id_query : ""));
+    exit();
+}
+
 $current_user = null;
 if (!empty($user_id)) {
     $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $current_user = $stmt->get_result()->fetch_assoc();
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $current_user = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
 }
 
 if (!$current_user && !empty($student_id_query)) {
     $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ?");
-    $stmt->bind_param("s", $student_id_query);
-    $stmt->execute();
-    $current_user = $stmt->get_result()->fetch_assoc();
+    if ($stmt) {
+        $stmt->bind_param("s", $student_id_query);
+        $stmt->execute();
+        $current_user = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
 }
 
 // Fallback user details kung walang session
 if (!$current_user) {
     $current_user = [
-        'id' => 1,
+        'id' => !empty($user_id) ? $user_id : 1,
         'full_name' => 'Ryan Jay Leoligao',
         'student_id' => !empty($student_id_query) ? $student_id_query : '123456',
         'course_year' => 'BSIT 3rd Year',
@@ -70,6 +89,7 @@ $borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE student_id =
 $borrow_query->bind_param("ss", $sid, $current_user['full_name']);
 $borrow_query->execute();
 $borrowed_items = $borrow_query->get_result();
+$borrow_query->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -95,9 +115,9 @@ $borrowed_items = $borrow_query->get_result();
 <body>
 
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
-        <div>MQCQC - BORROWER PORTAL</div>
+        <div>MARY THE QUEEN COLLEGE OF QUEZON CITY - BORROWER'S PORTAL</div>
         <div class="d-flex gap-1">
-            <a href="borrower.php?uid=<?= $uid; ?>" class="btn btn-dark btn-sm px-2 py-1" style="font-size: 0.75rem;">Dashboard</a>
+            <a href="custodian_dashboard.php?uid=<?= $uid; ?>" class="btn btn-light btn-sm px-2 py-1 text-success fw-bold" style="font-size: 0.75rem;">Dashboard</a>
             <a href="login.php" class="btn btn-danger btn-sm px-2 py-1" style="font-size: 0.75rem;">Logout</a>
         </div>
     </div>
@@ -147,21 +167,41 @@ $borrowed_items = $borrow_query->get_result();
                                     <th>Equipment Name</th>
                                     <th>Borrow Date / Due Date</th>
                                     <th>Status / Action</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if ($borrowed_items && $borrowed_items->num_rows > 0): ?>
                                     <?php while($row = $borrowed_items->fetch_assoc()): ?>
+                                        <?php 
+                                            $st = trim($row['status'] ?? 'Pending');
+                                            $badge_bg = 'bg-warning text-dark';
+                                            $lower_st = strtolower($st);
+                                            if (strpos($lower_st, 'damage') !== false) {
+                                                $badge_bg = 'bg-danger text-white';
+                                            } elseif (strpos($lower_st, 'replace') !== false) {
+                                                $badge_bg = 'bg-info text-dark';
+                                            } elseif (strpos($lower_st, 'clear') !== false || strpos($lower_st, 'good') !== false) {
+                                                $badge_bg = 'bg-success text-white';
+                                            }
+                                        ?>
                                         <tr>
                                             <td><?= htmlspecialchars($row['student_id']); ?></td>
                                             <td class="fw-bold"><?= htmlspecialchars($row['item_to_borrow']); ?></td>
                                             <td><?= htmlspecialchars($row['return_date']) . '<br><small class="text-muted">(' . htmlspecialchars($row['return_time']) . ')</small>'; ?></td>
-                                            <td><span class="badge bg-warning text-dark px-3 py-2"><?= htmlspecialchars($row['status']); ?></span></td>
+                                            <td><span class="badge <?= $badge_bg; ?> px-3 py-2"><?= htmlspecialchars($st); ?></span></td>
+                                            <td>
+                                                <?php if (strpos($lower_st, 'damage') !== false): ?>
+                                                    <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&req_id=<?= $row['id']; ?>&action=mark_replaced" class="btn btn-primary btn-sm px-3 py-1 fw-semibold" style="font-size: 0.8rem;">Mark as Replaced</a>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">---</span>
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
                                     <?php endwhile; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="4" class="text-muted py-4 small">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
+                                        <td colspan="5" class="text-muted py-4 small">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -202,7 +242,6 @@ $borrowed_items = $borrow_query->get_result();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            // QR Code Generation
             const qrDiv = document.getElementById('qrcode');
             if (qrDiv) {
                 qrDiv.innerHTML = "";

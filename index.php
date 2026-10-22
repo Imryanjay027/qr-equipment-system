@@ -4,7 +4,6 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection setup para sa Cloud / Docker / Localhost
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: 'mysql');$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
@@ -19,16 +18,15 @@ foreach ($possible_hosts as$h) {
         if ($conn && !$conn->connect_error) {
             break;
         }
-    } catch (\Throwable $e) {
+    } catch (Exception $e) {
         // Subukan ang susunod na host
     }
 }
 
 if (!$conn \vert{}\vert{}$conn->connect_error) {
-    die("<div class='alert alert-danger m-4'><strong>Database Connection Failed:</strong> Hindi makakonekta sa database server sa cloud environment.</div>");
+    die("<div class='alert alert-danger m-4'><strong>Database Connection Failed:</strong> Hindi makakonekta sa database server.</div>");
 }
 
-// Handle Custodian Actions
 if (isset($_GET['action']) && isset($_GET['req_id']) && isset($_GET['student_id'])) {
     $req_id = intval($_GET['req_id']);
     $action =$_GET['action'];

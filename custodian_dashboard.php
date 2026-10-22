@@ -147,7 +147,8 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
             <div class="sidebar-menu">
                 <a href="javascript:void(0);" class="active" onclick="switchTab('dashboard-section', this)"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="javascript:void(0);" onclick="switchTab('requests-section', this)"><i class="fas fa-clipboard-list"></i> Borrowing Requests</a>
-                <a href="javascript:void(0);" onclick="switchTab('scanner-section', this)"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
+                <!-- Diretsong nakaturo sa index.php ang QR Scanner Portal button -->
+                <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
                 <a href="login.php" class="text-danger mt-4" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
@@ -286,19 +287,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- SCANNER TAB -->
-        <div id="scanner-section" class="tab-section" style="display: none;">
-            <div class="content-card text-center py-5">
-                <h3 class="fw-bold text-primary mb-3"><i class="fas fa-qrcode me-2"></i>Dedicated QR Scanner Portal</h3>
-                <p class="text-muted mb-4">Scan the student's QR code for fast verification and processing of borrowing or returns.</p>
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        <a href="index.php?uid=<?= $user_id; ?>" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">Open Full-Screen QR Scanner Page</a>
-                    </div>
                 </div>
             </div>
         </div>

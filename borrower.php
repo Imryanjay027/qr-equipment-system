@@ -35,10 +35,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'mark_replaced' && isset($_GET[
     exit();
 }
 
-// Handle Dismiss / Clear action from history tab so it deletes or archives from list
+// Handle Dismiss / Clear action from history tab
 if (isset($_GET['action']) && $_GET['action'] == 'dismiss_history' && isset($_GET['req_id'])) {
     $req_id = intval($_GET['req_id']);
-    // Maaari nating i-update ang status o i-delete para mawala sa listahan
     $del_stmt = $conn->prepare("DELETE FROM borrow_requests WHERE id = ?");
     if ($del_stmt) {
         $del_stmt->bind_param("i", $req_id);
@@ -82,17 +81,18 @@ if (!$current_user) {
 
 $sid = $current_user['student_id'];
 $uid = $current_user['id'];
+$fullname = $current_user['full_name'];
 
-// 1. Kunin ang mga active items ng estudyante (Pending, Damaged, o Waiting)
-$borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND (status = 'Pending' OR status LIKE '%Damage%' OR status LIKE '%Waiting%') ORDER BY id DESC");
-$borrow_query->bind_param("ss", $sid, $current_user['full_name']);
+// 1. Mas malawak na query para makuha ang active items (Pending, Damaged, o Waiting) kahit magkaiba ang ID o Pangalan
+$borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ? OR student_id = ?) AND (status = 'Pending' OR status LIKE '%Damage%' OR status LIKE '%Waiting%') ORDER BY id DESC");
+$borrow_query->bind_param("sss", $sid, $fullname, $user_id);
 $borrow_query->execute();
 $borrowed_items = $borrow_query->get_result();
 $borrow_query->close();
 
-// 2. Kunin ang history ng mga returned o cleared items (kabilang ang mga galing sa damaged/replacement)
-$history_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND (status = 'Cleared' OR status = 'Replaced' OR status LIKE '%Good%') ORDER BY id DESC");
-$history_query->bind_param("ss", $sid, $current_user['full_name']);
+// 2. Mas malawak na query para sa history / returned items
+$history_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ? OR student_id = ?) AND (status = 'Cleared' OR status = 'Replaced' OR status LIKE '%Good%') ORDER BY id DESC");
+$history_query->bind_param("sss", $sid, $fullname, $user_id);
 $history_query->execute();
 $history_items = $history_query->get_result();
 $history_query->close();
@@ -160,9 +160,9 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                 <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
             </div>
             <div class="sidebar-menu">
-                <a href="borrower.php?uid=<?= $uid; ?>&tab=borrowed" class="<?= ($active_tab == 'borrowed') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="registration.php?uid=<?= $uid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
-                <a href="borrower.php?uid=<?= $uid; ?>&tab=history" class="<?= ($active_tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=borrowed" class="<?= ($active_tab == 'borrowed') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="registration.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
+                <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=history" class="<?= ($active_tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
                 <a href="login.php" class="text-white mt-4" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
@@ -229,7 +229,6 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                                         <td><?= htmlspecialchars($row['return_date']) . ' (' . htmlspecialchars($row['return_time']) . ')'; ?></td>
                                         <td><span class="badge bg-success px-3 py-2"><?= htmlspecialchars($row['status']); ?></span></td>
                                         <td>
-                                            <!-- Clickable Cleared Button para mawala sa listahan at hindi matambakan -->
                                             <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&req_id=<?= $row['id']; ?>&action=dismiss_history&tab=history" class="btn btn-success btn-sm px-3 py-1 fw-semibold" style="font-size: 11px;">
                                                 <i class="fas fa-check me-1"></i> Clear / Dismiss
                                             </a>
@@ -306,7 +305,7 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                         <p class="text-muted mb-0 small">Submit a new borrowing request from the inventory.</p>
                     </div>
                 </div>
-                <button type="button" class="btn btn-borrow" onclick="window.location.replace('registration.php?uid=<?= $uid; ?>');">
+                <button type="button" class="btn btn-borrow" onclick="window.location.replace('registration.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>');">
                     <i class="fas fa-plus me-1"></i> Borrow an Item
                 </button>
             </div>

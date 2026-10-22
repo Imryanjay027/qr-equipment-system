@@ -19,9 +19,36 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
+// Handle actions directly from QR Scanner Portal (Mark Good/Clear, Mark Damaged, Mark Replaced)
+if (isset($_GET['action']) && isset($_GET['req_id']) && isset($_GET['student_id'])) {
+    $req_id = intval($_GET['req_id']);
+    $action = $_GET['action'];
+    $redirect_sid = $_GET['student_id'];
+
+    if ($action == 'clear') {
+        $stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Cleared' WHERE id = ?");
+        $stmt->bind_param("i", $req_id);
+        $stmt->execute();
+        $stmt->close();
+    } elseif ($action == 'damaged') {
+        $stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Damage needs for replacement' WHERE id = ?");
+        $stmt->bind_param("i", $req_id);
+        $stmt->execute();
+        $stmt->close();
+    } elseif ($action == 'mark_replaced') {
+        $stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Replaced' WHERE id = ?");
+        $stmt->bind_param("i", $req_id);
+        $stmt->execute();
+        $stmt->close();
+    }
+    header("Location: index.php?uid=" . ($_GET['uid'] ?? 1) . "&student_id=" . urlencode($redirect_sid));
+    exit();
+}
+
 $raw_student_id = $_GET['student_id'] ?? '';
 $student_id = trim($raw_student_id);
 $borrower_data = null;
+$borrowed_items = [];
 
 if (!empty($student_id)) {
     if (preg_match('/MQCQC-ID:\s*([^\|]+)/i', $student_id, $matches)) {
@@ -50,6 +77,20 @@ if (!empty($student_id)) {
             $stmt2->close();
         }
     }
+
+    // Kunin ang mga active borrow requests ng estudyante (para makita ang hiniram, selfie, at status)
+    if ($borrower_data) {
+        $b_name = $borrower_data['full_name'] ?? ($borrower_data['fullname'] ?? '');
+        $b_sid = $borrower_data['student_id'] ?? $student_id;
+        
+        $req_stmt = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND status != 'Cleared' AND status != 'Replaced' ORDER BY id DESC");
+        if ($req_stmt) {
+            $req_stmt->bind_param("ss", $b_sid, $b_name);
+            $req_stmt->execute();
+            $borrowed_items = $req_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $req_stmt->close();
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -63,9 +104,9 @@ if (!empty($student_id)) {
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .main-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); background: #ffffff; max-width: 700px; margin: 30px auto; padding: 25px; }
+        .main-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); background: #ffffff; max-width: 800px; margin: 30px auto; padding: 25px; }
         .top-navbar { background-color: #217835; color: #ffffff; padding: 12px 20px; font-weight: bold; font-size: 0.9rem; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; border: 2px solid #e9ecef; }
+        #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 8px; overflow: hidden; border: 2px solid #e9ecef; }
     </style>
 </head>
 <body>
@@ -99,19 +140,76 @@ if (!empty($student_id)) {
                 <input class="form-control form-control-sm" type="file" id="qr-image-input" accept="image/*">
             </div>
 
-            <!-- Result Display / Error Handling -->
+            <!-- Result Display / Error Handling & Equipment Status -->
             <div class="card p-3 border-0 bg-light">
                 <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-user-shield me-2"></i>Student Verification & Equipment Status</h5>
                 
                 <?php if (!empty($raw_student_id)): ?>
                     <?php if ($borrower_data): ?>
-                        <div class="alert alert-success">
+                        <div class="alert alert-success mb-3">
                             <h6 class="fw-bold mb-1">Student Found!</h6>
                             <p class="mb-1"><strong>Name:</strong> <?= htmlspecialchars($borrower_data['full_name'] ?? ($borrower_data['fullname'] ?? 'N/A')); ?></p>
                             <p class="mb-1"><strong>Student ID:</strong> <?= htmlspecialchars($borrower_data['student_id'] ?? $student_id); ?></p>
                             <p class="mb-0"><strong>Course / Year:</strong> <?= htmlspecialchars($borrower_data['course_year'] ?? 'N/A'); ?></p>
                         </div>
-                        <a href="borrower.php?uid=<?= $borrower_data['id'] ?? 1; ?>&sid=<?= htmlspecialchars($borrower_data['student_id'] ?? $student_id); ?>" class="btn btn-success w-100 fw-bold">Proceed to Borrower Portal</a>
+
+                        <!-- Hiniram na Equipment, Selfie, at Status Monitoring -->
+                        <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-laptop me-1 text-success"></i> Active Borrowed Items & Monitoring</h6>
+                        <?php if (!empty($borrowed_items)): ?>
+                            <div class="table-responsive">
+                                <table class="table table-bordered align-middle text-center bg-white">
+                                    <thead class="table-success">
+                                        <tr style="font-size: 11px;">
+                                            <th>Selfie Picture</th>
+                                            <th>Equipment Name</th>
+                                            <th>Due Date / Time</th>
+                                            <th>Status</th>
+                                            <th>Custodian Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($borrowed_items as $item): ?>
+                                            <?php 
+                                                $st = trim($item['status'] ?? 'Pending');
+                                                $badge_bg = 'bg-warning text-dark';
+                                                $lower_st = strtolower($st);
+                                                if (strpos($lower_st, 'damage') !== false) {
+                                                    $badge_bg = 'bg-danger text-white';
+                                                } elseif (strpos($lower_st, 'waiting') !== false) {
+                                                    $badge_bg = 'bg-info text-dark';
+                                                }
+                                            ?>
+                                            <tr style="font-size: 11px;">
+                                                <td>
+                                                    <?php if (!empty($item['selfie_image'])): ?>
+                                                        <img src="<?= $item['selfie_image']; ?>" width="45" height="45" style="object-fit: cover; border-radius: 50%; border: 1px solid #ccc;" alt="Selfie">
+                                                    <?php else: ?>
+                                                        <span class="text-muted">No Image</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="fw-bold"><?= htmlspecialchars($item['item_to_borrow']); ?></td>
+                                                <td><?= htmlspecialchars($item['return_date']) . '<br><small>(' . htmlspecialchars($item['return_time']) . ')</small>'; ?></td>
+                                                <td><span class="badge <?= $badge_bg; ?> px-2 py-1"><?= htmlspecialchars($st); ?></span></td>
+                                                <td>
+                                                    <?php if (strpos($lower_st, 'damage') !== false || strpos($lower_st, 'waiting') !== false): ?>
+                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=mark_replaced&req_id=<?= $item['id']; ?>" class="btn btn-warning btn-sm text-dark fw-bold px-2 py-1" style="font-size: 10px;">
+                                                            <i class="fas fa-sync-alt me-1"></i> Mark Replaced
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=clear&req_id=<?= $item['id']; ?>" class="btn btn-success btn-sm fw-semibold px-2 py-1 mb-1" style="font-size: 10px;">Mark Good / Clear</a>
+                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=damaged&req_id=<?= $item['id']; ?>" class="btn btn-danger btn-sm fw-semibold px-2 py-1" style="font-size: 10px;">Mark Damaged</a>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-info py-2 small mb-3">Walang kasalukuyang aktibong hiniram na kagamitan ang estudyanteng ito.</div>
+                        <?php endif; ?>
+
+                        <a href="borrower.php?uid=<?= $borrower_data['id'] ?? 1; ?>&sid=<?= htmlspecialchars($borrower_data['student_id'] ?? $student_id); ?>" class="btn btn-success w-100 fw-bold mt-2">Proceed to Borrower Portal</a>
                     <?php else: ?>
                         <div class="alert alert-danger mb-0">
                             <i class="fas fa-exclamation-triangle me-1"></i> No borrower record found for Student ID: <strong><?= htmlspecialchars($student_id); ?></strong>

@@ -5,33 +5,67 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
+date_default_timezone_set('Asia/Manila');
 
-// 1. Suriin muna kung naka-log in ang custodian/admin bago kumonekta sa database
-$is_logged_in = false;
-if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    $is_logged_in = true;
+// DATABASE CONNECTION (Pinalitan para gumamit ng environment variables para iwas Access Denied)
+$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
+$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+
+$conn = @new mysqli($host, $username, $password, $database, (int)$port);
+if ($conn->connect_error) {
+    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
 }
 
+if ($conn->connect_error) {
+    die("Database Connection Failed: " . $conn->connect_error);
+}
+
+// Kunin ang user id mula sa session o kaya ay sa URL parameter (?uid=)
+$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
+
+if (!empty($user_id)) {
+    // Kunin ang mga columns ng tbl_users para dynamic
+    $table_columns = [];
+    $res = $conn->query("SHOW COLUMNS FROM tbl_users");
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $table_columns[] = $row['Field'];
+        }
+    }
+
+    $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname', $table_columns) ? 'fullname' : 'full_name');
+    $role_col = in_array('role', $table_columns) ? 'role' : (in_array('user_type', $table_columns) ? 'user_type' : 'role');
+
+    $stmt = $conn->prepare("SELECT *, {$name_col} as full_name, {$role_col} as role FROM tbl_users WHERE id = ?");
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $user_data = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($user_data) {
+            $_SESSION['user_id'] = $user_data['id'];
+            $_SESSION['logged_in'] = true;
+            $_SESSION['role'] = $user_data['role'];
+            $_SESSION['fullname'] = $user_data['full_name'];
+            $_SESSION['full_name'] = $user_data['full_name'];
+        }
+    }
+}
+
+// Suriin kung naka-log in ang custodian o admin
+$is_logged_in = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 $role = strtolower(trim($_SESSION['role'] ?? ''));
 
-// Kung hindi naka-log in o hindi custodian/admin, i-redirect agad sa login.php
-if (!$is_logged_in || ($role !== 'custodian' && $role !== 'admin')) {
+if (!$is_logged_in || (strpos($role, 'custodian') === false && strpos($role, 'admin') === false)) {
     header("Location: login.php");
     exit();
 }
 
-// 2. Kapag naka-log in na, saka lamang ikokonekta sa Coolify database
-$host = "wfbyfhr4404k2y9u2spiv101";
-$username = "root";
-$password = "ryan072797"; // O ang tamang Root Password mula sa Coolify kung kinakailangan
-$database = "qrcode";
-
-$conn = new mysqli($host, $username, $password, $database);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-$fullname_custodian = $_SESSION['fullname'] ?? 'Custodian';
+$fullname_custodian = $_SESSION['fullname'] ?? ($_SESSION['full_name'] ?? 'Custodian');
 
 // Variables para sa Borrower details
 $student_id = $_GET['student_id'] ?? '';
@@ -146,8 +180,8 @@ if (!empty($student_id)) {
 <div class="navbar">
     <h1>MARY THE QUEEN COLLEGE OF QUEZON CITY - EQUIPMENT SCANNER</h1>
     <div class="nav-links">
-        <a href="custodian_dashboard.php">Dashboard</a>
-        <a href="logout.php" class="logout-btn" onclick="return confirm('Sigurado ka bang gusto mong mag-logout?');">Logout</a>
+        <a href="custodian_dashboard.php?uid=<?= $_SESSION['user_id']; ?>">Dashboard</a>
+        <a href="login.php" class="logout-btn" onclick="return confirm('Sigurado ka bang gusto mong mag-logout?');">Logout</a>
     </div>
 </div>
 
@@ -171,6 +205,7 @@ if (!empty($student_id)) {
                 <div class="option-box">
                     <label>O kaya ay i-type ang Student ID:</label>
                     <form method="GET" action="index.php" onsubmit="playBeepAndSubmit(event, this)">
+                        <input type="hidden" name="uid" value="<?= htmlspecialchars($_SESSION['user_id']); ?>">
                         <input type="text" name="student_id" placeholder="Enter Student ID..." value="<?php echo htmlspecialchars($student_id); ?>">
                         <button type="submit" class="submit-btn">Find</button>
                     </form>
@@ -252,6 +287,7 @@ if (!empty($student_id)) {
 
 <script>
     const beepAudio = document.getElementById('beepAudio');
+    const currentUid = "<?= htmlspecialchars($_SESSION['user_id']); ?>";
 
     function playBeepAndRedirect(url) {
         beepAudio.play().catch(e => console.log("Audio play blocked by browser:", e));
@@ -291,7 +327,7 @@ if (!empty($student_id)) {
             
             html5QrcodeScanner.render((decodedText, decodedResult) => {
                 html5QrcodeScanner.clear();
-                playBeepAndRedirect("index.php?student_id=" + encodeURIComponent(decodedText));
+                playBeepAndRedirect("index.php?uid=" + currentUid + "&student_id=" + encodeURIComponent(decodedText));
             }, (errorMessage) => {});
             
             this.innerText = "Stop Scanning";
@@ -307,7 +343,7 @@ if (!empty($student_id)) {
         
         html5QrCode.scanFile(imageFile, true)
         .then(decodedText => {
-            playBeepAndRedirect("index.php?student_id=" + encodeURIComponent(decodedText));
+            playBeepAndRedirect("index.php?uid=" + currentUid + "&student_id=" + encodeURIComponent(decodedText));
         })
         .catch(err => {
             alert("Unable to read QR code from image. Please try another one.");

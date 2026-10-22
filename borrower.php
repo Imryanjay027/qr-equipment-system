@@ -83,14 +83,12 @@ $sid = $current_user['student_id'];
 $uid = $current_user['id'];
 $fullname = $current_user['full_name'];
 
-// 1. Mas malawak na query para makuha ang active items (Pending, Damaged, o Waiting) kahit magkaiba ang ID o Pangalan
 $borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ? OR student_id = ?) AND (status = 'Pending' OR status LIKE '%Damage%' OR status LIKE '%Waiting%') ORDER BY id DESC");
 $borrow_query->bind_param("sss", $sid, $fullname, $user_id);
 $borrow_query->execute();
 $borrowed_items = $borrow_query->get_result();
 $borrow_query->close();
 
-// 2. Mas malawak na query para sa history / returned items
 $history_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ? OR student_id = ?) AND (status = 'Cleared' OR status = 'Replaced' OR status LIKE '%Good%') ORDER BY id DESC");
 $history_query->bind_param("sss", $sid, $fullname, $user_id);
 $history_query->execute();
@@ -163,6 +161,7 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                 <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=borrowed" class="<?= ($active_tab == 'borrowed') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="registration.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
                 <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=history" class="<?= ($active_tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
         <div class="sidebar-footer">
@@ -180,7 +179,6 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                 <span class="small fw-semibold text-secondary">
                     <i class="fas fa-user-graduate text-success me-1"></i> <?= htmlspecialchars($current_user['full_name']); ?>
                 </span>
-                <a href="login.php" class="btn btn-danger btn-sm px-3 fw-bold" onclick="return confirm('Are you sure you want to log out?');" style="font-size: 11px;">Logout</a>
             </div>
         </div>
 

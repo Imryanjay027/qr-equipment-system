@@ -17,7 +17,6 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Handle actions directly from QR Scanner Portal (Mark Good/Clear, Mark Damaged, Mark Replaced)
 if (isset($_GET['action']) && isset($_GET['req_id']) && isset($_GET['student_id'])) {
     $req_id = intval($_GET['req_id']);
     $action =$_GET['action'];
@@ -44,27 +43,25 @@ $raw_student_id = $_GET['student_id'] ?? '';$student_id = trim($raw_student_id);
 $borrowed_items = [];
 
 if (!empty($student_id)) {
-    if (preg_match('/MQCQC-ID:\s*([^\|]+)/i', $student_id,$matches)) {
-        $student_id = trim($matches[1]);
-    } else {
-        $parts = explode('\vert{}',$student_id);
-        $student_id = trim(str_replace('MQCQC-ID:', '',$parts[0]));
+    $clean_sid = str_replace(['MQCQC-ID:', ' '], '',$student_id);
+    if (strpos($clean_sid, '|') !== false) {
+        $parts = explode('\vert{}',$clean_sid);
+        $clean_sid = trim($parts[0]);
     }
 
     $stmt =$conn->prepare("SELECT * FROM users WHERE student_id = ? OR id = ?");
-    if ($stmt) {$stmt->bind_param("ss", $student_id,$student_id);
+    if ($stmt) {$stmt->bind_param("ss", $clean_sid,$clean_sid);
         $stmt->execute();$res = $stmt->get_result();$borrower_data = $res->fetch_assoc();$stmt->close();
     }
 
     if (!$borrower_data) {
         $stmt2 =$conn->prepare("SELECT * FROM borrowers WHERE student_id = ?");
         if ($stmt2) {
-            $stmt2->bind_param("s", $student_id);
+            $stmt2->bind_param("s", $clean_sid);
             $stmt2->execute();$res2 = $stmt2->get_result();$borrower_data = $res2->fetch_assoc();$stmt2->close();
         }
     }
 
-    // Kunin ang lahat ng active borrow requests
     $sql = "SELECT * FROM borrow_requests WHERE LOWER(status) NOT LIKE '%cleared%' AND LOWER(status) NOT LIKE '%replaced%' ORDER BY id DESC";
     $res_req = $conn->query($sql);
     if ($res_req) {
@@ -92,7 +89,6 @@ if (!empty($student_id)) {
 </head>
 <body>
 
-    <!-- Audio Beep Effect -->
     <audio id="beepAudio" src="beep.mp3" preload="auto"></audio>
 
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
@@ -115,13 +111,11 @@ if (!empty($student_id)) {
 
             <hr class="my-4">
 
-            <!-- UPLOAD QR IMAGE FILE OPTION -->
             <div class="mb-3 p-3 bg-light rounded border">
                 <label for="qr-image-input" class="form-label fw-bold text-secondary small mb-1"><i class="fas fa-upload me-1"></i> Or Upload QR Image File</label>
                 <input class="form-control form-control-sm" type="file" id="qr-image-input" accept="image/*">
             </div>
 
-            <!-- Result Display / Error Handling & Equipment Status -->
             <div class="card p-3 border-0 bg-light">
                 <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-user-shield me-2"></i>Student Verification & Equipment Status</h5>
                 
@@ -134,10 +128,8 @@ if (!empty($student_id)) {
                             <p class="mb-0"><strong>Course / Year:</strong> <?= htmlspecialchars($borrower_data['course_year'] ?? 'N/A'); ?></p>
                         </div>
 
-                        <!-- Hiniram na Equipment, Selfie, at Status Monitoring -->
                         <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-laptop me-1 text-success"></i> Active Borrowed Items & Monitoring</h6>
                         
-                        <!-- DEBUG INFO -->
                         <div class="alert alert-secondary py-1 px-2 mb-2" style="font-size: 11px;">
                             <strong>Debug Info:</strong> Nahanap na active items sa DB = <strong><?= count($borrowed_items); ?></strong>
                         </div>
@@ -250,16 +242,4 @@ if (!empty($student_id)) {
             
             html5QrCode.scanFile(imageFile, true)
             .then(decodedText => {
-                playBeep();
-                setTimeout(() => {
-                    window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
-                }, 300);
-            })
-            .catch(err => {
-                alert("Error scanning QR image. Make sure the uploaded image is clear and contains a valid QR code.");
-            });
-        });
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+                playBeep

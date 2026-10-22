@@ -123,7 +123,8 @@ $_SESSION['logged_in'] = true;
                         </div>
                         <h5 class="fw-bold">Borrow & Return Requests</h5>
                         <p class="text-muted small">Aprubahan o i-record ang pagbabalik ng mga kagamitan.</p>
-                        <a href="index.php?uid=<?= $current_user['id']; ?>" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Requests</a>
+                        <!-- Naka-turo na ito sa requests.php -->
+                        <a href="requests.php?uid=<?= $current_user['id']; ?>" class="btn btn-success btn-sm w-100 fw-semibold">Tignan ang Requests</a>
                     </div>
                 </div>
             </div>

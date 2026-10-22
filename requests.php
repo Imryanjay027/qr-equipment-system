@@ -52,8 +52,29 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
     exit();
 }
 
+// Dynamic Check para sa mga columns ng borrowed_equipment table
+$eq_columns = [];
+$res_eq = $conn->query("SHOW COLUMNS FROM borrowed_equipment");
+if ($res_eq) {
+    while ($row = $res_eq->fetch_assoc()) {
+        $eq_columns[] = $row['Field'];
+    }
+}
+
+// Hanapin kung aling date column ang umiiral sa table
+$date_column = 'borrow_date';
+if (!in_array('borrow_date', $eq_columns)) {
+    if (in_array('date_borrowed', $eq_columns)) {
+        $date_column = 'date_borrowed';
+    } elseif (in_array('created_at', $eq_columns)) {
+        $date_column = 'created_at';
+    } else {
+        $date_column = $eq_columns[1] ?? 'id'; // Fallback
+    }
+}
+
 // Kunin ang mga active borrowing requests mula sa database
-$requests_query = "SELECT be.id as req_id, be.student_id, be.item_to_borrow, be.borrow_date, be.status, 
+$requests_query = "SELECT be.id as req_id, be.student_id, be.item_to_borrow, be.{$date_column} as borrow_date, be.status, 
                           b.fullname, b.course_year, b.selfie_image 
                    FROM borrowed_equipment be 
                    LEFT JOIN borrowers b ON be.student_id = b.student_id 
@@ -141,7 +162,7 @@ $result = $conn->query($requests_query);
                                     <td><?= htmlspecialchars($row['fullname'] ?? '---'); ?></td>
                                     <td><?= htmlspecialchars($row['course_year'] ?? '---'); ?></td>
                                     <td><?= htmlspecialchars($row['item_to_borrow']); ?></td>
-                                    <td><?= htmlspecialchars($row['borrow_date']); ?></td>
+                                    <td><?= htmlspecialchars($row['borrow_date'] ?? '---'); ?></td>
                                     <td><span class="badge badge-status <?= $badge_class; ?>"><?= htmlspecialchars($status); ?></span></td>
                                     <td>
                                         <a href="requests.php?uid=<?= $user_id; ?>&req_id=<?= $row['req_id']; ?>&action=good" class="btn btn-success btn-sm px-2 py-1 fw-semibold" style="font-size: 11px;">Mark Good</a>

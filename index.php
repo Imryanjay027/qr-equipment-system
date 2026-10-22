@@ -181,4 +181,85 @@ if (!empty($student_id)) {
                                                         </a>
                                                     <?php else: ?>
                                                         <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=clear&req_id=<?=$item['id']; ?>" class="btn btn-success btn-sm fw-semibold px-2 py-1 mb-1" style="font-size: 10px;">Mark Good / Clear</a>
-                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=damaged&req_id=<?=$item['id']; ?>" class="btn btn-danger btn-sm fw-semibold px-2 py
+                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=damaged&req_id=<?=$item['id']; ?>" class="btn btn-danger btn-sm fw-semibold px-2 py-1" style="font-size: 10px;">Mark Damaged</a>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-warning py-2 small mb-3">Walang nakitang active record sa `borrow_requests` table sa database.</div>
+                        <?php endif; ?>
+
+                        <a href="borrower.php?uid=<?= $borrower_data['id'] ?? 1; ?>&sid=<?= htmlspecialchars($borrower_data['student_id'] ?? $student_id); ?>" class="btn btn-success w-100 fw-bold mt-2">Proceed to Borrower Portal</a>
+                    <?php else: ?>
+                        <div class="alert alert-danger mb-0">
+                            <i class="fas fa-exclamation-triangle me-1"></i> No borrower record found for Student ID: <strong><?= htmlspecialchars($student_id); ?></strong>
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <div class="text-muted text-center py-2 small">Please use the camera or upload a QR image file above to scan.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const html5QrCode = new Html5Qrcode("reader");
+
+        function playBeep() {
+            const audio = document.getElementById('beepAudio');
+            if (audio) {
+                audio.play().catch(e => console.log("Audio play blocked"));
+            }
+        }
+
+        document.getElementById('start-camera').addEventListener('click', function() {
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText, decodedResult) => {
+                    playBeep();
+                    setTimeout(() => {
+                        window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                    }, 300);
+                },
+                (errorMessage) => {}
+            ).then(() => {
+                document.getElementById('start-camera').style.display = 'none';
+                document.getElementById('stop-camera').style.display = 'inline-block';
+            }).catch((err) => {
+                alert("Error starting camera: " + err);
+            });
+        });
+
+        document.getElementById('stop-camera').addEventListener('click', function() {
+            html5QrCode.stop().then(() => {
+                document.getElementById('start-camera').style.display = 'inline-block';
+                document.getElementById('stop-camera').style.display = 'none';
+            }).catch((err) => {
+                console.log("Failed to stop scanner.");
+            });
+        });
+
+        document.getElementById('qr-image-input').addEventListener('change', e => {
+            if (e.target.files.length == 0) return;
+            const imageFile = e.target.files[0];
+            
+            html5QrCode.scanFile(imageFile, true)
+            .then(decodedText => {
+                playBeep();
+                setTimeout(() => {
+                    window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                }, 300);
+            })
+            .catch(err => {
+                alert("Error scanning QR image. Make sure the uploaded image is clear and contains a valid QR code.");
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

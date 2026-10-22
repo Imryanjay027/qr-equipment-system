@@ -163,7 +163,6 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                 <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=borrowed" class="<?= ($active_tab == 'borrowed') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="registration.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
                 <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&tab=history" class="<?= ($active_tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
-                <a href="login.php" class="text-white mt-4" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
         <div class="sidebar-footer">
@@ -181,7 +180,7 @@ $active_tab = $_GET['tab'] ?? 'borrowed';
                 <span class="small fw-semibold text-secondary">
                     <i class="fas fa-user-graduate text-success me-1"></i> <?= htmlspecialchars($current_user['full_name']); ?>
                 </span>
-                <a href="login.php" class="btn btn-danger btn-sm px-3 fw-bold" style="font-size: 11px;">Logout</a>
+                <a href="login.php" class="btn btn-danger btn-sm px-3 fw-bold" onclick="return confirm('Are you sure you want to log out?');" style="font-size: 11px;">Logout</a>
             </div>
         </div>
 

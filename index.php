@@ -124,7 +124,8 @@ if ($student_id !== '') {
 
     $search_name = isset($borrower_data['full_name']) ? $borrower_data['full_name'] : (isset($borrower_data['fullname']) ? $borrower_data['fullname'] : '');
 
-    $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) ORDER BY id DESC";
+    // Dito natin sinasala: ipapakita lamang ang mga item na HINDI pa Good at HINDI pa Replaced (hal. Damaged o Pending)
+    $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND LOWER(status) NOT LIKE '%good%' AND LOWER(status) NOT LIKE '%replaced%' AND LOWER(status) NOT LIKE '%cleared%' ORDER BY id DESC";
     $stmt_req = $conn->prepare($sql);
     if ($stmt_req) {
         $stmt_req->bind_param("ss", $clean_sid, $search_name);
@@ -207,7 +208,7 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                             <p class="mb-0"><strong>Course / Year:</strong> <?php echo htmlspecialchars($course_year_display); ?></p>
                         </div>
 
-                        <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-laptop me-1 text-success"></i> Borrowed Equipment Records</h6>
+                        <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-laptop me-1 text-success"></i> Active Borrowed Equipment Records (Pending / Damaged)</h6>
                         
                         <?php if (!empty($borrowed_items)): ?>
                             <div class="table-responsive">
@@ -229,21 +230,14 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                                                 $st = isset($item['status']) ? trim($item['status']) : 'Good';
                                                 $lower_st = strtolower($st);
                                                 
-                                                // Tukuyin ang tamang kulay at label ng status
-                                                $badge_class = 'bg-success text-white';
-                                                $display_status = 'Good';
+                                                $badge_class = 'bg-warning text-dark';
+                                                $display_status = 'Pending / Active';
                                                 
                                                 if (strpos($lower_st, 'damage') !== false || strpos($lower_st, 'sira') !== false) {
                                                     $badge_class = 'bg-danger text-white';
                                                     $display_status = 'Damaged';
-                                                } elseif (strpos($lower_st, 'replace') !== false) {
-                                                    $badge_class = 'bg-info text-dark';
-                                                    $display_status = 'Replaced';
-                                                } elseif (strpos($lower_st, 'clear') !== false || strpos($lower_st, 'good') !== false) {
-                                                    $badge_class = 'bg-success text-white';
-                                                    $display_status = 'Good';
                                                 } else {
-                                                    $display_status = $st; // Ipakita kung anuman ang nakatala
+                                                    $display_status = $st;
                                                 }
 
                                                 $item_id = isset($item['id']) ? $item['id'] : 0;
@@ -279,7 +273,7 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                                 </table>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-warning py-2 small mb-3">Walang nakitang kagamitan na hiniram para sa estudyanteng ito.</div>
+                            <div class="alert alert-success py-2 small mb-3">Walang nakitang active o sirang kagamitan para sa estudyanteng ito (Lahat ay maayos o naipalit na).</div>
                         <?php endif; ?>
 
                     <?php else: ?>

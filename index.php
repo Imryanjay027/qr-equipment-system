@@ -124,7 +124,7 @@ if ($student_id !== '') {
 
     $search_name = isset($borrower_data['full_name']) ? $borrower_data['full_name'] : (isset($borrower_data['fullname']) ? $borrower_data['fullname'] : '');
 
-    // Dito natin sinasala: ipapakita lamang ang mga item na HINDI pa Good at HINDI pa Replaced (hal. Damaged o Pending)
+    // Kunin ang mga active records (Pending / Damaged lamang)
     $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND LOWER(status) NOT LIKE '%good%' AND LOWER(status) NOT LIKE '%replaced%' AND LOWER(status) NOT LIKE '%cleared%' ORDER BY id DESC";
     $stmt_req = $conn->prepare($sql);
     if ($stmt_req) {
@@ -140,11 +140,18 @@ if ($student_id !== '') {
 
 $portal_uid = isset($_GET['uid']) ? $_GET['uid'] : 1;
 $full_name_display = 'N/A';
+$profile_selfie = '';
 if ($borrower_data) {
     if (isset($borrower_data['full_name'])) {
         $full_name_display = $borrower_data['full_name'];
     } elseif (isset($borrower_data['fullname'])) {
         $full_name_display = $borrower_data['fullname'];
+    }
+    
+    if (isset($borrower_data['selfie_image'])) {
+        $profile_selfie = $borrower_data['selfie_image'];
+    } elseif (isset($borrower_data['selfie'])) {
+        $profile_selfie = $borrower_data['selfie'];
     }
 }
 $student_id_display = $borrower_data ? (isset($borrower_data['student_id']) ? $borrower_data['student_id'] : $student_id) : $student_id;
@@ -201,11 +208,20 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                 
                 <?php if ($raw_student_id !== ''): ?>
                     <?php if ($borrower_data): ?>
-                        <div class="alert alert-success mb-3">
-                            <h6 class="fw-bold mb-1">Student Found!</h6>
-                            <p class="mb-1"><strong>Borrower Name:</strong> <?php echo htmlspecialchars($full_name_display); ?></p>
-                            <p class="mb-1"><strong>Student ID:</strong> <?php echo htmlspecialchars($student_id_display); ?></p>
-                            <p class="mb-0"><strong>Course / Year:</strong> <?php echo htmlspecialchars($course_year_display); ?></p>
+                        <div class="alert alert-success mb-3 d-flex align-items-center">
+                            <div class="me-3">
+                                <?php if ($profile_selfie !== ''): ?>
+                                    <img src="<?php echo $profile_selfie; ?>" width="80" height="80" style="object-fit: cover; border-radius: 50%; border: 2px solid #217835;" alt="Registration Live Selfie">
+                                <?php else: ?>
+                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 12px;">No Selfie</div>
+                                <?php endif; ?>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1 text-success">Student Verified (Live Selfie Record)</h6>
+                                <p class="mb-1"><strong>Borrower Name:</strong> <?php echo htmlspecialchars($full_name_display); ?></p>
+                                <p class="mb-1"><strong>Student ID:</strong> <?php echo htmlspecialchars($student_id_display); ?></p>
+                                <p class="mb-0"><strong>Course / Year:</strong> <?php echo htmlspecialchars($course_year_display); ?></p>
+                            </div>
                         </div>
 
                         <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-laptop me-1 text-success"></i> Active Borrowed Equipment Records (Pending / Damaged)</h6>
@@ -241,7 +257,7 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                                                 }
 
                                                 $item_id = isset($item['id']) ? $item['id'] : 0;
-                                                $item_selfie = isset($item['selfie_image']) ? $item['selfie_image'] : '';
+                                                $item_selfie = isset($item['selfie_image']) && $item['selfie_image'] !== '' ? $item['selfie_image'] : $profile_selfie;
                                                 $item_borrower_name = isset($item['full_name']) ? $item['full_name'] : $full_name_display;
                                                 $item_sid = isset($item['student_id']) ? $item['student_id'] : $student_id_display;
                                                 $item_course = isset($item['course_year']) ? $item['course_year'] : (isset($item['grade_section']) ? $item['grade_section'] : $course_year_display);
@@ -273,7 +289,7 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                                 </table>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-success py-2 small mb-3">Walang nakitang active o sirang kagamitan para sa estudyanteng ito (Lahat ay maayos o naipalit na).</div>
+                            <div class="alert alert-success py-2 small mb-3">Walang nakitang active o sirang kagamitan para sa estudyanteng ito (Lahat ay maayos o naipalit na).[cite: 5]</div>
                         <?php endif; ?>
 
                     <?php else: ?>

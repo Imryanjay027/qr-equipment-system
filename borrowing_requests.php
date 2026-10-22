@@ -43,7 +43,7 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
         $update_stmt->execute();
         $update_stmt->close();
     }
-    header("Location: borrow_requests.php?uid=" . $user_id);
+    header("Location: borrowing_requests.php?uid=" . $user_id);
     exit();
 }
 
@@ -106,7 +106,7 @@ if ($result) {
             </div>
             <div class="sidebar-menu">
                 <a href="custodian_dashboard.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="borrow_requests.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
+                <a href="borrowing_requests.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
                 <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
@@ -168,9 +168,9 @@ if ($result) {
                                         <span class="badge <?= $badge_class; ?> px-2 py-1" style="font-size: 10px;"><?= htmlspecialchars($st); ?></span>
                                     </td>
                                     <td>
-                                        <a href="borrow_requests.php?uid=<?= $user_id; ?>&action=good&req_id=<?= $req['id']; ?>" class="btn btn-success btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Good">Good</a>
-                                        <a href="borrow_requests.php?uid=<?= $user_id; ?>&action=damaged&req_id=<?= $req['id']; ?>" class="btn btn-danger btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Damaged">Damaged</a>
-                                        <a href="borrow_requests.php?uid=<?= $user_id; ?>&action=replaced&req_id=<?= $req['id']; ?>" class="btn btn-warning btn-sm text-dark px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Replaced">Replaced</a>
+                                        <a href="borrowing_requests.php?uid=<?= $user_id; ?>&action=good&req_id=<?= $req['id']; ?>" class="btn btn-success btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Good">Good</a>
+                                        <a href="borrowing_requests.php?uid=<?= $user_id; ?>&action=damaged&req_id=<?= $req['id']; ?>" class="btn btn-danger btn-sm px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Damaged">Damaged</a>
+                                        <a href="borrowing_requests.php?uid=<?= $user_id; ?>&action=replaced&req_id=<?= $req['id']; ?>" class="btn btn-warning btn-sm text-dark px-2 py-1 mb-1" style="font-size: 9px;" title="Mark as Replaced">Replaced</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

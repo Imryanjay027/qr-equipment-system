@@ -23,7 +23,7 @@ $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? 1);
 $student_id = $_GET['sid'] ?? '';
 $tab = $_GET['tab'] ?? 'dashboard';
 
-// Kunin ang impormasyon ng borrower mula sa database
+// Fetch borrower information from database
 $borrower_data = null;
 if (!empty($student_id)) {
     $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ? LIMIT 1");
@@ -185,14 +185,13 @@ $active_sid = $borrower_data['student_id'] ?? $student_id;
             <!-- Dynamic Tab Content View -->
             <?php if ($tab == 'borrow'): ?>
                 <h5 class="fw-bold text-dark mb-3"><i class="fas fa-plus-circle me-2 text-success"></i>Borrow an Equipment</h5>
-                <p class="text-muted small">Dito mo maaaring piliin at i-request ang mga kagamitang nais mong hiram.</p>
-                <!-- Ilagay ang borrow form code dito kung kinakailangan -->
+                <p class="text-muted small">Here you can select and request the equipment you wish to borrow.</p>
             <?php elseif ($tab == 'history'): ?>
                 <h5 class="fw-bold text-dark mb-3"><i class="fas fa-history me-2 text-success"></i>Returned Items / History</h5>
-                <p class="text-muted small">Talaan ng iyong mga nakaraan at kasalukuyang hiniram na kagamitan.</p>
+                <p class="text-muted small">Records of your past and current borrowed equipment.</p>
             <?php else: ?>
-                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-tachometer-alt me-2 text-success"></i>Welcome sa iyong Borrower Portal</h5>
-                <p class="text-muted small">Gamitin ang menu sa gilid o ang hamburger menu sa itaas para mag-navigate sa mga seksyon.</p>
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-tachometer-alt me-2 text-success"></i>Welcome to your Borrower Portal</h5>
+                <p class="text-muted small">Use the sidebar menu or the hamburger menu above to navigate through the sections.</p>
             <?php endif; ?>
         </div>
     </div>

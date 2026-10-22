@@ -4,72 +4,145 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: 'mysql');$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+$host = getenv('MYSQL_HOST');
+if (!$host) {
+    $host = getenv('DB_HOST');
+    if (!$host) {
+        $host = 'mysql';
+    }
+}
 
-$conn = @new mysqli($host, $username,$password, $database, (int)$port);
-if ($conn->connect_error) {$conn = @new mysqli('mysql', $username,$password, $database, (int)$port);
+$port = getenv('MYSQL_PORT');
+if (!$port) {
+    $port = getenv('DB_PORT');
+    if (!$port) {
+        $port = 3306;
+    }
+}
+
+$username = getenv('MYSQL_USER');
+if (!$username) {
+    $username = getenv('DB_USER');
+    if (!$username) {
+        $username = 'root';
+    }
+}
+
+$password = getenv('MYSQL_PASSWORD');
+if ($password === false) {
+    $password = getenv('DB_PASSWORD');
+    if ($password === false) {
+        $password = '';
+    }
+}
+
+$database = getenv('MYSQL_DATABASE');
+if (!$database) {
+    $database = getenv('DB_NAME');
+    if (!$database) {
+        $database = 'qrcode';
+    }
+}
+
+$conn = @new mysqli($host, $username, $password, $database, (int)$port);
+if ($conn->connect_error) {
+    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
+}
+if ($conn->connect_error) {
+    $conn = @new mysqli('127.0.0.1', $username, $password, $database, (int)$port);
 }
 
 if ($conn->connect_error) {
     die("<div class='alert alert-danger m-4'><strong>Database Connection Failed:</strong> Hindi makakonekta sa database server.</div>");
 }
 
-if (isset($_GET['action']) && isset($_GET['req_id']) && isset($_GET['student_id'])) {
-    $req_id = intval($_GET['req_id']);
-    $action =$_GET['action'];
-    $redirect_sid =$_GET['student_id'];
+$action_param = isset($_GET['action']) ? $_GET['action'] : '';
+$req_id_param = isset($_GET['req_id']) ? $_GET['req_id'] : '';
+$student_id_param = isset($_GET['student_id']) ? $_GET['student_id'] : '';
+
+if ($action_param AND $req_id_param AND $student_id_param) {
+    $req_id = intval($req_id_param);
+    $action = $action_param;
+    $redirect_sid = $student_id_param;
 
     if ($action == 'clear') {
-        $stmt =$conn->prepare("UPDATE borrow_requests SET status = 'Cleared' WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Cleared' WHERE id = ?");
         $stmt->bind_param("i", $req_id);
-        $stmt->execute();$stmt->close();
+        $stmt->execute();
+        $stmt->close();
     } elseif ($action == 'damaged') {
-        $stmt =$conn->prepare("UPDATE borrow_requests SET status = 'Damage needs for replacement' WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Damage needs for replacement' WHERE id = ?");
         $stmt->bind_param("i", $req_id);
-        $stmt->execute();$stmt->close();
+        $stmt->execute();
+        $stmt->close();
     } elseif ($action == 'mark_replaced') {
-        $stmt =$conn->prepare("UPDATE borrow_requests SET status = 'Replaced' WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE borrow_requests SET status = 'Replaced' WHERE id = ?");
         $stmt->bind_param("i", $req_id);
-        $stmt->execute();$stmt->close();
+        $stmt->execute();
+        $stmt->close();
     }
-    header("Location: index.php?uid=" . ($_GET['uid'] ?? 1) . "&student_id=" . urlencode($redirect_sid));
+
+    $get_uid = isset($_GET['uid']) ? $_GET['uid'] : 1;
+    header("Location: index.php?uid=" . $get_uid . "&student_id=" . urlencode($redirect_sid));
     exit();
 }
 
-$raw_student_id = $_GET['student_id'] ?? '';$student_id = trim($raw_student_id);$borrower_data = null;
-$borrowed_items = [];
+$raw_student_id = isset($_GET['student_id']) ? $_GET['student_id'] : '';
+$student_id = trim($raw_student_id);
+$borrower_data = null;
+$borrowed_items = array();
 
-if (!empty($student_id)) {
-    $clean_sid = str_replace('MQCQC-ID:', '',$student_id);
-    $clean_sid = trim(str_replace(' ', '',$clean_sid));
-    $pipe_char = chr(124);$pos = strpos($clean_sid,$pipe_char);
-    if ($pos !== false) {$parts = explode($pipe_char,$clean_sid);
+if ($student_id !== '') {
+    $clean_sid = str_replace('MQCQC-ID:', '', $student_id);
+    $clean_sid = trim(str_replace(' ', '', $clean_sid));
+    $pipe_char = chr(124);
+    $pos = strpos($clean_sid, $pipe_char);
+    if ($pos !== false) {
+        $parts = explode($pipe_char, $clean_sid);
         $clean_sid = trim($parts[0]);
     }
 
-    $stmt =$conn->prepare("SELECT * FROM users WHERE student_id = ? OR id = ?");
-    if ($stmt) {$stmt->bind_param("ss", $clean_sid,$clean_sid);
-        $stmt->execute();$res = $stmt->get_result();$borrower_data = $res->fetch_assoc();$stmt->close();
+    $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ? OR id = ?");
+    if ($stmt) {
+        $stmt->bind_param("ss", $clean_sid, $clean_sid);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $borrower_data = $res->fetch_assoc();
+        $stmt->close();
     }
 
     if (!$borrower_data) {
-        $stmt2 =$conn->prepare("SELECT * FROM borrowers WHERE student_id = ?");
+        $stmt2 = $conn->prepare("SELECT * FROM borrowers WHERE student_id = ?");
         if ($stmt2) {
             $stmt2->bind_param("s", $clean_sid);
-            $stmt2->execute();$res2 = $stmt2->get_result();$borrower_data = $res2->fetch_assoc();$stmt2->close();
+            $stmt2->execute();
+            $res2 = $stmt2->get_result();
+            $borrower_data = $res2->fetch_assoc();
+            $stmt2->close();
         }
     }
 
     $sql = "SELECT * FROM borrow_requests WHERE LOWER(status) NOT LIKE '%cleared%' AND LOWER(status) NOT LIKE '%replaced%' ORDER BY id DESC";
     $res_req = $conn->query($sql);
     if ($res_req) {
-        while($row =$res_req->fetch_assoc()) {
-            $borrowed_items[] =$row;
+        while($row = $res_req->fetch_assoc()) {
+            $borrowed_items[] = $row;
         }
     }
 }
+
+$portal_uid = isset($_GET['uid']) ? $_GET['uid'] : 1;
+$full_name_display = 'N/A';
+if ($borrower_data) {
+    if (isset($borrower_data['full_name'])) {
+        $full_name_display = $borrower_data['full_name'];
+    } elseif (isset($borrower_data['fullname'])) {
+        $full_name_display = $borrower_data['fullname'];
+    }
+}
+$student_id_display = $borrower_data ? (isset($borrower_data['student_id']) ? $borrower_data['student_id'] : $student_id) : $student_id;
+$course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? $borrower_data['course_year'] : 'N/A') : 'N/A';
+$borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_data['id'] : 1) : 1;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -94,7 +167,7 @@ if (!empty($student_id)) {
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
         <div>MQCQC - QR SCANNER PORTAL</div>
         <div>
-            <a href="custodian_dashboard.php?uid=<?= $_GET['uid'] ?? 1; ?>" class="btn btn-light btn-sm text-success fw-bold">Custodian Dashboard</a>
+            <a href="custodian_dashboard.php?uid=<?php echo $portal_uid; ?>" class="btn btn-light btn-sm text-success fw-bold">Custodian Dashboard</a>
         </div>
     </div>
 
@@ -119,13 +192,13 @@ if (!empty($student_id)) {
             <div class="card p-3 border-0 bg-light">
                 <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-user-shield me-2"></i>Student Verification & Equipment Status</h5>
                 
-                <?php if (!empty($raw_student_id)): ?>
+                <?php if ($raw_student_id !== ''): ?>
                     <?php if ($borrower_data): ?>
                         <div class="alert alert-success mb-3">
                             <h6 class="fw-bold mb-1">Student Found!</h6>
-                            <p class="mb-1"><strong>Name:</strong> <?= htmlspecialchars($borrower_data['full_name'] ?? ($borrower_data['fullname'] ?? 'N/A')); ?></p>
-                            <p class="mb-1"><strong>Student ID:</strong> <?= htmlspecialchars($borrower_data['student_id'] ?? $student_id); ?></p>
-                            <p class="mb-0"><strong>Course / Year:</strong> <?= htmlspecialchars($borrower_data['course_year'] ?? 'N/A'); ?></p>
+                            <p class="mb-1"><strong>Name:</strong> <?php echo htmlspecialchars($full_name_display); ?></p>
+                            <p class="mb-1"><strong>Student ID:</strong> <?php echo htmlspecialchars($student_id_display); ?></p>
+                            <p class="mb-0"><strong>Course / Year:</strong> <?php echo htmlspecialchars($course_year_display); ?></p>
                         </div>
 
                         <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-laptop me-1 text-success"></i> Active Borrowed Items & Monitoring</h6>
@@ -143,33 +216,40 @@ if (!empty($student_id)) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($borrowed_items as$item): ?>
+                                        <?php foreach ($borrowed_items as $item): ?>
                                             <?php 
-                                                $st = trim($item['status'] ?? 'Pending');$badge_bg = 'bg-warning text-dark';
+                                                $st = isset($item['status']) ? trim($item['status']) : 'Pending';
+                                                $badge_bg = 'bg-warning text-dark';
                                                 $lower_st = strtolower($st);
-                                                if (strpos($lower_st, 'damage') !== false) {$badge_bg = 'bg-danger text-white';
-                                                } elseif (strpos($lower_st, 'waiting') !== false) {$badge_bg = 'bg-info text-dark';
+                                                if (strpos($lower_st, 'damage') !== false) {
+                                                    $badge_bg = 'bg-danger text-white';
+                                                } elseif (strpos($lower_st, 'waiting') !== false) {
+                                                    $badge_bg = 'bg-info text-dark';
                                                 }
+                                                $item_id = isset($item['id']) ? $item['id'] : 0;
+                                                $item_selfie = isset($item['selfie_image']) ? $item['selfie_image'] : '';
+                                                $item_borrower_name = isset($item['full_name']) ? $item['full_name'] : 'N/A';
+                                                $item_name = isset($item['item_to_borrow']) ? $item['item_to_borrow'] : '';
                                             ?>
                                             <tr style="font-size: 11px;">
                                                 <td>
-                                                    <?php if (!empty($item['selfie_image'])): ?>
-                                                        <img src="<?= $item['selfie_image']; ?>" width="45" height="45" style="object-fit: cover; border-radius: 50%; border: 1px solid #ccc;" alt="Selfie">
+                                                    <?php if ($item_selfie !== ''): ?>
+                                                        <img src="<?php echo $item_selfie; ?>" width="45" height="45" style="object-fit: cover; border-radius: 50%; border: 1px solid #ccc;" alt="Selfie">
                                                     <?php else: ?>
                                                         <span class="text-muted">No Image</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="fw-semibold"><?= htmlspecialchars($item['full_name'] ?? 'N/A'); ?></td>
-                                                <td class="fw-bold text-success"><?= htmlspecialchars($item['item_to_borrow']); ?></td>
-                                                <td><span class="badge <?= $badge_bg; ?> px-2 py-1"><?= htmlspecialchars($st); ?></span></td>
+                                                <td class="fw-semibold"><?php echo htmlspecialchars($item_borrower_name); ?></td>
+                                                <td class="fw-bold text-success"><?php echo htmlspecialchars($item_name); ?></td>
+                                                <td><span class="badge <?php echo $badge_bg; ?> px-2 py-1"><?php echo htmlspecialchars($st); ?></span></td>
                                                 <td>
-                                                    <?php if (strpos($lower_st, 'damage') !== false \vert{}\vert{} strpos($lower_st, 'waiting') !== false): ?>
-                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=mark_replaced&req_id=<?=$item['id']; ?>" class="btn btn-warning btn-sm text-dark fw-bold px-2 py-1" style="font-size: 10px;">
+                                                    <?php if (strpos($lower_st, 'damage') !== false OR strpos($lower_st, 'waiting') !== false): ?>
+                                                        <a href="index.php?uid=<?php echo $portal_uid; ?>&student_id=<?php echo urlencode($raw_student_id); ?>&action=mark_replaced&req_id=<?php echo $item_id; ?>" class="btn btn-warning btn-sm text-dark fw-bold px-2 py-1" style="font-size: 10px;">
                                                             <i class="fas fa-sync-alt me-1"></i> Mark Replaced
                                                         </a>
                                                     <?php else: ?>
-                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=clear&req_id=<?=$item['id']; ?>" class="btn btn-success btn-sm fw-semibold px-2 py-1 mb-1" style="font-size: 10px;">Mark Good / Clear</a>
-                                                        <a href="index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=<?= urlencode($raw_student_id); ?>&action=damaged&req_id=<?=$item['id']; ?>" class="btn btn-danger btn-sm fw-semibold px-2 py-1" style="font-size: 10px;">Mark Damaged</a>
+                                                        <a href="index.php?uid=<?php echo $portal_uid; ?>&student_id=<?php echo urlencode($raw_student_id); ?>&action=clear&req_id=<?php echo $item_id; ?>" class="btn btn-success btn-sm fw-semibold px-2 py-1 mb-1" style="font-size: 10px;">Mark Good / Clear</a>
+                                                        <a href="index.php?uid=<?php echo $portal_uid; ?>&student_id=<?php echo urlencode($raw_student_id); ?>&action=damaged&req_id=<?php echo $item_id; ?>" class="btn btn-danger btn-sm fw-semibold px-2 py-1" style="font-size: 10px;">Mark Damaged</a>
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>
@@ -178,13 +258,13 @@ if (!empty($student_id)) {
                                 </table>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-warning py-2 small mb-3">Walang nakitang active record sa `borrow_requests` table sa database.</div>
+                            <div class="alert alert-warning py-2 small mb-3">Walang nakitang active record sa borrow_requests table sa database.</div>
                         <?php endif; ?>
 
-                        <a href="borrower.php?uid=<?= $borrower_data['id'] ?? 1; ?>&sid=<?= htmlspecialchars($borrower_data['student_id'] ?? $student_id); ?>" class="btn btn-success w-100 fw-bold mt-2">Proceed to Borrower Portal</a>
+                        <a href="borrower.php?uid=<?php echo $borrower_id_val; ?>&sid=<?php echo htmlspecialchars($student_id_display); ?>" class="btn btn-success w-100 fw-bold mt-2">Proceed to Borrower Portal</a>
                     <?php else: ?>
                         <div class="alert alert-danger mb-0">
-                            <i class="fas fa-exclamation-triangle me-1"></i> No borrower record found for Student ID: <strong><?= htmlspecialchars($student_id); ?></strong>
+                            <i class="fas fa-exclamation-triangle me-1"></i> No borrower record found for Student ID: <strong><?php echo htmlspecialchars($student_id); ?></strong>
                         </div>
                     <?php endif; ?>
                 <?php else: ?>
@@ -211,7 +291,7 @@ if (!empty($student_id)) {
                 (decodedText, decodedResult) => {
                     playBeep();
                     setTimeout(() => {
-                        window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                        window.location.href = "index.php?uid=<?php echo $portal_uid; ?>&student_id=" + encodeURIComponent(decodedText);
                     }, 300);
                 },
                 (errorMessage) => {}
@@ -240,7 +320,7 @@ if (!empty($student_id)) {
             .then(decodedText => {
                 playBeep();
                 setTimeout(() => {
-                    window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                    window.location.href = "index.php?uid=<?php echo $portal_uid; ?>&student_id=" + encodeURIComponent(decodedText);
                 }, 300);
             })
             .catch(err => {

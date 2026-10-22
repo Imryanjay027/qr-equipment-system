@@ -21,7 +21,6 @@ if ($conn->connect_error) {
 
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? 1);
 
-// Kunin ang impormasyon ng user
 $user_data = null;
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ? OR student_id = ? LIMIT 1");
 if ($stmt) {
@@ -35,10 +34,9 @@ $display_name = $user_data['full_name'] ?? ($user_data['name'] ?? 'User');
 $display_sid = $user_data['student_id'] ?? ($user_data['id_number'] ?? '---');
 $display_pic = $user_data['profile_pic'] ?? ($user_data['selfie'] ?? '');
 
-// Kunin ang mga kasalukuyang hiniram na kagamitan (active borrowed equipment) galing sa registration/borrow requests
+// Kunin agad ang mga hiniram pagkatapos mag-fill out sa registration.php
 $borrowed_records = array();
 if (!empty($display_sid)) {
-    // Kunin ang mga items na hiningi o hiniram ng student
     $borrow_stmt = $conn->prepare("SELECT * FROM borrow_requests WHERE student_id = ? ORDER BY id DESC");
     if ($borrow_stmt) {
         $borrow_stmt->bind_param("s", $display_sid);
@@ -62,31 +60,22 @@ if (!empty($display_sid)) {
     <style>
         :root { --sidebar-width: 260px; --primary-color: #217835; }
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
-        
         .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.05); }
         .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0c1e35; }
         .sidebar-brand img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ffc107; }
         .sidebar-brand h5 { font-size: 12px; font-weight: 700; line-height: 1.4; margin: 0; }
-        
         .sidebar-menu { padding: 15px 10px; flex-grow: 1; }
         .sidebar-menu a { display: flex; align-items: center; color: rgba(255,255,255,0.8); padding: 12px 15px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500; margin-bottom: 5px; transition: all 0.2s; cursor: pointer; }
         .sidebar-menu a:hover, .sidebar-menu a.active { background-color: rgba(255,255,255,0.15); color: white; }
         .sidebar-menu a i { width: 25px; font-size: 15px; }
-
         .sidebar-footer { padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: rgba(255,255,255,0.7); text-align: center; }
-
         .main-content { margin-left: var(--sidebar-width); padding: 25px; }
-        
         .top-navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 25px; }
         .top-navbar h4 { font-size: 15px; font-weight: 700; color: #0c1e35; margin: 0; }
         .top-navbar p { font-size: 11px; color: #777; margin: 0; }
-
         .main-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); padding: 25px; margin-bottom: 25px; }
-        
         .profile-avatar { width: 45px; height: 45px; background-color: #6c757d; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; object-fit: cover; border: 2px solid #217835; }
-
         .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 12px 20px; align-items: center; justify-content: space-between; }
-        
         @media (max-width: 768px) {
             .sidebar { display: none; }
             .main-content { margin-left: 0; padding: 15px; }
@@ -95,8 +84,6 @@ if (!empty($display_sid)) {
     </style>
 </head>
 <body>
-
-    <!-- Mobile Header -->
     <div class="mobile-header">
         <button class="btn text-white p-0 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
             <i class="fas fa-bars fs-4"></i>
@@ -105,7 +92,6 @@ if (!empty($display_sid)) {
         <span class="badge bg-warning text-dark" style="font-size: 10px;">STUDENT</span>
     </div>
 
-    <!-- Mobile Sidebar -->
     <div class="offcanvas offcanvas-start bg-success text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
         <div class="offcanvas-header border-bottom border-light border-opacity-10" style="background-color: #0c1e35;">
             <h5 class="offcanvas-title fs-6 fw-bold" id="mobileSidebarLabel">MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
@@ -115,7 +101,7 @@ if (!empty($display_sid)) {
             <div class="sidebar-menu">
                 <a href="borrower.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="registration.php?uid=<?= $user_id; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
-                <a href="borrower_history.php?uid=<?= $user_id; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="borrower_history.php?uid=<?= $user_id; ?>"><i class="fas fa-history"></i> Return Items History / Remarks</a>
                 <a href="borrowed_equipment.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-box-open"></i> My Borrowed Equipment</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
@@ -125,7 +111,6 @@ if (!empty($display_sid)) {
         </div>
     </div>
 
-    <!-- Desktop Sidebar -->
     <div class="sidebar d-none d-md-flex">
         <div>
             <div class="sidebar-brand">
@@ -135,7 +120,7 @@ if (!empty($display_sid)) {
             <div class="sidebar-menu">
                 <a href="borrower.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="registration.php?uid=<?= $user_id; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
-                <a href="borrower_history.php?uid=<?= $user_id; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="borrower_history.php?uid=<?= $user_id; ?>"><i class="fas fa-history"></i> Return Items History / Remarks</a>
                 <a href="borrowed_equipment.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-box-open"></i> My Borrowed Equipment</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
@@ -145,12 +130,11 @@ if (!empty($display_sid)) {
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="main-content">
         <div class="top-navbar d-none d-md-flex">
             <div>
                 <h4>MY BORROWED EQUIPMENT</h4>
-                <p>List of currently requested and borrowed items from registration</p>
+                <p>Real-time list of currently requested items from registration</p>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <div class="d-flex align-items-center gap-2">
@@ -168,15 +152,15 @@ if (!empty($display_sid)) {
         </div>
 
         <div class="main-card">
-            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-box-open me-2 text-success"></i>Currently Borrowed / Requested Items</h5>
-            
+            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-box-open me-2 text-success"></i>Active Borrowed / Requested Items</h5>
             <div class="table-responsive">
                 <table class="table table-hover align-middle" style="font-size: 13px;">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
+                            <th>Student ID</th>
                             <th>Equipment / Item</th>
-                            <th>Return Date</th>
+                            <th>Borrow / Due Date</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -185,16 +169,17 @@ if (!empty($display_sid)) {
                             <?php $no = 1; foreach($borrowed_records as $row): ?>
                                 <tr>
                                     <td><?= $no++; ?></td>
+                                    <td><strong><?= htmlspecialchars($row['student_id'] ?? $display_sid); ?></strong></td>
                                     <td><strong><?= htmlspecialchars($row['item_to_borrow'] ?? 'N/A'); ?></strong></td>
-                                    <td><?= htmlspecialchars($row['return_date'] ?? 'N/A'); ?></td>
+                                    <td><?= htmlspecialchars($row['borrow_date'] ?? ($row['date'] ?? 'N/A')); ?> / <?= htmlspecialchars($row['return_date'] ?? 'N/A'); ?></td>
                                     <td>
-                                        <span class="badge bg-success" style="font-size: 11px;"><?= htmlspecialchars($row['status'] ?? 'Active'); ?></span>
+                                        <span class="badge bg-primary" style="font-size: 11px;"><?= htmlspecialchars($row['status'] ?? 'Active'); ?></span>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">No currently borrowed equipment found from registration.</td>
+                                <td colspan="5" class="text-center text-muted py-4">No active borrowed equipment found from registration yet.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -202,7 +187,6 @@ if (!empty($display_sid)) {
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

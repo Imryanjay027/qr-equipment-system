@@ -96,8 +96,19 @@ if (isset($_GET['student_id'])) {
         const currentUid = "<?= htmlspecialchars($user_id); ?>";
 
         function playBeepAndRedirect(url) {
-            beepAudio.play().catch(e => console.log("Audio blocked:", e));
-            setTimeout(() => { window.location.href = url; }, 300);
+            if (beepAudio) {
+                beepAudio.play().then(() => {
+                    // Maghintay ng 600ms para tumugtog muna ang beep bago mag-redirect
+                    setTimeout(() => { 
+                        window.location.href = url; 
+                    }, 600);
+                }).catch(e => {
+                    console.log("Audio playback blocked or failed:", e);
+                    window.location.href = url;
+                });
+            } else {
+                window.location.href = url;
+            }
         }
 
         // Camera Scanner Initialization
@@ -117,7 +128,7 @@ if (isset($_GET['student_id'])) {
             });
         }
 
-        // Safe File Upload QR Scanning with Error Handling (Prevents White Screen)
+        // Safe File Upload QR Scanning with Audio Delay
         const fileInput = document.getElementById('qr-input-file');
         if (fileInput) {
             fileInput.addEventListener('change', e => {

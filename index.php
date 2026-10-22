@@ -19,13 +19,10 @@ if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// Kunin ang student_id mula sa URL o scanner query
 $raw_student_id = $_GET['student_id'] ?? '';
 $student_id = trim($raw_student_id);
-
 $borrower_data = null;
 
-// PARSING LOGIC: Linisin ang QR code format (hal. MQCQC-ID: 123456 | Name: ...)
 if (!empty($student_id)) {
     if (preg_match('/MQCQC-ID:\s*([^\|]+)/i', $student_id, $matches)) {
         $student_id = trim($matches[1]);
@@ -34,7 +31,6 @@ if (!empty($student_id)) {
         $student_id = trim(str_replace('MQCQC-ID:', '', $parts[0]));
     }
 
-    // Hanapin ang estudyante sa database gamit ang nalinis na Student ID
     $stmt = $conn->prepare("SELECT * FROM users WHERE student_id = ? OR id = ?");
     if ($stmt) {
         $stmt->bind_param("ss", $student_id, $student_id);
@@ -64,7 +60,6 @@ if (!empty($student_id)) {
     <title>QR Scanner Portal - MQCQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html5-qrcode library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -74,6 +69,9 @@ if (!empty($student_id)) {
     </style>
 </head>
 <body>
+
+    <!-- Audio Beep Effect -->
+    <audio id="beepAudio" src="beep.mp3" preload="auto"></audio>
 
     <div class="top-navbar d-flex justify-content-between align-items-center shadow-sm">
         <div>MQCQC - QR SCANNER PORTAL</div>
@@ -86,7 +84,6 @@ if (!empty($student_id)) {
         <div class="main-card">
             <h4 class="fw-bold text-dark mb-3 text-center"><i class="fas fa-qrcode me-2 text-success"></i>Scan or Upload Student QR Code</h4>
             
-            <!-- Camera Viewport -->
             <div id="reader"></div>
 
             <div class="text-center mt-3">
@@ -96,7 +93,7 @@ if (!empty($student_id)) {
 
             <hr class="my-4">
 
-            <!-- LAGING LITAW NA UPLOAD QR IMAGE FILE OPTION -->
+            <!-- UPLOAD QR IMAGE FILE OPTION -->
             <div class="mb-3 p-3 bg-light rounded border">
                 <label for="qr-image-input" class="form-label fw-bold text-secondary small mb-1"><i class="fas fa-upload me-1"></i> Or Upload QR Image File</label>
                 <input class="form-control form-control-sm" type="file" id="qr-image-input" accept="image/*">
@@ -130,16 +127,24 @@ if (!empty($student_id)) {
     <script>
         const html5QrCode = new Html5Qrcode("reader");
 
+        function playBeep() {
+            const audio = document.getElementById('beepAudio');
+            if (audio) {
+                audio.play().catch(e => console.log("Audio play blocked"));
+            }
+        }
+
         document.getElementById('start-camera').addEventListener('click', function() {
             html5QrCode.start(
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 250, height: 250 } },
                 (decodedText, decodedResult) => {
-                    window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                    playBeep();
+                    setTimeout(() => {
+                        window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                    }, 300);
                 },
-                (errorMessage) => {
-                    // Scanning in progress...
-                }
+                (errorMessage) => {}
             ).then(() => {
                 document.getElementById('start-camera').style.display = 'none';
                 document.getElementById('stop-camera').style.display = 'inline-block';
@@ -157,14 +162,16 @@ if (!empty($student_id)) {
             });
         });
 
-        // File upload handler para basahin ang naka-save na QR image
         document.getElementById('qr-image-input').addEventListener('change', e => {
             if (e.target.files.length == 0) return;
             const imageFile = e.target.files[0];
             
             html5QrCode.scanFile(imageFile, true)
             .then(decodedText => {
-                window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                playBeep();
+                setTimeout(() => {
+                    window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                }, 300);
             })
             .catch(err => {
                 alert("Error scanning QR image. Make sure the uploaded image is clear and contains a valid QR code.");

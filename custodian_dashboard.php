@@ -59,6 +59,7 @@ if ($count_query) {
         :root { --sidebar-width: 260px; --primary-color: #217835; }
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
         
+        /* Desktop Sidebar */
         .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.05); }
         .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0c1e35; }
         .sidebar-brand img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ffc107; }
@@ -82,15 +83,48 @@ if ($count_query) {
         .profile-section { display: flex; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px; gap: 20px; }
         .profile-avatar { width: 70px; height: 70px; background-color: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; object-fit: cover; border: 2px solid #217835; }
 
+        /* Mobile Responsive adjustments */
+        .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 12px 20px; align-items: center; justify-content: space-between; }
+        
         @media (max-width: 768px) {
-            .sidebar { width: 100%; height: auto; position: relative; }
-            .main-content { margin-left: 0; }
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 15px; }
+            .mobile-header { display: flex; }
         }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
+    <!-- Mobile Header with Hamburger Toggle -->
+    <div class="mobile-header">
+        <button class="btn text-white p-0 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+            <i class="fas fa-bars fs-4"></i>
+        </button>
+        <span class="fw-bold" style="font-size: 13px;">MQCQC CUSTODIAN PANEL</span>
+        <span class="badge bg-warning text-dark" style="font-size: 10px;">STAFF</span>
+    </div>
+
+    <!-- Offcanvas Mobile Sidebar -->
+    <div class="offcanvas offcanvas-start bg-success text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+        <div class="offcanvas-header border-bottom border-light border-opacity-10" style="background-color: #0c1e35;">
+            <h5 class="offcanvas-title fs-6 fw-bold" id="mobileSidebarLabel">MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column justify-content-between p-3">
+            <div class="sidebar-menu">
+                <a href="custodian_dashboard.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrow_requests.php?uid=<?= $user_id; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
+                <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
+                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+            <div class="text-center py-2 border-top border-light border-opacity-10" style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                <p class="mb-0">"Discipline today, excellence tomorrow."</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Sidebar -->
+    <div class="sidebar d-none d-md-flex">
         <div>
             <div class="sidebar-brand">
                 <img src="logo.jpg" alt="School Logo" onerror="this.src='uploads/default.png';">
@@ -108,8 +142,9 @@ if ($count_query) {
         </div>
     </div>
 
+    <!-- Main Content Area -->
     <div class="main-content">
-        <div class="top-navbar">
+        <div class="top-navbar d-none d-md-flex">
             <div>
                 <h4>PROPERTY CUSTODIAN PANEL</h4>
                 <p>Equipment Borrowing, Return & Monitoring System</p>

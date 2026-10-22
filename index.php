@@ -8,22 +8,11 @@ $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: 'mysql');$port = getenv('M
 $username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
-$conn = null;
-$possible_hosts = [$host, 'mysql', 'db', 'database', '127.0.0.1', 'localhost'];
-
-foreach ($possible_hosts as$h) {
-    if (empty($h)) continue;
-    try {
-        $conn = @new mysqli($h, $username,$password, $database, (int)$port);
-        if ($conn && !$conn->connect_error) {
-            break;
-        }
-    } catch (Throwable $e) {
-        // Subukan ang susunod na host
-    }
+$conn = @new mysqli($host, $username,$password, $database, (int)$port);
+if ($conn->connect_error) {$conn = @new mysqli('mysql', $username,$password, $database, (int)$port);
 }
 
-if (!$conn \vert{}\vert{}$conn->connect_error) {
+if ($conn->connect_error) {
     die("<div class='alert alert-danger m-4'><strong>Database Connection Failed:</strong> Hindi makakonekta sa database server.</div>");
 }
 

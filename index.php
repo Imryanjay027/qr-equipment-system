@@ -124,7 +124,6 @@ if ($student_id !== '') {
 
     $search_name = isset($borrower_data['full_name']) ? $borrower_data['full_name'] : (isset($borrower_data['fullname']) ? $borrower_data['fullname'] : '');
 
-    // Kunin ang mga active records (Pending / Damaged lamang)
     $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND LOWER(status) NOT LIKE '%good%' AND LOWER(status) NOT LIKE '%replaced%' AND LOWER(status) NOT LIKE '%cleared%' ORDER BY id DESC";
     $stmt_req = $conn->prepare($sql);
     if ($stmt_req) {
@@ -141,6 +140,7 @@ if ($student_id !== '') {
 $portal_uid = isset($_GET['uid']) ? $_GET['uid'] : 1;
 $full_name_display = 'N/A';
 $profile_selfie = '';
+
 if ($borrower_data) {
     if (isset($borrower_data['full_name'])) {
         $full_name_display = $borrower_data['full_name'];
@@ -148,15 +148,18 @@ if ($borrower_data) {
         $full_name_display = $borrower_data['fullname'];
     }
     
-    if (isset($borrower_data['selfie_image'])) {
-        $profile_selfie = $borrower_data['selfie_image'];
-    } elseif (isset($borrower_data['selfie'])) {
-        $profile_selfie = $borrower_data['selfie'];
+    // Smart detection para sa iba't ibang posibleng pangalan ng column ng selfie sa database
+    $possible_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture'];
+    foreach ($possible_keys as $pkey) {
+        if (!empty($borrower_data[$pkey])) {
+            $profile_selfie = $borrower_data[$pkey];
+            break;
+        }
     }
 }
+
 $student_id_display = $borrower_data ? (isset($borrower_data['student_id']) ? $borrower_data['student_id'] : $student_id) : $student_id;
 $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? $borrower_data['course_year'] : (isset($borrower_data['grade_section']) ? $borrower_data['grade_section'] : 'N/A')) : 'N/A';
-$borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_data['id'] : 1) : 1;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -209,11 +212,11 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                 <?php if ($raw_student_id !== ''): ?>
                     <?php if ($borrower_data): ?>
                         <div class="alert alert-success mb-3 d-flex align-items-center">
-                            <div class="me-3">
+                            <div class="me-3 text-center">
                                 <?php if ($profile_selfie !== ''): ?>
-                                    <img src="<?php echo $profile_selfie; ?>" width="80" height="80" style="object-fit: cover; border-radius: 50%; border: 2px solid #217835;" alt="Registration Live Selfie">
+                                    <img src="<?php echo $profile_selfie; ?>" width="80" height="80" style="object-fit: cover; border-radius: 50%; border: 2px solid #217835;" alt="Live Selfie">
                                 <?php else: ?>
-                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 12px;">No Selfie</div>
+                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 11px;">No Selfie</div>
                                 <?php endif; ?>
                             </div>
                             <div>
@@ -289,7 +292,7 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                                 </table>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-success py-2 small mb-3">Walang nakitang active o sirang kagamitan para sa estudyanteng ito (Lahat ay maayos o naipalit na).[cite: 5]</div>
+                            <div class="alert alert-success py-2 small mb-3">No active or damaged equipment found for this student (All items are in good condition or have been replaced).</div>
                         <?php endif; ?>
 
                     <?php else: ?>

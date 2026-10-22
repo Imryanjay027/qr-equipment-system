@@ -124,7 +124,7 @@ if ($student_id !== '') {
 
     $search_name = isset($borrower_data['full_name']) ? $borrower_data['full_name'] : (isset($borrower_data['fullname']) ? $borrower_data['fullname'] : '');
 
-    // Kunin ang mga active records (Pending / Damaged lamang)
+    // Ang pag-filter kung saan ang mga Damaged o Pending lang ang lalabas sa active table
     $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND LOWER(status) NOT LIKE '%good%' AND LOWER(status) NOT LIKE '%replaced%' AND LOWER(status) NOT LIKE '%cleared%' ORDER BY id DESC";
     $stmt_req = $conn->prepare($sql);
     if ($stmt_req) {
@@ -149,7 +149,6 @@ if ($borrower_data) {
         $full_name_display = $borrower_data['fullname'];
     }
     
-    // Pinalawig na listahan ng posibleng pangalan ng column para sa larawan
     $possible_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
     foreach ($possible_keys as $pkey) {
         if (!empty($borrower_data[$pkey])) {
@@ -159,7 +158,6 @@ if ($borrower_data) {
     }
 }
 
-// Fallback: Kunin mula sa borrow_requests kung wala sa borrower profile table
 if ($profile_selfie === '' && !empty($borrowed_items)) {
     foreach ($borrowed_items as $b_item) {
         $possible_b_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
@@ -169,25 +167,6 @@ if ($profile_selfie === '' && !empty($borrowed_items)) {
                 break 2;
             }
         }
-    }
-}
-
-if ($profile_selfie === '' && $clean_sid !== '') {
-    $stmt_selfie = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) ORDER BY id DESC LIMIT 1");
-    if ($stmt_selfie) {
-        $stmt_selfie->bind_param("ss", $clean_sid, $search_name);
-        $stmt_selfie->execute();
-        $res_selfie = $stmt_selfie->get_result();
-        if ($row_s = $res_selfie->fetch_assoc()) {
-            $possible_b_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
-            foreach ($possible_b_keys as $pbkey) {
-                if (!empty($row_s[$pbkey])) {
-                    $profile_selfie = $row_s[$pbkey];
-                    break;
-                }
-            }
-        }
-        $stmt_selfie->close();
     }
 }
 
@@ -208,6 +187,8 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
         .main-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); background: #ffffff; max-width: 950px; margin: 30px auto; padding: 25px; }
         .top-navbar { background-color: #217835; color: #ffffff; padding: 12px 20px; font-weight: bold; font-size: 0.9rem; }
         #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 8px; overflow: hidden; border: 2px solid #e9ecef; }
+        .zoomable-img { cursor: pointer; transition: transform 0.2s; }
+        .zoomable-img:hover { transform: scale(1.05); opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -247,7 +228,8 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
                         <div class="alert alert-success mb-3 d-flex align-items-center">
                             <div class="me-3 text-center">
                                 <?php if ($profile_selfie !== ''): ?>
-                                    <img src="<?php echo $profile_selfie; ?>" width="80" height="80" style="object-fit: cover; border-radius: 50%; border: 2px solid #217835;" alt="Live Selfie">
+                                    <img src="<?php echo $profile_selfie; ?>" width="80" height="80" class="zoomable-img rounded-circle" style="object-fit: cover; border: 2px solid #217835;" alt="Live Selfie" data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showLargeImage('<?php echo $profile_selfie; ?>', '<?php echo htmlspecialchars($full_name_display); ?>')">
+                                    <div style="font-size: 9px;" class="text-success fw-bold mt-1">Click to enlarge</div>
                                 <?php else: ?>
                                     <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 11px;">No Selfie</div>
                                 <?php endif; ?>
@@ -310,7 +292,7 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
                                             <tr style="font-size: 11px;">
                                                 <td>
                                                     <?php if ($item_selfie !== ''): ?>
-                                                        <img src="<?php echo $item_selfie; ?>" width="45" height="45" style="object-fit: cover; border-radius: 50%; border: 1px solid #ccc;" alt="Selfie">
+                                                        <img src="<?php echo $item_selfie; ?>" width="45" height="45" class="zoomable-img rounded-circle" style="object-fit: cover; border: 1px solid #ccc;" alt="Selfie" data-bs-toggle="modal" data-bs-target="#imageModal" onclick="showLargeImage('<?php echo $item_selfie; ?>', '<?php echo htmlspecialchars($item_borrower_name); ?>')">
                                                     <?php else: ?>
                                                         <span class="text-muted">No Image</span>
                                                     <?php endif; ?>
@@ -348,7 +330,28 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
         </div>
     </div>
 
+    <!-- Modal para sa Pagpapalaki ng Larawan (Image Zoom Modal) -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center p-3">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success" id="imageModalLabel">Borrower Live Selfie</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <img id="modalImageSrc" src="" class="img-fluid rounded shadow" style="max-height: 450px; object-fit: contain;" alt="Enlarged Selfie">
+                    <p id="modalBorrowerName" class="mt-3 fw-bold text-secondary mb-0"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function showLargeImage(imgUrl, borrowerName) {
+            document.getElementById('modalImageSrc').src = imgUrl;
+            document.getElementById('modalBorrowerName').textContent = "Borrower: " + borrowerName;
+        }
+
         const html5QrCode = new Html5Qrcode("reader");
 
         function playBeep() {
@@ -392,7 +395,6 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
             
             html5QrCode.scanFile(imageFile, true)
             .then(decodedText => {
-                playBe_ep = true;
                 playBeep();
                 setTimeout(() => {
                     window.location.href = "index.php?uid=" + <?php echo $portal_uid; ?> + "&student_id=" + encodeURIComponent(decodedText);

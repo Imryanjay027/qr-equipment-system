@@ -18,7 +18,7 @@ foreach ($possible_hosts as$h) {
         if ($conn && !$conn->connect_error) {
             break;
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // Subukan ang susunod na host
     }
 }

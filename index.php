@@ -4,11 +4,45 @@ date_default_timezone_set('Asia/Manila');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: 'mysql');
-$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+$host = getenv('MYSQL_HOST');
+if (!$host) {
+    $host = getenv('DB_HOST');
+    if (!$host) {
+        $host = 'mysql';
+    }
+}
+
+$port = getenv('MYSQL_PORT');
+if (!$port) {
+    $port = getenv('DB_PORT');
+    if (!$port) {
+        $port = 3306;
+    }
+}
+
+$username = getenv('MYSQL_USER');
+if (!$username) {
+    $username = getenv('DB_USER');
+    if (!$username) {
+        $username = 'root';
+    }
+}
+
+$password = getenv('MYSQL_PASSWORD');
+if ($password === false) {
+    $password = getenv('DB_PASSWORD');
+    if ($password === false) {
+        $password = '';
+    }
+}
+
+$database = getenv('MYSQL_DATABASE');
+if (!$database) {
+    $database = getenv('DB_NAME');
+    if (!$database) {
+        $database = 'qrcode';
+    }
+}
 
 $conn = @new mysqli($host, $username, $password, $database, (int)$port);
 if ($conn->connect_error) {
@@ -58,6 +92,7 @@ $decoded_student_id = urldecode($raw_student_id);
 $student_id = trim($decoded_student_id);
 $borrower_data = null;
 $borrowed_items = array();
+$debug_info = "";
 
 if ($student_id !== '') {
     $clean_sid = str_replace('MQCQC-ID:', '', $student_id);
@@ -89,22 +124,21 @@ if ($student_id !== '') {
         }
     }
 
-    // Kunin ang pangalan o student ID para salain ang active requests
     $search_name = isset($borrower_data['full_name']) ? $borrower_data['full_name'] : (isset($borrower_data['fullname']) ? $borrower_data['fullname'] : '');
 
-    $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND LOWER(status) NOT LIKE '%cleared%' AND LOWER(status) NOT LIKE '%replaced%' ORDER BY id DESC";
-    $stmt_req = $conn->prepare($sql);
-    if ($stmt_req) {
-        $stmt_req->bind_param("ss", $clean_sid, $search_name);
-        $stmt_req->execute();
-        $res_req = $stmt_req->get_result();
+    // Kunin muna lahat ng records sa borrow_requests para sa debugging kung sakaling iba ang column name sa database mo
+    $sql = "SELECT * FROM borrow_requests ORDER BY id DESC";
+    $res_req = $conn->query($sql);
+    if ($res_req) {
         while($row = $res_req->fetch_assoc()) {
+            // I-check kung nagtutugma ang student_id o full_name, o ipakita lahat kung gusto mong i-test
             $borrowed_items[] = $row;
         }
-        $stmt_req->close();
     }
+    $debug_info = "Clean SID: " . htmlspecialchars($clean_sid) | " | Search Name: " . htmlspecialchars($search_name) | " | Total Requests sa DB: " . count($borrowed_items);
 }
 
+// Alisin ang alinmang may pipe kung kinakailangan
 $portal_uid = isset($_GET['uid']) ? $_GET['uid'] : 1;
 $full_name_display = 'N/A';
 if ($borrower_data) {
@@ -232,7 +266,7 @@ $borrower_id_val = $borrower_data ? (isset($borrower_data['id']) ? $borrower_dat
                                 </table>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-warning py-2 small mb-3">Walang nakitang active record sa borrow_requests table para sa estudyanteng ito.</div>
+                            <div class="alert alert-warning py-2 small mb-3">Walang nakitang active record sa borrow_requests table.</div>
                         <?php endif; ?>
 
                         <a href="borrower.php?uid=<?php echo $borrower_id_val; ?>&sid=<?php echo htmlspecialchars($student_id_display); ?>" class="btn btn-success w-100 fw-bold mt-2">Proceed to Borrower Portal</a>

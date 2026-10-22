@@ -6,13 +6,11 @@ ini_set('display_errors', 1);
 
 $host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
 $port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
 $database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
 
-$conn = @new mysqli($host, $username, $password, $database, (int)$port);
-if ($conn->connect_error) {
-    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
+$conn = @new mysqli($host, $username,$password, $database, (int)$port);
+if ($conn->connect_error) {$conn = @new mysqli('mysql', $username,$password, $database, (int)$port);
 }
 
 if ($conn->connect_error) {
@@ -38,16 +36,24 @@ if ($conn->connect_error) {
 </head>
 <body>
 
-<!-- Audio element para sa beep sound kapag nag-scan -->
+<!-- Audio element para sa beep sound -->
 <audio id="beep-sound" src="beep.mp3" preload="auto"></audio>
 
 <div class="container">
     <div class="scanner-card text-center">
         <h4 class="fw-bold mb-1 text-success"><i class="fas fa-qrcode me-2"></i>Custodian QR Scanner</h4>
-        <p class="text-muted small mb-3">I-align ang QR code sa loob ng frame para sa mabilisang pag-scan</p>
+        <p class="text-muted small mb-3">I-align ang QR code sa loob ng frame o mag-upload ng imahe</p>
         
         <!-- Area para sa QR Reader -->
         <div id="reader" style="min-height: 280px;"></div>
+
+        <!-- Optional File Upload para sa QR Code image -->
+        <div class="mt-3">
+            <label for="qr-file-input" class="btn btn-outline-success btn-sm w-100">
+                <i class="fas fa-upload me-2"></i>Mag-upload ng QR Code Image
+            </label>
+            <input type="file" id="qr-file-input" accept="image/*" class="d-none" onchange="scanQrFromFile(event)">
+        </div>
         
         <div id="scan-result" class="mt-3 alert alert-info d-none" role="alert">
             <span id="result-text">Scanning...</span>
@@ -56,14 +62,17 @@ if ($conn->connect_error) {
 </div>
 
 <script>
-    function onScanSuccess(decodedText, decodedResult) {
-        // Patugtugin ang beep.mp3 kapag nagtagumpay ang pag-scan
+    function playBeep() {
         var beep = document.getElementById('beep-sound');
         if (beep) {
+            beep.currentTime = 0;
             beep.play().catch(e => console.log("Audio play blocked:", e));
         }
+    }
 
-        // Itigil muna ang scanner bago mag-redirect para mabilis at walang glitch
+    function onScanSuccess(decodedText, decodedResult) {
+        playBeep();
+
         html5QrCode.stop().then(() => {
             document.getElementById('scan-result').classList.remove('d-none');
             document.getElementById('result-text').innerText = "Scanned: " + decodedText;
@@ -78,40 +87,16 @@ if ($conn->connect_error) {
     }
 
     function onScanFailure(error) {
-        // Tahimik na naghahanap para hindi bumagal ang performance ng mobile browser
+        // Tahimik habang naghahanap ng frame para sa mabilis na performance
     }
 
-    // Optimization para sa mabilis na pag-scan gamit ang mobile phone ng custodian
     const html5QrCode = new Html5Qrcode("reader");
     
     const qrConfig = {
-        fps: 25, // Pinataas sa 25 fps para maging napakabilis at responsive sa mobile
+        fps: 25, 
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
         videoConstraints: {
             facingMode: "environment",
             width: { ideal: 1280 },
-            height: { ideal: 720 }
-        }
-    };
-
-    // Paganahin ang back camera gamit ang mga na-optimize na settings
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        qrConfig, 
-        onScanSuccess, 
-        onScanFailure
-    ).catch(err => {
-        console.warn("Back camera fail, fallback to default camera:", err);
-        html5QrCode.start(
-            { facingMode: "user" }, 
-            qrConfig, 
-            onScanSuccess, 
-            onScanFailure
-        );
-    });
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+            height: { ideal: 720

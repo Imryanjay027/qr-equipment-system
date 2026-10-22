@@ -64,12 +64,13 @@ if (!empty($student_id)) {
     <title>QR Scanner Portal - MQCQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html5-qrcode library para sa camera at file upload scanning -->
+    <!-- html5-qrcode library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .main-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); background: #ffffff; max-width: 700px; margin: 30px auto; padding: 25px; }
         .top-navbar { background-color: #217835; color: #ffffff; padding: 12px 20px; font-weight: bold; font-size: 0.9rem; }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; border: 2px solid #e9ecef; }
     </style>
 </head>
 <body>
@@ -85,10 +86,21 @@ if (!empty($student_id)) {
         <div class="main-card">
             <h4 class="fw-bold text-dark mb-3 text-center"><i class="fas fa-qrcode me-2 text-success"></i>Scan or Upload Student QR Code</h4>
             
-            <!-- QR Reader Container -->
-            <div id="reader" width="100%" class="mb-3"></div>
+            <!-- Camera Viewport -->
+            <div id="reader"></div>
+
+            <div class="text-center mt-3">
+                <button id="start-camera" class="btn btn-primary btn-sm px-4 fw-bold">Start Camera</button>
+                <button id="stop-camera" class="btn btn-danger btn-sm px-4 fw-bold" style="display:none;">Stop Camera</button>
+            </div>
 
             <hr class="my-4">
+
+            <!-- LAGING LITAW NA UPLOAD QR IMAGE FILE OPTION -->
+            <div class="mb-3 p-3 bg-light rounded border">
+                <label for="qr-image-input" class="form-label fw-bold text-secondary small mb-1"><i class="fas fa-upload me-1"></i> Or Upload QR Image File</label>
+                <input class="form-control form-control-sm" type="file" id="qr-image-input" accept="image/*">
+            </div>
 
             <!-- Result Display / Error Handling -->
             <div class="card p-3 border-0 bg-light">
@@ -116,14 +128,48 @@ if (!empty($student_id)) {
     </div>
 
     <script>
-        function onScanSuccess(decodedText, decodedResult) {
-            // Kapag na-scan, i-redirect sa pahina kasama ang scanned text bilang student_id parameter
-            window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
-        }
+        const html5QrCode = new Html5Qrcode("reader");
 
-        let html5QrcodeScanner = new Html5QrcodeScanner(
-            "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-        html5QrcodeScanner.render(onScanSuccess);
+        document.getElementById('start-camera').addEventListener('click', function() {
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText, decodedResult) => {
+                    window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+                },
+                (errorMessage) => {
+                    // Scanning in progress...
+                }
+            ).then(() => {
+                document.getElementById('start-camera').style.display = 'none';
+                document.getElementById('stop-camera').style.display = 'inline-block';
+            }).catch((err) => {
+                alert("Error starting camera: " + err);
+            });
+        });
+
+        document.getElementById('stop-camera').addEventListener('click', function() {
+            html5QrCode.stop().then(() => {
+                document.getElementById('start-camera').style.display = 'inline-block';
+                document.getElementById('stop-camera').style.display = 'none';
+            }).catch((err) => {
+                console.log("Failed to stop scanner.");
+            });
+        });
+
+        // File upload handler para basahin ang naka-save na QR image
+        document.getElementById('qr-image-input').addEventListener('change', e => {
+            if (e.target.files.length == 0) return;
+            const imageFile = e.target.files[0];
+            
+            html5QrCode.scanFile(imageFile, true)
+            .then(decodedText => {
+                window.location.href = "index.php?uid=<?= $_GET['uid'] ?? 1; ?>&student_id=" + encodeURIComponent(decodedText);
+            })
+            .catch(err => {
+                alert("Error scanning QR image. Make sure the uploaded image is clear and contains a valid QR code.");
+            });
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

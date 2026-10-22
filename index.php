@@ -124,6 +124,7 @@ if ($student_id !== '') {
 
     $search_name = isset($borrower_data['full_name']) ? $borrower_data['full_name'] : (isset($borrower_data['fullname']) ? $borrower_data['fullname'] : '');
 
+    // Kunin ang mga active records (Pending / Damaged lamang)
     $sql = "SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND LOWER(status) NOT LIKE '%good%' AND LOWER(status) NOT LIKE '%replaced%' AND LOWER(status) NOT LIKE '%cleared%' ORDER BY id DESC";
     $stmt_req = $conn->prepare($sql);
     if ($stmt_req) {
@@ -148,13 +149,45 @@ if ($borrower_data) {
         $full_name_display = $borrower_data['fullname'];
     }
     
-    // Smart detection para sa iba't ibang posibleng pangalan ng column ng selfie sa database
-    $possible_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture'];
+    // Pinalawig na listahan ng posibleng pangalan ng column para sa larawan
+    $possible_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
     foreach ($possible_keys as $pkey) {
         if (!empty($borrower_data[$pkey])) {
             $profile_selfie = $borrower_data[$pkey];
             break;
         }
+    }
+}
+
+// Fallback: Kunin mula sa borrow_requests kung wala sa borrower profile table
+if ($profile_selfie === '' && !empty($borrowed_items)) {
+    foreach ($borrowed_items as $b_item) {
+        $possible_b_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
+        foreach ($possible_b_keys as $pbkey) {
+            if (!empty($b_item[$pbkey])) {
+                $profile_selfie = $b_item[$pbkey];
+                break 2;
+            }
+        }
+    }
+}
+
+if ($profile_selfie === '' && $clean_sid !== '') {
+    $stmt_selfie = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) ORDER BY id DESC LIMIT 1");
+    if ($stmt_selfie) {
+        $stmt_selfie->bind_param("ss", $clean_sid, $search_name);
+        $stmt_selfie->execute();
+        $res_selfie = $stmt_selfie->get_result();
+        if ($row_s = $res_selfie->fetch_assoc()) {
+            $possible_b_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
+            foreach ($possible_b_keys as $pbkey) {
+                if (!empty($row_s[$pbkey])) {
+                    $profile_selfie = $row_s[$pbkey];
+                    break;
+                }
+            }
+        }
+        $stmt_selfie->close();
     }
 }
 
@@ -260,7 +293,15 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
                                                 }
 
                                                 $item_id = isset($item['id']) ? $item['id'] : 0;
-                                                $item_selfie = isset($item['selfie_image']) && $item['selfie_image'] !== '' ? $item['selfie_image'] : $profile_selfie;
+                                                $item_selfie = $profile_selfie;
+                                                $possible_item_keys = ['selfie_image', 'selfie', 'profile_pic', 'photo', 'image', 'avatar', 'picture', 'img', 'pic', 'path'];
+                                                foreach ($possible_item_keys as $pik) {
+                                                    if (!empty($item[$pik])) {
+                                                        $item_selfie = $item[$pik];
+                                                        break;
+                                                    }
+                                                }
+
                                                 $item_borrower_name = isset($item['full_name']) ? $item['full_name'] : $full_name_display;
                                                 $item_sid = isset($item['student_id']) ? $item['student_id'] : $student_id_display;
                                                 $item_course = isset($item['course_year']) ? $item['course_year'] : (isset($item['grade_section']) ? $item['grade_section'] : $course_year_display);
@@ -324,7 +365,7 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
                 (decodedText, decodedResult) => {
                     playBeep();
                     setTimeout(() => {
-                        window.location.href = "index.php?uid=<?php echo $portal_uid; ?>&student_id=" + encodeURIComponent(decodedText);
+                        window.location.href = "index.php?uid=" + <?php echo $portal_uid; ?> + "&student_id=" + encodeURIComponent(decodedText);
                     }, 300);
                 },
                 (errorMessage) => {}
@@ -351,9 +392,10 @@ $course_year_display = $borrower_data ? (isset($borrower_data['course_year']) ? 
             
             html5QrCode.scanFile(imageFile, true)
             .then(decodedText => {
+                playBe_ep = true;
                 playBeep();
                 setTimeout(() => {
-                    window.location.href = "index.php?uid=<?php echo $portal_uid; ?>&student_id=" + encodeURIComponent(decodedText);
+                    window.location.href = "index.php?uid=" + <?php echo $portal_uid; ?> + "&student_id=" + encodeURIComponent(decodedText);
                 }, 300);
             })
             .catch(err => {

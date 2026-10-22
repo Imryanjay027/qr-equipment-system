@@ -21,7 +21,7 @@ if ($conn->connect_error) {
 
 $user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? 1);
 
-// Kunin ang impormasyon ng naka-login na user mula sa database batay sa user_id o student_id
+// Kunin ang impormasyon ng naka-login na user mula sa database batay sa id o student_id
 $user_data = null;
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ? OR student_id = ? LIMIT 1");
 if ($stmt) {
@@ -31,9 +31,9 @@ if ($stmt) {
     $stmt->close();
 }
 
-// Kunin nang ligtas ang mga values mula sa iba't ibang posibleng pangalan ng column sa database
-$display_name = $user_data['full_name'] ?? ($user_data['name'] ?? 'User');
-$display_sid = $user_data['student_id'] ?? ($user_data['id_number'] ?? '---');
+// Kunin nang ligtas ang mga values mula sa database kasama ang iba't ibang posibleng pangalan ng column
+$display_name = $user_data['full_name'] ?? ($user_data['name'] ?? 'System Custodian');
+$display_sid = $user_data['student_id'] ?? ($user_data['id_number'] ?? 'CUST001');
 $display_course = $user_data['course'] ?? ($user_data['program'] ?? ($user_data['department'] ?? 'IT'));
 $display_year = $user_data['year_level'] ?? ($user_data['year'] ?? ($user_data['year_lvl'] ?? '3rd Year'));
 $display_pic = $user_data['profile_pic'] ?? ($user_data['selfie'] ?? ($user_data['avatar'] ?? ''));

@@ -78,17 +78,19 @@ if (!empty($student_id)) {
         }
     }
 
+    // Kunin ang mga active borrow requests ng estudyante gamit ang diretsong safe query
     if ($borrower_data) {
         $b_name = $borrower_data['full_name'] ?? ($borrower_data['fullname'] ?? '');
         $b_sid = $borrower_data['student_id'] ?? $student_id;
-        $b_id = $borrower_data['id'] ?? '';
         
-        $req_stmt = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ? OR student_id = ? OR student_id = ?) AND status != 'Cleared' AND status != 'Replaced' ORDER BY id DESC");
-        if ($req_stmt) {
-            $req_stmt->bind_param("ssss", $b_sid, $b_name, $b_id, $student_id);
-            $req_stmt->execute();
-            $borrowed_items = $req_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $req_stmt->close();
+        $safe_sid = $conn->real_escape_string($b_sid);
+        $safe_name = $conn->real_escape_string($b_name);
+        $safe_orig = $conn->real_escape_string($student_id);
+        
+        $sql = "SELECT * FROM borrow_requests WHERE (student_id = '$safe_sid' OR full_name = '$safe_name' OR student_id = '$safe_orig') AND status NOT IN ('Cleared', 'Replaced') ORDER BY id DESC";
+        $res_req = $conn->query($sql);
+        if ($res_req) {
+            $borrowed_items = $res_req->fetch_all(MYSQLI_ASSOC);
         }
     }
 }

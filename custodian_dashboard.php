@@ -98,7 +98,7 @@ if ($count_query) {
             </div>
             <div class="sidebar-menu">
                 <a href="custodian_dashboard.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="borrowing_requests.php?uid=<?= $user_id; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
+                <a href="borrow_requests.php?uid=<?= $user_id; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
                 <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>

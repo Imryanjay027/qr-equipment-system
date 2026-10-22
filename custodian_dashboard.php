@@ -21,13 +21,9 @@ if ($conn->connect_error) {
 }
 
 // Get User ID from Session or URL Parameter
-$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '');
-if (empty($user_id)) {
-    header("Location: login.php");
-    exit();
-}
+$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? '1');
 
-// Safe User Details Fetching
+// Pilitin nating maging Custodian ang role para hindi maging 'STUDENT' ang badge sa panel
 $current_user = [
     'id' => $user_id,
     'full_name' => 'Property Custodian',
@@ -38,11 +34,10 @@ $user_result = $conn->query("SELECT * FROM tbl_users WHERE id = " . intval($user
 if ($user_result && $user_result->num_rows > 0) {
     $u_data = $user_result->fetch_assoc();
     $current_user['full_name'] = $u_data['full_name'] ?? ($u_data['fullname'] ?? ($u_data['name'] ?? 'Property Custodian'));
-    $current_user['role'] = $u_data['role'] ?? ($u_data['user_type'] ?? 'Custodian');
 }
 
 $_SESSION['user_id'] = $current_user['id'];
-$_SESSION['role'] = $current_user['role'];
+$_SESSION['role'] = 'Custodian';
 $_SESSION['full_name'] = $current_user['full_name'];
 
 // Handle Status Updates (Mark Good / Damaged / Replaced)
@@ -69,28 +64,11 @@ if (isset($_GET['action']) && isset($_GET['req_id'])) {
     exit();
 }
 
-// Dynamic Column Detection para sa Borrowed Equipment at Borrowers tables
-$eq_columns = [];
-$res_c = $conn->query("SHOW COLUMNS FROM borrowed_equipment");
-if ($res_c) {
-    while ($rc = $res_c->fetch_assoc()) { $eq_columns[] = $rc['Field']; }
-}
-
-$borrower_columns = [];
-$res_b = $conn->query("SHOW COLUMNS FROM borrowers");
-if ($res_b) {
-    while ($rb = $res_b->fetch_assoc()) { $borrower_columns[] = $rb['Field']; }
-}
-
-$be_stud_col = in_array('student_id', $eq_columns) ? 'student_id' : (in_array('stud_id', $eq_columns) ? 'stud_id' : 'student_id');
-$b_stud_col = in_array('student_id', $borrower_columns) ? 'student_id' : (in_array('stud_id', $borrower_columns) ? 'stud_id' : 'student_id');
-$b_name_col = in_array('fullname', $borrower_columns) ? 'fullname' : (in_array('full_name', $borrower_columns) ? 'full_name' : 'name');
-
-// Robust Query para sa Borrowing Requests Table
-$requests_query = "SELECT be.id as req_id, be.{$be_stud_col} as student_id, be.item_to_borrow, be.status, 
-                          b.{$b_name_col} as fullname, b.course_year, b.selfie_image 
+// Query para makuha ang mga hiram na kagamitan at detalye ng estudyante
+$requests_query = "SELECT be.id as req_id, be.student_id, be.item_to_borrow, be.status, 
+                          b.fullname, b.course_year, b.selfie_image 
                    FROM borrowed_equipment be 
-                   LEFT JOIN borrowers b ON be.{$be_stud_col} = b.{$b_stud_col} 
+                   LEFT JOIN borrowers b ON be.student_id = b.student_id 
                    ORDER BY be.id DESC";
 
 $result_requests = @$conn->query($requests_query);
@@ -104,7 +82,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
     <title>Property Custodian Dashboard - MQCQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root { --sidebar-width: 260px; --primary-color: #1a365d; }
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
@@ -282,9 +259,6 @@ $total_active = ($result_requests) ? $result_requests->num_rows : 0;
     </div>
 
     <script>
-        const beepAudio = document.getElementById('beepAudio');
-        const currentUid = "<?= $user_id; ?>";
-
         function switchTab(sectionId, element) {
             document.querySelectorAll('.tab-section').forEach(sec => sec.style.display = 'none');
             document.getElementById(sectionId).style.display = 'block';

@@ -35,21 +35,33 @@ $display_name = $user_data['full_name'] ?? ($user_data['name'] ?? 'User');
 $display_sid = $user_data['student_id'] ?? ($user_data['id_number'] ?? '---');
 $display_pic = $user_data['profile_pic'] ?? ($user_data['selfie'] ?? '');
 
-// Aksyon kapag kinlik ang Cleared button para i-delete o i-update ang status
+// Aksyon kapag kinlik ang Cleared button (para lang sa Good o Replaced)
 if (isset($_POST['clear_item_id'])) {
     $clear_id = intval($_POST['clear_item_id']);
-    // Maaari itong i-delete sa database o i-update ang status
-    $del_stmt = $conn->prepare("DELETE FROM borrow_requests WHERE id = ?");
-    if ($del_stmt) {
-        $del_stmt->bind_param("i", $clear_id);
-        $del_stmt->execute();
-        $del_stmt->close();
+    
+    // Siguraduhing Good o Replaced lang ang pwedeng i-clear/burahin sa listahan
+    $check_stmt = $conn->prepare("SELECT status FROM borrow_requests WHERE id = ?");
+    $check_stmt->bind_param("i", $clear_id);
+    $check_stmt->execute();
+    $res_check = $check_stmt->get_result()->fetch_assoc();
+    $check_stmt->close();
+    
+    if ($res_check) {
+        $st_val = strtolower($res_check['status']);
+        if (strpos($st_val, 'good') !== false || strpos($st_val, 'replaced') !== false || strpos($st_val, 'returned') !== false || strpos($st_val, 'clear') !== false) {
+            $del_stmt = $conn->prepare("DELETE FROM borrow_requests WHERE id = ?");
+            if ($del_stmt) {
+                $del_stmt->bind_param("i", $clear_id);
+                $del_stmt->execute();
+                $del_stmt->close();
+            }
+        }
     }
     header("Location: borrower_history.php?uid=" . $user_id);
     exit;
 }
 
-// Kunin ang history ng borrowing/returning ng user na ito
+// Kunin ang history ng user
 $history_records = array();
 if (!empty($display_sid)) {
     $hist_stmt = $conn->prepare("SELECT * FROM borrow_requests WHERE student_id = ? ORDER BY id DESC");
@@ -129,6 +141,7 @@ if (!empty($display_sid)) {
                 <a href="borrower.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="registration.php?uid=<?= $user_id; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
                 <a href="borrower_history.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="borrowed_equipment.php?uid=<?= $user_id; ?>"><i class="fas fa-box-open"></i> My Borrowed Equipment</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
             <div class="text-center py-2 border-top border-light border-opacity-10" style="font-size: 11px; color: rgba(255,255,255,0.7);">
@@ -145,9 +158,10 @@ if (!empty($display_sid)) {
                 <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
             </div>
             <div class="sidebar-menu">
-                <a href="borrower.php?uid=<?= $user_id; ?>"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrower.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="registration.php?uid=<?= $user_id; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
-                <a href="borrower_history.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="borrower_history.php?uid=<?= $user_id; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
+                <a href="borrowed_equipment.php?uid=<?= $user_id; ?>"><i class="fas fa-box-open"></i> My Borrowed Equipment</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
@@ -201,12 +215,16 @@ if (!empty($display_sid)) {
                                     <td>
                                         <?php 
                                             $st = strtolower($row['status'] ?? '');
-                                            if (strpos($st, 'clear') !== false || strpos($st, 'returned') !== false || strpos($st, 'good') !== false): 
+                                            // Kung na-mark as Good o Replaced, lalabas ang Cleared button para matanggal sa listahan
+                                            if (strpos($st, 'good') !== false || strpos($st, 'replaced') !== false || strpos($st, 'returned') !== false): 
                                         ?>
-                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Sigurado ka bang gusto mo nang i-clear/alisin ang item na ito sa listahan?');">
+                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Sigurado ka bang i-clear ang item na ito?');">
                                                 <input type="hidden" name="clear_item_id" value="<?= $row['id']; ?>">
                                                 <button type="submit" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 2px 10px;">Cleared</button>
                                             </form>
+                                        <?php elseif (strpos($st, 'damage') !== false): ?>
+                                            <!-- Kung Damaged, mananatili at hindi pwedeng i-clear hangga't hindi napapalitan -->
+                                            <span class="badge bg-danger">Damaged (Pending Replacement)</span>
                                         <?php else: ?>
                                             <span class="badge bg-warning text-dark"><?= htmlspecialchars($row['status'] ?? 'Pending'); ?></span>
                                         <?php endif; ?>

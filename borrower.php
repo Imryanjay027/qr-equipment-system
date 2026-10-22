@@ -69,12 +69,21 @@ if (!$current_user) {
 $sid = $current_user['student_id'];
 $uid = $current_user['id'];
 
-// Kunin ang mga active items ng estudyante (Pending, Damaged, o Waiting)
-$borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND (status = 'Pending' OR status LIKE '%Damage%') ORDER BY id DESC");
+// 1. Kunin ang mga active items ng estudyante (Pending, Damaged, o Waiting)
+$borrow_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND (status = 'Pending' OR status LIKE '%Damage%' OR status LIKE '%Waiting%') ORDER BY id DESC");
 $borrow_query->bind_param("ss", $sid, $current_user['full_name']);
 $borrow_query->execute();
 $borrowed_items = $borrow_query->get_result();
 $borrow_query->close();
+
+// 2. Kunin ang history ng mga returned o cleared items
+$history_query = $conn->prepare("SELECT * FROM borrow_requests WHERE (student_id = ? OR full_name = ?) AND (status = 'Cleared' OR status = 'Replaced' OR status LIKE '%Good%') ORDER BY id DESC");
+$history_query->bind_param("ss", $sid, $current_user['full_name']);
+$history_query->execute();
+$history_items = $history_query->get_result();
+$history_query->close();
+
+$active_tab = $_GET['tab'] ?? 'borrowed';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -115,10 +124,6 @@ $borrow_query->close();
         
         .qr-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
 
-        .nav-tabs { border-bottom: none; margin-bottom: 20px; gap: 10px; }
-        .nav-tabs .nav-link { background-color: #f1f5f9; color: #64748b; font-weight: 600; border: none; border-radius: 8px; padding: 10px 20px; font-size: 12px; }
-        .nav-tabs .nav-link.active { background-color: var(--primary-color); color: white; }
-
         .table th { background-color: var(--primary-color) !important; color: white !important; font-size: 12px; font-weight: 600; vertical-align: middle; border: none; }
         .table td { font-size: 12px; vertical-align: middle; }
 
@@ -141,8 +146,9 @@ $borrow_query->close();
                 <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
             </div>
             <div class="sidebar-menu">
-                <a href="borrower.php?uid=<?= $uid; ?>" class="active"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="borrower.php?uid=<?= $uid; ?>&tab=borrowed" class="<?= ($active_tab == 'borrowed') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
                 <a href="registration.php?uid=<?= $uid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
+                <a href="borrower.php?uid=<?= $uid; ?>&tab=history" class="<?= ($active_tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
                 <a href="login.php" class="text-white mt-4" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
@@ -185,64 +191,88 @@ $borrow_query->close();
                 </div>
             </div>
 
-            <!-- Tabs Navigation -->
-            <ul class="nav nav-tabs" id="portalTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="borrowed-tab" data-bs-toggle="tab" data-bs-target="#borrowed-content" type="button" role="tab">My Borrowed Equipment</button>
-                </li>
-            </ul>
-
-            <!-- Tab Content -->
-            <div class="tab-content" id="portalTabsContent">
-                <div class="tab-pane fade show active" id="borrowed-content" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle text-center">
-                            <thead>
-                                <tr>
-                                    <th>Student ID</th>
-                                    <th>Equipment Name</th>
-                                    <th>Borrow Date / Due Date</th>
-                                    <th>Status / Action</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if ($borrowed_items && $borrowed_items->num_rows > 0): ?>
-                                    <?php while($row = $borrowed_items->fetch_assoc()): ?>
-                                        <?php 
-                                            $st = trim($row['status'] ?? 'Pending');
-                                            $badge_bg = 'bg-warning text-dark';
-                                            $lower_st = strtolower($st);
-                                            if (strpos($lower_st, 'damage') !== false) {
-                                                $badge_bg = 'bg-danger text-white';
-                                            } elseif (strpos($lower_st, 'waiting') !== false) {
-                                                $badge_bg = 'bg-info text-dark';
-                                            }
-                                        ?>
-                                        <tr>
-                                            <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
-                                            <td class="fw-bold"><i class="fas fa-laptop me-1 text-secondary"></i> <?= htmlspecialchars($row['item_to_borrow']); ?></td>
-                                            <td><?= htmlspecialchars($row['return_date']) . '<br><small class="text-muted">(' . htmlspecialchars($row['return_time']) . ')</small>'; ?></td>
-                                            <td><span class="badge <?= $badge_bg; ?> px-3 py-2"><?= htmlspecialchars($st); ?></span></td>
-                                            <td>
-                                                <?php if (strpos($lower_st, 'damage') !== false): ?>
-                                                    <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&req_id=<?= $row['id']; ?>&action=mark_replaced" class="btn btn-primary btn-sm px-3 py-1 fw-semibold" style="font-size: 11px;">Mark as Replaced</a>
-                                                <?php else: ?>
-                                                    <span class="text-muted small">---</span>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
+            <!-- Conditional Tab Display -->
+            <?php if ($active_tab == 'history'): ?>
+                <!-- Returned Items / History Tab -->
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-history me-2 text-success"></i>Returned Items History / Remarks</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle text-center">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Equipment Name</th>
+                                <th>Date Returned</th>
+                                <th>Status / Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($history_items && $history_items->num_rows > 0): ?>
+                                <?php while($row = $history_items->fetch_assoc()): ?>
                                     <tr>
-                                        <td colspan="5" class="text-muted py-4 small">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
+                                        <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
+                                        <td class="fw-bold"><i class="fas fa-laptop me-1 text-secondary"></i> <?= htmlspecialchars($row['item_to_borrow']); ?></td>
+                                        <td><?= htmlspecialchars($row['return_date']) . ' (' . htmlspecialchars($row['return_time']) . ')'; ?></td>
+                                        <td><span class="badge bg-success px-3 py-2"><?= htmlspecialchars($row['status']); ?></span></td>
                                     </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="4" class="text-muted py-4 small">Wala pang naitalang kasaysayan ng mga ibinalik na kagamitan.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            <?php else: ?>
+                <!-- My Borrowed Equipment Tab -->
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-box me-2 text-success"></i>My Borrowed Equipment</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle text-center">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Equipment Name</th>
+                                <th>Borrow Date / Due Date</th>
+                                <th>Status / Action</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($borrowed_items && $borrowed_items->num_rows > 0): ?>
+                                <?php while($row = $borrowed_items->fetch_assoc()): ?>
+                                    <?php 
+                                        $st = trim($row['status'] ?? 'Pending');
+                                        $badge_bg = 'bg-warning text-dark';
+                                        $lower_st = strtolower($st);
+                                        if (strpos($lower_st, 'damage') !== false) {
+                                            $badge_bg = 'bg-danger text-white';
+                                        } elseif (strpos($lower_st, 'waiting') !== false) {
+                                            $badge_bg = 'bg-info text-dark';
+                                        }
+                                    ?>
+                                    <tr>
+                                        <td class="fw-semibold"><?= htmlspecialchars($row['student_id']); ?></td>
+                                        <td class="fw-bold"><i class="fas fa-laptop me-1 text-secondary"></i> <?= htmlspecialchars($row['item_to_borrow']); ?></td>
+                                        <td><?= htmlspecialchars($row['return_date']) . '<br><small class="text-muted">(' . htmlspecialchars($row['return_time']) . ')</small>'; ?></td>
+                                        <td><span class="badge <?= $badge_bg; ?> px-3 py-2"><?= htmlspecialchars($st); ?></span></td>
+                                        <td>
+                                            <?php if (strpos($lower_st, 'damage') !== false): ?>
+                                                <a href="borrower.php?uid=<?= $uid; ?>&sid=<?= $sid; ?>&req_id=<?= $row['id']; ?>&action=mark_replaced" class="btn btn-primary btn-sm px-3 py-1 fw-semibold" style="font-size: 11px;">Mark as Replaced</a>
+                                            <?php else: ?>
+                                                <span class="text-muted small">---</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="5" class="text-muted py-4 small">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
 
             <!-- Borrow Item Action Banner -->
             <div class="action-banner">

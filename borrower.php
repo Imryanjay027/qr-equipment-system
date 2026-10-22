@@ -123,7 +123,7 @@ $active_sid = $borrower_data['student_id'] ?? $student_id;
         <div class="offcanvas-body d-flex flex-column justify-content-between p-3">
             <div class="sidebar-menu">
                 <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=dashboard" class="<?= ($tab == 'dashboard') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=borrow" class="<?= ($tab == 'borrow') ? 'active' : ''; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
+                <a href="registration.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
                 <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=history" class="<?= ($tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
@@ -142,7 +142,7 @@ $active_sid = $borrower_data['student_id'] ?? $student_id;
             </div>
             <div class="sidebar-menu">
                 <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=dashboard" class="<?= ($tab == 'dashboard') ? 'active' : ''; ?>"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=borrow" class="<?= ($tab == 'borrow') ? 'active' : ''; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
+                <a href="registration.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>"><i class="fas fa-plus-circle"></i> Borrow an Item</a>
                 <a href="borrower.php?uid=<?= $user_id; ?>&sid=<?= $active_sid; ?>&tab=history" class="<?= ($tab == 'history') ? 'active' : ''; ?>"><i class="fas fa-history"></i> Returned Items / History</a>
                 <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
@@ -183,10 +183,7 @@ $active_sid = $borrower_data['student_id'] ?? $student_id;
             </div>
 
             <!-- Dynamic Tab Content View -->
-            <?php if ($tab == 'borrow'): ?>
-                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-plus-circle me-2 text-success"></i>Borrow an Equipment</h5>
-                <p class="text-muted small">Here you can select and request the equipment you wish to borrow.</p>
-            <?php elseif ($tab == 'history'): ?>
+            <?php if ($tab == 'history'): ?>
                 <h5 class="fw-bold text-dark mb-3"><i class="fas fa-history me-2 text-success"></i>Returned Items / History</h5>
                 <p class="text-muted small">Records of your past and current borrowed equipment.</p>
             <?php else: ?>

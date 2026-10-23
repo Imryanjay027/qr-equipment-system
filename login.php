@@ -1,21 +1,27 @@
 <?php
 session_start();
 
-// Database configuration settings gamit ang eksaktong internal host mula sa Coolify
-$host = 'wfbyfhr4k2y9u2spiv101'; 
+// Database configuration settings gamit ang Docker Bridge IP
+$host = '172.17.0.1'; 
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
 $port = 3306;
 
-// Establish database connection
-$conn = new mysqli($host, $user, $pass, $db, $port);
+// I-enable ang strict exception reporting para mas madaling ma-troubleshoot
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-// Check connection
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
+try {
+    // Establish database connection
+    $conn = new mysqli($host, $user, $pass, $db, $port);
+    
+    // Enable UTF-8 encoding
+    $conn->set_charset("utf8mb4");
+    
+    // Test message kung sakaling matagumpay ang koneksyon
+    // echo "Database connected successfully!";
+    
+} catch (mysqli_sql_exception $e) {
+    die("Database connection failed: " . $e->getMessage());
 }
-
-// Enable UTF-8 encoding
-$conn->set_charset("utf8mb4");
 ?>

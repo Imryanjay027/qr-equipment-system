@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Database configuration settings
-$host = '172.17.0.1'; 
+// Gamitin ang tamang internal service hostname mula sa Coolify configuration
+$host = 'wfbyfhr4k2y9u2spiv101'; 
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -14,9 +14,9 @@ try {
     $conn = mysqli_init();
     
     // I-set ang timeout
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 15);
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
     
-    // Kumonekta nang walang compression flag para maiwasan ang greeting packet error
+    // Kumonekta
     $conn->real_connect($host, $user, $pass, $db, $port);
     
     // Enable UTF-8 encoding

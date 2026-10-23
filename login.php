@@ -8,17 +8,21 @@ $pass = 'ryan072797';
 $db   = 'qrcode';
 $port = 3306;
 
-// I-enable ang strict exception reporting para malinaw ang error kung sakali
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
-    // Establish database connection
-    $conn = new mysqli($host, $user, $pass, $db, $port);
+    // Gamitin ang mysqli initialization para maiwasan ang greeting packet / gone away issue
+    $conn = mysqli_init();
+    
+    // I-set ang timeout para hindi agad maputol ang koneksyon
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
+    
+    // Kumonekta gamit ang ip, user, password, db, port
+    $conn->real_connect($host, $user, $pass, $db, $port);
     
     // Enable UTF-8 encoding
     $conn->set_charset("utf8mb4");
     
-    // Maaari mong tanggalin o palitan ito ng iyong login UI logic kapag gumagana na
     // echo "Database connected successfully!";
     
 } catch (mysqli_sql_exception $e) {

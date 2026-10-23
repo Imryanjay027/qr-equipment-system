@@ -1,7 +1,8 @@
 <?php
 session_start();
 
-$host = 'wfbyfhr4404k2y9u2spiv101'; // Internal Docker service hostname mula sa Coolify
+// Susubukan natin pareho ang VPS IP at ang Docker Bridge Gateway para sigurado
+$hosts = ['136.158.33.74', '172.17.0.1'];
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -9,13 +10,25 @@ $port = 3306;
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-try {
-    $conn = mysqli_init();
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-    $conn->real_connect($host, $user, $pass, $db, $port);
-    $conn->set_charset("utf8mb4");
-} catch (Exception $e) {
-    die("Database connection failed: " . $e->getMessage() . "<br><br><b>Paalala:</b> Siguraduhing naka-link ang iyong App at MariaDB service sa iisang network sa loob ng Coolify dashboard.");
+$conn = null;
+$connected = false;
+
+foreach ($hosts as $host) {
+    try {
+        $conn = mysqli_init();
+        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+        if (@$conn->real_connect($host, $user, $pass, $db, $port)) {
+            $conn->set_charset("utf8mb4");
+            $connected = true;
+            break;
+        }
+    } catch (Exception $e) {
+        continue;
+    }
+}
+
+if (!$connected) {
+    die("Database connection failed: Hindi maabot ang database. Pakitiyak sa Coolify na ang MariaDB container ay naka-expose ang port o nakakonekta sa parehong network.");
 }
 ?>
 <!DOCTYPE html>

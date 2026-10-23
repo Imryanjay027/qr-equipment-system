@@ -1,10 +1,6 @@
 <?php
 session_start();
 
-// PHPMailer namespaces (kung naka-composer ka, o i-include mo ang iyong PHPMailer files)
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email'] ?? '');
     
@@ -40,49 +36,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         
         $_SESSION['login_email'] = $email;
 
-        // 3. PAGPAPADALA NG OTP VIA GMAIL SMTP AT APP PASSWORD
-        // Kung gumagamit ka ng Composer PHPMailer:
-        // require 'vendor/autoload.php';
+        // 3. PAGPAPADALA NG OTP GAMIT ANG PHP mail() NA NAKAKONEKTA SA GMAIL APP PASSWORD
+        // I-set ang SMTP configurations sa php.ini o direktang gamitin ang mail headers
+        $to = $email;
+        $subject = 'Your Login OTP Code - QR Equipment System';
         
-        // O kung manual ang inclusion mo ng PHPMailer files, i-require mo dito:
-        require 'PHPMailer/src/Exception.php';
-        require 'PHPMailer/src/PHPMailer.php';
-        require 'PHPMailer/src/SMTP.php';
+        $message = '
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
+                <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
+                    <p>Hello,</p>
+                    <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
+                    <h1 style="text-align: center; font-size: 36px; letter-spacing: 5px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
+                    <p style="font-size: 12px; color: #666; text-align: center; margin-top: 20px;">This code is valid for single use. Please do not share it with anyone.</p>
+                </div>
+            </div>';
 
-        $mail = new PHPMailer(true);
+        $headers = "MIME-Version: 1.0" . "\r\n";
+        $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+        $headers .= "From: QR Equipment System <rayanjayleoligao64@gmail.com>" . "\r\n";
 
-        try {
-            // Server settings para sa Gmail SMTP
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'rayanjayleoligao64@gmail.com'; // Iyong Gmail
-            $mail->Password   = 'taxteachvmupoacm';             // Ang App Password na na-generate mo (tinanggal ang spaces)
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-
-            // Recipient & Sender
-            $mail->setFrom('rayanjayleoligao64@gmail.com', 'QR Equipment System');
-            $mail->addAddress($email);
-
-            // Content
-            $mail->isHTML(true);
-            $mail->Subject = 'Your Login OTP Code - QR Equipment System';
-            $mail->Body    = '
-                <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
-                    <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                        <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
-                        <p>Hello,</p>
-                        <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
-                        <h1 style="text-align: center; font-size: 36px; letter-spacing: 5px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
-                        <p style="font-size: 12px; color: #666; text-align: center; margin-top: 20px;">This code is valid for single use. Please do not share it with anyone.</p>
-                    </div>
-                </div>';
-
-            $mail->send();
-        } catch (Exception $e) {
-            // Kung sakaling magka-error sa pag-send, maitatago o maipapakita rito kung kinakailangan
-        }
+        // Subukang i-send gamit ang native mail function
+        @mail($to, $subject, $message, $headers);
 
         // 4. Awtomatikong mag-redirect sa verify_otp.php
         header("Location: verify_otp.php");

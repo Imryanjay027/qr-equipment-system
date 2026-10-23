@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = '136.158.33.74'; // Public IP / Host IP
+$host = 'wfbyfhr4404k2y9u2spiv101'; // Internal Docker service hostname mula sa Coolify
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -11,11 +11,11 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
     $conn = mysqli_init();
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
     $conn->real_connect($host, $user, $pass, $db, $port);
     $conn->set_charset("utf8mb4");
 } catch (Exception $e) {
-    die("Database connection failed: " . $e->getMessage());
+    die("Database connection failed: " . $e->getMessage() . "<br><br><b>Paalala:</b> Siguraduhing naka-link ang iyong App at MariaDB service sa iisang network sa loob ng Coolify dashboard.");
 }
 ?>
 <!DOCTYPE html>

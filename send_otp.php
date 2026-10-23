@@ -8,8 +8,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Email is required.");
     }
     
+    // 1. Gumawa ng random 6-digit OTP
     $otp = rand(100000, 999999);
     
+    // 2. I-save sa SQLite database
     $db_file = '/tmp/qrcode_database.sqlite';
     $pdo = new PDO("sqlite:" . $db_file);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -37,10 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $_SESSION['login_email'] = $email;
 
+    // 3. Pagpapadala ng OTP sa Gmail gamit ang verified Brevo Sender Email
     $brevo_api_key = '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';
     
     $data = [
-        'sender' => ['name' => 'QR Equipment System', 'email' => 'noreply@qreqsystem.com'],
+        // FIX: Pinalitan ng verified email address sa Brevo account mo
+        'sender' => ['name' => 'QR Equipment System', 'email' => 'rayanjayleoligao64@gmail.com'],
         'to' => [['email' => $email]],
         'subject' => 'Your Login OTP Code',
         'htmlContent' => '<p>Your OTP code is: <strong>' . $otp . '</strong></p>'
@@ -59,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     curl_exec($ch);
     curl_close($ch);
 
+    // 4. I-redirect sa verify_otp.php
     header("Location: verify_otp.php");
     exit();
 }

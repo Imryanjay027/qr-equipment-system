@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Database configuration settings
-$host = '172.17.0.1'; 
+// Database configuration settings gamit ang eksaktong internal host mula sa Coolify
+$host = 'wfbyfhr4k2y9u2spiv101'; 
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -18,6 +18,4 @@ if ($conn->connect_error) {
 
 // Enable UTF-8 encoding
 $conn->set_charset("utf8mb4");
-
-// Maglagay dito ng karagdagang login logic kung kinakailangan
 ?>

@@ -7,18 +7,17 @@ $pass = 'ryan072797';
 $db   = 'qrcode';
 $port = 3306;
 
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-
 try {
-    $conn = mysqli_init();
+    $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_TIMEOUT            => 5,
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
+    ];
     
-    // I-set ang timeout para magbigay sapat na oras sa greeting packet exchange
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 15);
-    
-    // Standard real_connect nang walang persistent prefix para maiwasan ang greeting packet error
-    $conn->real_connect($host, $user, $pass, $db, $port);
-    $conn->set_charset("utf8mb4");
-} catch (Exception $e) {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }
 ?>

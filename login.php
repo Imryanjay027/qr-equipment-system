@@ -1,11 +1,11 @@
 <?php
 session_start();
 
-// Susubukan nito ang Docker gateway, localhost, at ang hostname nang sabay-sabay
-$hosts = ['172.17.0.1', 'localhost', '127.0.0.1', 'wfbyfhr4404k2y9u2spiv101']; 
-$user = 'root';
-$pass = 'ryan072797';
-$db   = 'qrcode';
+// Kunin ang host mula sa Coolify environment variables o gamitin ang fallback
+$host = getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: '172.17.0.1';
+$user = getenv('DB_USER') ?: getenv('MYSQL_USER') ?: 'root';
+$pass = getenv('DB_PASSWORD') ?: getenv('MYSQL_PASSWORD') ?: 'ryan072797';
+$db   = getenv('DB_NAME') ?: getenv('MYSQL_DATABASE') ?: 'qrcode';
 $port = 3306;
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -13,11 +13,14 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $conn = null;
 $connected = false;
 
-foreach ($hosts as $host) {
+// Subukan ang iba't ibang posibleng koneksyon kabilang ang localhost at gateway
+$hosts_to_try = [$host, '172.17.0.1', 'localhost', '127.0.0.1'];
+
+foreach ($hosts_to_try as $h) {
     try {
         $conn = mysqli_init();
         $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
-        if (@$conn->real_connect($host, $user, $pass, $db, $port)) {
+        if (@$conn->real_connect($h, $user, $pass, $db, $port)) {
             $conn->set_charset("utf8mb4");
             $connected = true;
             break;
@@ -28,7 +31,7 @@ foreach ($hosts as $host) {
 }
 
 if (!$connected) {
-    die("Database connection failed: Hindi makakonekta sa database.");
+    die("Database connection failed: Hindi makakonekta sa database. Siguraduhing naka-link ang App at Database sa Coolify.");
 }
 ?>
 <!DOCTYPE html>

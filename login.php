@@ -1,20 +1,15 @@
 <?php
 session_start();
-
-// Zero-config database gamit ang SQLite para tuluyang walang error sa koneksyon
 $db_file = '/tmp/qrcode_database.sqlite';
 
 try {
     $pdo = new PDO("sqlite:" . $db_file);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Awtomatikong gumawa ng table para sa OTP / users kung wala pa
     $pdo->exec("CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE,
         otp TEXT
     )");
-    
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }
@@ -28,8 +23,8 @@ try {
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        .logo { width: 100px; height: 100px; object-fit: contain; margin-bottom: 15px; border-radius: 50%; }
-        .login-container h2 { margin-bottom: 20px; font-size: 22px; color: #333; }
+        .logo { width: 90px; height: 90px; object-fit: contain; margin-bottom: 5px; border-radius: 50%; }
+        .system-title { color: #28a745; font-size: 15px; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; }
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
         .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
@@ -39,12 +34,10 @@ try {
 </head>
 <body>
     <div class="login-container">
-        <!-- Logo sa taas -->
         <img src="logo.jpg" alt="Logo" class="logo" onerror="this.style.display='none'">
+        <div class="system-title">QR-BASED EQUIPMENT MONITORING SYSTEM</div>
         
-        <h2>QR Equipment System</h2>
-        
-        <form action="verify_otp.php" method="POST">
+        <form action="send_otp.php" method="POST">
             <div class="form-group">
                 <label for="email">Enter your email</label>
                 <input type="email" id="email" name="email" placeholder="example@email.com" required>

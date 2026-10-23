@@ -1,89 +1,70 @@
 <?php
-// send_otp.php
 session_start();
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-require 'PHPMailer/src/Exception.php';
-require 'PHPMailer/src/PHPMailer.php';
-require 'PHPMailer/src/SMTP.php';
-
-$email = $_SESSION['email'] ?? ''; 
-if (empty($email)) {
-    header("Location: register.php");
-    exit();
-}
-
-$otp = rand(100000, 999999);
-$_SESSION['otp'] = $otp;
-
-$mail = new PHPMailer(true);
-
-try {
-    $mail->isSMTP();
-    $mail->Host       = 'smtp.gmail.com';
-    $mail->SMTPAuth   = true;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
     
-    // Ang iyong tamang Gmail account
-    $mail->Username   = 'leoligaoryanjay.araosds@gmail.com';
+    if (empty($email)) {
+        die("Email is required.");
+    }
     
-    // Ang nabuo mong 16-digit App Password
-    $mail->Password   = 'gdzodeuajljftewy';
+    // 1. Gumawa ng random 6-digit OTP
+    $otp = rand(100000, 999999);
     
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port       = 587;
+    // 2. I-save sa SQLite database (at siguraduhing may role column)
+    $db_file = '/tmp/qrcode_database.sqlite';
+    $pdo = new PDO("sqlite:" . $db_file);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Siguraduhing may table na may role column (default as 'borrower' kung bagong email)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        otp TEXT,
+        role TEXT DEFAULT 'borrower'
+    )");
+    
+    // Alamin kung ang email na ito ay may role nang nakatakda, kung wala ay default sa 'borrower'
+    // (Maaari mong baguhin o i-update sa database kung ang email na ito ay para sa custodian)
+    $stmt = $pdo->prepare("SELECT role FROM users WHERE email = :email");
+    $stmt->execute(['email' => $email]);
+    $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $role = $existing_user['role'] ?? 'borrower';
+    
+    // I-update o i-insert ang user kasama ang bagong OTP
+    $stmt = $pdo->prepare("INSERT INTO users (email, otp, role) VALUES (:email, :otp, :role) 
+                           ON CONFLICT(email) DO UPDATE SET otp=:otp");
+    $stmt->execute(['email' => $email, 'otp' => $otp, 'role' => $role]);
+    
+    // I-save ang email sa session para magamit sa verification page
+    $_SESSION['login_email'] = $email;
 
-    // Pinalitan ang Sender Name para maging "MQCQC System"
-    $mail->setFrom('leoligaoryanjay.araosds@gmail.com', 'MQCQC System');
-    $mail->addAddress($email);
+    // 3. Pagpapadala ng OTP gamit ang Brevo API (cURL - Walang PHPMailer na kailangan)
+    $brevo_api_key = 'XKEYSINB-YOUR_BREVO_API_KEY_HERE'; // Palitan ng iyong totoong Brevo API Key
+    
+    $data = [
+        'sender' => ['name' => 'QR Equipment System', 'email' => 'noreply@qreqsystem.com'],
+        'to' => [['email' => $email]],
+        'subject' => 'Your Login OTP Code',
+        'htmlContent' => '<p>Your OTP code is: <strong>' . $otp . '</strong></p>'
+    ];
 
-    // I-embed ang logo.jpg para lumabas bilang school logo sa email body
-    // Siguraduhing may file na 'logo.jpg' sa parehong folder o itama ang path (hal. 'assets/logo.jpg')
-    $mail->addEmbeddedImage('logo.jpg', 'school_logo');
+    $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'accept: application/json',
+        'api-key: ' . $brevo_api_key,
+        'content-type: application/json'
+    ]);
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
 
-    // Ayusin ang SSL verification error para sa localhost
-    $mail->SMTPOptions = array(
-        'ssl' => array(
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-            'allow_self_signed' => true
-        )
-    );
-
-    $mail->isHTML(true);
-    $mail->Subject = 'Your Login Verification OTP - MQCQC System';
-    $mail->Body    = '
-    <div style="background-color: #f4f6f9; padding: 20px; font-family: Arial, sans-serif;">
-        <div style="max-width: 500px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            
-            <!-- Embedded School Logo -->
-            <img src="cid:school_logo" alt="MQCQC Logo" style="width: 90px; height: auto; margin-bottom: 15px;">
-            
-            <h2 style="color: #1a365d; margin: 0; font-size: 20px;">Mary The Queen College of Quezon City</h2>
-            <p style="color: #666666; font-size: 13px; font-weight: bold; text-transform: uppercase; margin-top: 5px; margin-bottom: 20px;">Equipment Borrowing System</p>
-            
-            <hr style="border: none; border-top: 1px solid #eeeeee; margin: 20px 0;">
-            
-            <p style="text-align: left; color: #333333; font-size: 14px; margin-bottom: 5px;">Dear User,</p>
-            <p style="text-align: left; color: #333333; font-size: 14px; margin-top: 0;">Here is your One-Time Password (OTP) required to complete your secure registration:</p>
-            
-            <!-- OTP Display Box -->
-            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 15px; margin: 20px 0; display: inline-block; width: 80%; border: 1px solid #ddd;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1a365d;">' . $otp . '</span>
-            </div>
-            
-            <p style="color: #888888; font-size: 12px; margin-top: 30px;">Kung hindi ka humiling nito, mangyaring balewalain ang email na ito.</p>
-        </div>
-    </div>';
-
-    $mail->AltBody = "Mary The Queen College of Quezon City - Equipment Borrowing System\n\nDear User,\n\nHere is your One-Time Password (OTP): " . $otp . "\n\nKung hindi ka humiling nito, balewalain ang email na ito.";
-
-    $mail->send();
+    // 4. I-redirect sa verify_otp.php
     header("Location: verify_otp.php");
     exit();
-
-} catch (Exception $e) {
-    echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
 }
 ?>

@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = '172.17.0.1';
+$host = 'wfbyfhr4404k2y9u2spiv101'; // Internal Docker service hostname
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';

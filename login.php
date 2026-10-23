@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = '136.158.33.74';
+$host = '172.17.0.1'; // Docker Bridge Gateway IP para maabot ang host/database
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -11,7 +11,7 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
     $conn = mysqli_init();
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
     $conn->real_connect($host, $user, $pass, $db, $port);
     $conn->set_charset("utf8mb4");
 } catch (Exception $e) {

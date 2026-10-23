@@ -1,7 +1,8 @@
 <?php
 session_start();
 
-$host = 'wfbyfhr4404k2y9u2spiv101'; 
+// Susubukan nito ang Docker gateway, localhost, at ang hostname nang sabay-sabay
+$hosts = ['172.17.0.1', 'localhost', '127.0.0.1', 'wfbyfhr4404k2y9u2spiv101']; 
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -10,13 +11,24 @@ $port = 3306;
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 $conn = null;
-try {
-    $conn = mysqli_init();
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-    $conn->real_connect($host, $user, $pass, $db, $port);
-    $conn->set_charset("utf8mb4");
-} catch (Exception $e) {
-    die("Database connection failed: " . $e->getMessage());
+$connected = false;
+
+foreach ($hosts as $host) {
+    try {
+        $conn = mysqli_init();
+        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+        if (@$conn->real_connect($host, $user, $pass, $db, $port)) {
+            $conn->set_charset("utf8mb4");
+            $connected = true;
+            break;
+        }
+    } catch (Exception $e) {
+        continue;
+    }
+}
+
+if (!$connected) {
+    die("Database connection failed: Hindi makakonekta sa database.");
 }
 ?>
 <!DOCTYPE html>
@@ -26,7 +38,6 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Equipment System - Login</title>
     <style>
-        /* Ilagay dito ang iyong CSS styles kung naka-embed */
         body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         .form-group { margin-bottom: 15px; }

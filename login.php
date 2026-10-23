@@ -4,9 +4,9 @@ session_start();
 // -------------------------------------------------------------
 // 1. DATABASE CONNECTION (Gamit ang Coolify Environment Variables)
 // -------------------------------------------------------------
-$host = getenv('DB_HOST') ?: 'localhost';
+$host = getenv('DB_HOST') ?: 'mariadb-database-wfbyfhr4404k2';
 $user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASSWORD') ?: '';
+$pass = getenv('DB_PASSWORD') ?: 'ryan072797';
 $db   = getenv('DB_NAME') ?: 'qrcode';
 $port = getenv('DB_PORT') ?: 3306;
 
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'id'    => $user_data['id'],
                     'name'  => $user_data['name'],
                     'email' => $user_data['email'],
-                    'role'  => strtolower($user_data['role']), // e.g. 'borrower' o 'custodian'
+                    'role'  => strtolower($user_data['role']),
                     'otp'   => $otp
                 ];
 

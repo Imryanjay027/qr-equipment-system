@@ -1,28 +1,32 @@
 <?php
 session_start();
-
-// Zero-config SQLite database na tumutugma sa ginamit natin sa login.php
 $db_file = '/tmp/qrcode_database.sqlite';
+$error = '';
 
 try {
     $pdo = new PDO("sqlite:" . $db_file);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Kunin ang email mula sa session
     $email = $_SESSION['login_email'] ?? '';
     
-    // Kung pinindot ang verify button
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
         $entered_otp = trim($_POST['otp']);
         
-        $stmt = $pdo->prepare("SELECT otp FROM users WHERE email = :email");
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = :email");
         $stmt->execute(['email' => $email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($user && $user['otp'] === $entered_otp) {
-            // Successful ang login
             $_SESSION['authenticated'] = true;
-            header("Location: dashboard.php"); // Palitan kung saan man ang landing page pagka-login
+            $_SESSION['role'] = $user['role'] ?? 'borrower'; // Default to borrower kung walang nakatakda
+            $_SESSION['email'] = $email;
+            
+            // Conditional redirect base sa role
+            if ($user['role'] === 'custodian') {
+                header("Location: custodian_dashboard.php");
+            } else {
+                header("Location: borrower.php");
+            }
             exit();
         } else {
             $error = "Invalid OTP. Please try again.";
@@ -41,9 +45,10 @@ try {
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        .logo { width: 100px; height: 100px; object-fit: contain; margin-bottom: 15px; border-radius: 50%; }
-        .login-container h2 { margin-bottom: 10px; font-size: 22px; color: #333; }
-        p { color: #666; font-size: 14px; margin-bottom: 20px; }
+        .logo { width: 90px; height: 90px; object-fit: contain; margin-bottom: 5px; border-radius: 50%; }
+        .system-title { color: #28a745; font-size: 15px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
+        .login-container h2 { margin-bottom: 5px; font-size: 20px; color: #333; }
+        p { color: #666; font-size: 13px; margin-bottom: 20px; }
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
         .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; text-align: center; font-size: 18px; letter-spacing: 2px; }
@@ -55,6 +60,8 @@ try {
 <body>
     <div class="login-container">
         <img src="logo.jpg" alt="Logo" class="logo" onerror="this.style.display='none'">
+        <div class="system-title">QR-BASED EQUIPMENT MONITORING SYSTEM</div>
+        
         <h2>Enter Verification Code</h2>
         <p>We sent an OTP to <strong><?php echo htmlspecialchars($email); ?></strong></p>
         

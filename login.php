@@ -36,14 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         
         $_SESSION['login_email'] = $email;
 
-        // 3. PAGPAPADALA NG OTP VIA BREVO HTTP API (Native cURL - Walang external files needed)
-        $brevo_api_key = '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';
+        // 3. PAGPAPADALA NG OTP GAMIT ANG RESEND API (Native cURL)
+        $resend_api_key = 're_9moupy88_3ZfHSK7N8PdU1uLBavhH2dnD'; // Iyong Resend API Key[cite: 7]
         
         $data = [
-            'sender' => ['name' => 'QR Equipment System', 'email' => 'rayanjayleoligao64@gmail.com'],
-            'to' => [['email' => $email]],
+            'from' => 'QR Equipment System <onboarding@resend.dev>',
+            'to' => [$email],
             'subject' => 'Your Login OTP Code - QR Equipment System',
-            'htmlContent' => '
+            'html' => '
                 <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
                     <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                         <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
@@ -55,20 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
                 </div>'
         ];
 
-        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+        $ch = curl_init('https://api.resend.com/emails');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'accept: application/json',
-            'api-key: ' . $brevo_api_key,
-            'content-type: application/json'
+            'Authorization: Bearer ' . $resend_api_key,
+            'Content-Type: application/json'
         ]);
         
         @curl_exec($ch);
         @curl_close($ch);
 
-        // 4. Awtomatikong mag-redirect sa verify_otp.php
+        // 4. Awtomatikong mag-redirect sa verify page
         header("Location: verify_otp.php");
         exit();
     }

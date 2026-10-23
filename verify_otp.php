@@ -25,7 +25,7 @@ try {
             $_SESSION['role'] = $user['role'] ?? 'borrower';
             $_SESSION['email'] = $email;
             
-            // Conditional redirection batay sa nakatalagang role sa database
+            // Redirect batay sa role
             if (trim($user['role']) === 'custodian') {
                 header("Location: custodian_dashboard.php");
             } else {

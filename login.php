@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = '172.17.0.1'; // Ito ang nagtagumpay na umabot sa server kani-kanina lang
+$host = '172.17.0.1';
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -11,12 +11,12 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
     $conn = mysqli_init();
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
     
-    // Gamitin ang persistent connection para maiwasan ang "server has gone away" sa Docker gateway
-    $real_host = "p:".$host; 
+    // I-set ang timeout para magbigay sapat na oras sa greeting packet exchange
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 15);
     
-    $conn->real_connect($real_host, $user, $pass, $db, $port);
+    // Standard real_connect nang walang persistent prefix para maiwasan ang greeting packet error
+    $conn->real_connect($host, $user, $pass, $db, $port);
     $conn->set_charset("utf8mb4");
 } catch (Exception $e) {
     die("Database connection failed: " . $e->getMessage());

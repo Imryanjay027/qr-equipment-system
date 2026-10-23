@@ -1,81 +1,35 @@
 <?php
 session_start();
-date_default_timezone_set('Asia/Manila');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
-$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
-$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+// Zero-config SQLite database na tumutugma sa ginamit natin sa login.php
+$db_file = '/tmp/qrcode_database.sqlite';
 
-$conn = @new mysqli($host, $username, $password, $database, (int)$port);
-if ($conn->connect_error) {
-    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
-}
-
-if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
-}
-
-$error = "";
-$success_msg = "";
-$redirect_url = "";
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $user_otp = trim((string)($_POST['otp'] ?? ''));
-
-    if (empty($user_otp)) {
-        $error = "Mangyaring ilagay ang 6-digit OTP code.";
-    } else {
-        $table_columns = [];
-        $res = $conn->query("SHOW COLUMNS FROM tbl_users");
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $table_columns[] = $row['Field'];
-            }
-        }
-
-        $name_col = in_array('full_name', $table_columns) ? 'full_name' : (in_array('fullname', $table_columns) ? 'fullname' : '');
-        $role_col = in_array('role', $table_columns) ? 'role' : (in_array('user_type', $table_columns) ? 'user_type' : '');
-
-        if (!empty($name_col) && !empty($role_col)) {
-            $sql = "SELECT id, {$role_col} as role, {$name_col} as full_name FROM tbl_users WHERE TRIM(otp_code) = TRIM(?) AND otp_expiry >= NOW()";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("s", $user_otp);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result && $result->num_rows > 0) {
-                $user = $result->fetch_assoc();
-
-                // I-save nang maayos sa session
-                $_SESSION['user_id']   = $user['id'];
-                $_SESSION['role']      = strtolower(trim($user['role']));
-                $_SESSION['full_name'] = $user['full_name'];
-
-                $clear = $conn->prepare("UPDATE tbl_users SET otp_code = NULL, otp_expiry = NULL WHERE id = ?");
-                $clear->bind_param("i", $user['id']);
-                $clear->execute();
-
-                $user_role = strtolower(trim($user['role']));
-                
-                // Ituro nang tuwiran sa custodian_dashboard.php kung ito ay custodian o admin
-                if (strpos($user_role, 'custodian') !== false || strpos($user_role, 'admin') !== false) {
-                    $redirect_url = "custodian_dashboard.php?uid=" . $user['id'];
-                } else {
-                    $redirect_url = "borrower.php?uid=" . $user['id'];
-                }
-
-                $success_msg = "OTP Verified Successfully!";
-            } else {
-                $error = "Mali o expired na ang OTP code na inilagay mo.";
-            }
+try {
+    $pdo = new PDO("sqlite:" . $db_file);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Kunin ang email mula sa session
+    $email = $_SESSION['login_email'] ?? '';
+    
+    // Kung pinindot ang verify button
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $entered_otp = trim($_POST['otp']);
+        
+        $stmt = $pdo->prepare("SELECT otp FROM users WHERE email = :email");
+        $stmt->execute(['email' => $email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user && $user['otp'] === $entered_otp) {
+            // Successful ang login
+            $_SESSION['authenticated'] = true;
+            header("Location: dashboard.php"); // Palitan kung saan man ang landing page pagka-login
+            exit();
         } else {
-            $error = "Database configuration error: Required columns not found.";
+            $error = "Invalid OTP. Please try again.";
         }
     }
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -83,48 +37,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify OTP - MQCQC Equipment System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Verify OTP - QR Equipment System</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .logo { width: 100px; height: 100px; object-fit: contain; margin-bottom: 15px; border-radius: 50%; }
+        .login-container h2 { margin-bottom: 10px; font-size: 22px; color: #333; }
+        p { color: #666; font-size: 14px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; text-align: center; font-size: 18px; letter-spacing: 2px; }
+        .btn-login { width: 100%; padding: 10px; background-color: #007bff; border: none; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-login:hover { background-color: #0056b3; }
+        .error { color: red; font-size: 13px; margin-bottom: 15px; }
+    </style>
 </head>
-<body class="d-flex align-items-center justify-content-center min-vh-100 bg-light">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="card p-4 shadow-sm">
-                    <h4 class="fw-bold text-success text-center mb-3">OTP Verification</h4>
+<body>
+    <div class="login-container">
+        <img src="logo.jpg" alt="Logo" class="logo" onerror="this.style.display='none'">
+        <h2>Enter Verification Code</h2>
+        <p>We sent an OTP to <strong><?php echo htmlspecialchars($email); ?></strong></p>
+        
+        <?php if (!empty($error)): ?>
+            <div class="error"><?php echo $error; ?></div>
+        <?php endif; ?>
 
-                    <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger py-2 small"><?= htmlspecialchars($error); ?></div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($success_msg)): ?>
-                        <div class="alert alert-success py-3 text-center">
-                            <p class="mb-2 fw-semibold"><?= htmlspecialchars($success_msg); ?></p>
-                            <div class="spinner-border spinner-border-sm text-success"></div>
-                            <span class="small text-muted ms-1">Redirecting to dashboard...</span>
-                        </div>
-                        <script>
-                            setTimeout(function() { 
-                                window.location.href = "<?= $redirect_url; ?>"; 
-                            }, 800);
-                        </script>
-                    <?php else: ?>
-                        <p class="text-muted text-center small">Ilagay ang 6-digit code na ipinadala sa iyong email:</p>
-                        <form action="verify_otp.php" method="POST">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Enter 6-Digit OTP</label>
-                                <input type="text" class="form-control text-center fs-4 fw-bold" name="otp" maxlength="6" required placeholder="000000" autocomplete="off">
-                            </div>
-                            <button type="submit" class="btn btn-success w-100 fw-bold">Verify & Login</button>
-                        </form>
-                    <?php endif; ?>
-
-                    <div class="text-center mt-3">
-                        <a href="login.php" class="text-secondary small text-decoration-none">← Bumalik sa Login</a>
-                    </div>
-                </div>
+        <form action="verify_otp.php" method="POST">
+            <div class="form-group">
+                <label for="otp">6-Digit OTP</label>
+                <input type="text" id="otp" name="otp" maxlength="6" placeholder="123456" required>
             </div>
-        </div>
+            <button type="submit" class="btn-login">Verify OTP</button>
+        </form>
     </div>
 </body>
 </html>

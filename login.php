@@ -1,14 +1,14 @@
 <?php
 session_start();
 
-// Zero-config database: SQLite (Hindi na kailangan ng Docker network o ports)
-$db_file = __DIR__ . '/database.sqlite';
+// Gagamitin natin ang /tmp folder dahil ito ay laging may write access sa Docker containers
+$db_file = '/tmp/qrcode_database.sqlite';
 
 try {
     $pdo = new PDO("sqlite:" . $db_file);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Awtomatikong gagawa ng table para sa login
+    // Awtomatikong gumawa ng table para sa login
     $pdo->exec("CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,

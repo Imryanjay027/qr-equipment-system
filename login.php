@@ -1,178 +1,141 @@
 <?php
 session_start();
-date_default_timezone_set('Asia/Manila');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
-// DATABASE CONNECTION
-$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
-$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+// -------------------------------------------------------------
+// 1. DATABASE CONNECTION
+// -------------------------------------------------------------
+$host = 'localhost'; // Inayos mula 172.17.0.1 para sa Coolify
+$user = 'root';
+$pass = 'YOUR_DATABASE_PASSWORD'; // Palitan ng totoong database password mo
+$db   = 'qrcode';
+$port = 3306;
 
-$conn = @new mysqli($host, $username, $password, $database, (int)$port);
-if ($conn->connect_error) {
-    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
-}
+$conn = new mysqli($host, $user, $pass, $db, $port);
 
 if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+    die("Connection failed: " . $conn->connect_error);
 }
 
-// Siguraduhing may OTP columns sa tbl_users o users
-try { @$conn->query("ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL"); } catch (Exception $e) {}
-try { @$conn->query("ALTER TABLE users ADD COLUMN otp_expiry DATETIME DEFAULT NULL"); } catch (Exception $e) {}
-try { @$conn->query("ALTER TABLE tbl_users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL"); } catch (Exception $e) {}
-try { @$conn->query("ALTER TABLE tbl_users ADD COLUMN otp_expiry DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+$error_message = '';
 
-$error = "";
-$redirect_url = "";
+// -------------------------------------------------------------
+// 2. LOGIN FORM SUBMISSION
+// -------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email    = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['email_or_id'])) {
-    $email_or_id = trim($_POST['email_or_id'] ?? '');
+    if (!empty($email) && !empty($password)) {
+        // I-fetch ang user sa database
+        $stmt = $conn->prepare("SELECT id, name, email, password, role FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-    if (!empty($email_or_id)) {
-        // Kunin ang mga tunay na columns sa tbl_users para sigurado sa pag-query
-        $table_columns = [];
-        $res = $conn->query("SHOW COLUMNS FROM tbl_users");
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $table_columns[] = $row['Field'];
-            }
-        }
-
-        // Bumuo ng dynamic query base sa kung anong columns ang mayroon sa tbl_users
-        $where_clauses = ["TRIM(email) = TRIM(?)"];
-        $bind_types = "s";
-        $bind_values = [$email_or_id];
-
-        if (in_array('student_id', $table_columns)) {
-            $where_clauses[] = "TRIM(student_id) = TRIM(?)";
-            $bind_types .= "s";
-            $bind_values[] = $email_or_id;
-        }
-
-        $sql = "SELECT * FROM tbl_users WHERE " . implode(" OR ", $where_clauses) . " LIMIT 1";
-        $stmt = $conn->prepare($sql);
-        if ($stmt) {
-            $stmt->bind_param($bind_types, ...$bind_values);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result->num_rows === 1) {
-                $user = $result->fetch_assoc();
-                $user_id = $user['id'];
-
-                $otp = sprintf("%06d", rand(0, 999999));
-                $expiry = date('Y-m-d H:i:s', strtotime('+15 minutes'));
-
-                // Update OTP sa tbl_users gamit ang id
-                $update_stmt = $conn->prepare("UPDATE tbl_users SET otp_code = ?, otp_expiry = ? WHERE id = ?");
-                $update_stmt->bind_param("ssi", $otp, $expiry, $user_id);
-                $update_stmt->execute();
-
-                $target_email = trim($user['email']);
-                $brevo_api_key = "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"; 
-
-                // Hanapin kung full_name o fullname ang column ng pangalan
-                $name_key = isset($user['full_name']) ? 'full_name' : (isset($user['fullname']) ? 'fullname' : 'full_name');
-                $user_name = $user[$name_key] ?? 'User';
-
-                $email_data = [
-                    "sender" => [
-                        "name" => "MQCQC Equipment System",
-                        "email" => "ryanjayleoligao64@gmail.com"
-                    ],
-                    "to" => [ ["email" => $target_email] ],
-                    "subject" => "Your Login OTP Code",
-                    "htmlContent" => "<p>Hello {$user_name},</p><p>Your 6-digit OTP code is: <strong>{$otp}</strong></p><p>This code will expire in 15 minutes.</p>"
+        if ($user_data = $result->fetch_assoc()) {
+            // I-verify ang password (gamit ang password_verify o direct check depende sa setup mo)
+            if (password_verify($password, $user_data['password']) || $password === $user_data['password']) {
+                
+                // Mag-generate ng 6-digit OTP
+                $otp = rand(100000, 999999);
+                
+                // I-save ang user info at OTP sa session
+                $_SESSION['temp_user'] = [
+                    'id'    => $user_data['id'],
+                    'name'  => $user_data['name'],
+                    'email' => $user_data['email'],
+                    'role'  => strtolower($user_data['role']), // e.g. 'borrower', 'custodian', 'admin'
+                    'otp'   => $otp
                 ];
 
-                $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+                // -------------------------------------------------------------
+                // 3. BREVO API OTP EMAIL SENDING
+                // -------------------------------------------------------------
+                $brevo_api_key = 'YOUR_BREVO_API_KEY'; // Palitan ng Brevo API Key mo
+
+                $data = [
+                    "sender" => [
+                        "name"  => "Equipment Monitoring System",
+                        "email" => "no-reply@yourdomain.com"
+                    ],
+                    "to" => [
+                        [
+                            "email" => $user_data['email'],
+                            "name"  => $user_data['name']
+                        ]
+                    ],
+                    "subject" => "Your Login OTP Code",
+                    "htmlContent" => "<h3>Your Verification Code is: <b>{$otp}</b></h3>"
+                ];
+
+                $ch = curl_init("https://api.brevo.com/v3/smtp/email");
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($email_data));
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
                 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'accept: application/json',
-                    'api-key: ' . $brevo_api_key,
-                    'content-type: application/json'
+                    "accept: application/json",
+                    "api-key: {$brevo_api_key}",
+                    "content-type: application/json"
                 ]);
-                
+
                 $response = curl_exec($ch);
-                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
 
-                if ($http_code >= 200 && $http_code < 300) {
-                    // I-save ang user ID at i-store ang role sa session para magamit sa pag-verify at redirect
-                    $_SESSION['pending_user_id'] = $user_id;
-                    $_SESSION['pending_role'] = $user['role'] ?? 'borrower';
-                    $redirect_url = "verify_otp.php";
-                } else {
-                    $error = "Failed to send OTP via email.";
-                }
+                // I-redirect sa OTP Verification Page
+                header("Location: verify_otp.php");
+                exit();
             } else {
-                $error = "No account found with that email or student ID.";
+                $error_message = "Maling password! Subukan ulit.";
             }
-            $stmt->close();
+        } else {
+            $error_message = "Walang nahanap na account gamit ang email na iyan.";
         }
+        $stmt->close();
     } else {
-        $error = "Please enter your email or student ID.";
+        $error_message = "Paki-fill up ang email at password.";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - MQCQC</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Login - Equipment Monitoring System</title>
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .login-card { max-width: 420px; margin: 50px auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 30px; }
-        .logo-img { width: 80px; height: 80px; object-fit: contain; }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
+        .login-card h2 { margin-bottom: 20px; text-align: center; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #666; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 10px; background-color: #007bff; border: none; color: white; font-size: 16px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background-color: #0056b3; }
+        .alert { color: red; margin-bottom: 15px; font-size: 14px; text-align: center; }
     </style>
 </head>
 <body>
 
-<div class="container py-5">
-    <div class="login-card text-center">
-        <!-- School Logo with Fallback -->
-        <div class="mb-3">
-            <img src="logo.jpg" 
-                 onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/en/8/82/Mary_the_Queen_College_of_Quezon_City_logo.png';" 
-                 alt="MQCQC Logo" 
-                 class="logo-img">
+<div class="login-card">
+    <h2>Login System</h2>
+
+    <?php if (!empty($error_message)): ?>
+        <div class="alert"><?php echo htmlspecialchars($error_message); ?></div>
+    <?php endif; ?>
+
+    <form method="POST" action="login.php">
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required placeholder="Enter your email">
         </div>
-        <h4 class="fw-bold mb-1 text-success">Equipment Monitoring</h4>
-        <p class="text-muted small mb-4">Enter your Email or Student ID to receive OTP</p>
-
-        <?php if (!empty($error)): ?>
-            <div class="alert alert-danger py-2 small"><?= htmlspecialchars($error); ?></div>
-        <?php endif; ?>
-
-        <form method="POST" action="">
-            <div class="mb-3 text-start">
-                <label for="email_or_id" class="form-label small fw-bold">Email o Student ID</label>
-                <input type="text" class="form-control" id="email_or_id" name="email_or_id" placeholder="Ilagay ang email o ID" required>
-            </div>
-            <div class="d-grid">
-                <button type="submit" class="btn btn-success fw-bold py-2">
-                    <i class="fas fa-paper-plane me-2"></i>Send OTP Code
-                </button>
-            </div>
-        </form>
-    </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required placeholder="Enter password">
+        </div>
+        <button type="submit" class="btn">Login</button>
+    </form>
 </div>
 
-<?php if (!empty($redirect_url)): ?>
-<script>
-    window.location.href = "<?= $redirect_url; ?>";
-</script>
-<?php endif; ?>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

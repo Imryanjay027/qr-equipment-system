@@ -13,19 +13,21 @@ try {
     $pdo = new PDO("sqlite:" . $db_file);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
+    // Kunin ang active OTP mula sa database para sa user na ito (para makita sa screen kung sakaling maantala ang email)
+    $stmt = $pdo->prepare("SELECT otp, role FROM users WHERE email = :email");
+    $stmt->execute(['email' => $email]);
+    $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    $current_otp = $user_data['otp'] ?? '';
+    
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp'])) {
         $entered_otp = trim($_POST['otp']);
         
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = :email");
-        $stmt->execute(['email' => $email]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($user && $user['otp'] === $entered_otp) {
+        if ($user_data && $user_data['otp'] === $entered_otp) {
             $_SESSION['authenticated'] = true;
-            $_SESSION['role'] = $user['role'] ?? 'borrower';
+            $_SESSION['role'] = $user_data['role'] ?? 'borrower';
             $_SESSION['email'] = $email;
             
-            if ($user['role'] === 'custodian') {
+            if ($user_data['role'] === 'custodian') {
                 header("Location: custodian_dashboard.php");
             } else {
                 header("Location: borrower.php");
@@ -57,13 +59,21 @@ try {
         .btn-login { width: 100%; padding: 10px; background-color: #007bff; border: none; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
         .btn-login:hover { background-color: #0056b3; }
         .error { color: red; font-size: 13px; margin-bottom: 15px; }
+        .otp-display-box { background-color: #e8f5e9; border: 1px dashed #4caf50; color: #2e7d32; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 15px; }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="system-title">QR-BASED EQUIPMENT MONITORING SYSTEM</div>
         <h2>Enter Verification Code</h2>
-        <p>We've sent a 6-digit code to <strong><?php echo htmlspecialchars($email); ?></strong></p>
+        <p>Login attempt for: <strong><?php echo htmlspecialchars($email); ?></strong></p>
+
+        <!-- Fallback display para makita agad ng user ang OTP sakaling hindi dumating sa Gmail -->
+        <?php if (!empty($current_otp)): ?>
+            <div class="otp-display-box">
+                🔑 <strong>System Notice:</strong> Your OTP is <strong><?php echo htmlspecialchars($current_otp); ?></strong>
+            </div>
+        <?php endif; ?>
 
         <?php if (!empty($error)): ?>
             <div class="error"><?php echo htmlspecialchars($error); ?></div>

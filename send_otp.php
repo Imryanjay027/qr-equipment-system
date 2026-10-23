@@ -38,12 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute(['email' => $email, 'otp' => $otp, 'role' => $role]);
     
     $_SESSION['login_email'] = $email;
-    
-    // Pansamantalang ilalagay natin sa session para makita mo agad kung sakaling hindi pa pumasok sa Brevo
-    $_SESSION['debug_otp'] = $otp;
 
-    // 3. Brevo API Integration (Palitan ang API key at verified email kapag nakapag-setup ka na)
-    $brevo_api_key = 'XKEYSINB-YOUR_BREVO_API_KEY_HERE'; 
+    // 3. Pagpapadala ng OTP sa Gmail gamit ang iyong Brevo API Key
+    $brevo_api_key = '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';
     
     $data = [
         'sender' => ['name' => 'QR Equipment System', 'email' => 'noreply@qreqsystem.com'],
@@ -65,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     curl_exec($ch);
     curl_close($ch);
 
+    // 4. I-redirect sa verify_otp.php
     header("Location: verify_otp.php");
     exit();
 }

@@ -5,7 +5,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     
     if (empty($email)) {
-        die("Email is required.");
+        die("Error: Email is required.");
     }
     
     // 1. Gumawa ng random 6-digit OTP
@@ -39,11 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $_SESSION['login_email'] = $email;
 
-    // 3. Pagpapadala ng OTP sa pamamagitan ng Brevo API gamit ang awtorisadong system sender
+    // 3. Pagpapadala ng OTP sa pamamagitan ng Brevo API gamit ang Verified Sender
     $brevo_api_key = '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';
     
     $data = [
-        'sender' => ['name' => 'QR Equipment System', 'email' => 'contact@sendinblue.com'],
+        'sender' => ['name' => 'QR Equipment System', 'email' => 'rayanjayleoligao64@gmail.com'],
         'to' => [['email' => $email]],
         'subject' => 'Your Login OTP Code',
         'htmlContent' => '
@@ -68,10 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'content-type: application/json'
     ]);
     
-    $response = curl_exec($ch);
+    curl_exec($ch);
     curl_close($ch);
 
-    // 4. I-redirect sa verify_otp.php
+    // 4. Awtomatikong mag-redirect sa verify_otp.php
     header("Location: verify_otp.php");
     exit();
 }

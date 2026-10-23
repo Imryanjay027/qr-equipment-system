@@ -2,13 +2,13 @@
 session_start();
 
 // -------------------------------------------------------------
-// 1. DATABASE CONNECTION
+// 1. DATABASE CONNECTION (Gamit ang Coolify Environment Variables)
 // -------------------------------------------------------------
-$host = 'localhost'; // Inayos mula 172.17.0.1 para sa Coolify
-$user = 'root';
-$pass = 'YOUR_DATABASE_PASSWORD'; // Palitan ng totoong database password mo
-$db   = 'qrcode';
-$port = 3306;
+$host = getenv('DB_HOST') ?: 'localhost';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASSWORD') ?: '';
+$db   = getenv('DB_NAME') ?: 'qrcode';
+$port = getenv('DB_PORT') ?: 3306;
 
 $conn = new mysqli($host, $user, $pass, $db, $port);
 
@@ -19,21 +19,21 @@ if ($conn->connect_error) {
 $error_message = '';
 
 // -------------------------------------------------------------
-// 2. LOGIN FORM SUBMISSION
+// 2. LOGIN FORM SUBMISSION & ROLE ROUTING
 // -------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email    = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
     if (!empty($email) && !empty($password)) {
-        // I-fetch ang user sa database
+        // I-fetch ang user mula sa database
         $stmt = $conn->prepare("SELECT id, name, email, password, role FROM users WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
 
         if ($user_data = $result->fetch_assoc()) {
-            // I-verify ang password (gamit ang password_verify o direct check depende sa setup mo)
+            // Check password (gamit ang password_verify o direct string comparison)
             if (password_verify($password, $user_data['password']) || $password === $user_data['password']) {
                 
                 // Mag-generate ng 6-digit OTP
@@ -44,14 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'id'    => $user_data['id'],
                     'name'  => $user_data['name'],
                     'email' => $user_data['email'],
-                    'role'  => strtolower($user_data['role']), // e.g. 'borrower', 'custodian', 'admin'
+                    'role'  => strtolower($user_data['role']), // e.g. 'borrower' o 'custodian'
                     'otp'   => $otp
                 ];
 
                 // -------------------------------------------------------------
                 // 3. BREVO API OTP EMAIL SENDING
                 // -------------------------------------------------------------
-                $brevo_api_key = 'YOUR_BREVO_API_KEY'; // Palitan ng Brevo API Key mo
+                $brevo_api_key = getenv('BREVO_API_KEY') ?: 'YOUR_BREVO_API_KEY';
 
                 $data = [
                     "sender" => [

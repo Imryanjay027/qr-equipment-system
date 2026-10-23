@@ -11,19 +11,18 @@ $port = 3306;
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
-    // Gamitin ang mysqli initialization para maiwasan ang greeting packet / gone away issue
     $conn = mysqli_init();
     
-    // I-set ang timeout para hindi agad maputol ang koneksyon
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
+    // I-set ang timeout
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 15);
     
-    // Kumonekta gamit ang ip, user, password, db, port
+    // Kumonekta nang walang compression flag para maiwasan ang greeting packet error
     $conn->real_connect($host, $user, $pass, $db, $port);
     
     // Enable UTF-8 encoding
     $conn->set_charset("utf8mb4");
     
-    // echo "Database connected successfully!";
+    echo "Database connected successfully!";
     
 } catch (mysqli_sql_exception $e) {
     die("Database connection failed: " . $e->getMessage());

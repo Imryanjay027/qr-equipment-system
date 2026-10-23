@@ -1,15 +1,14 @@
 <?php
 session_start();
 
-// Kapag nag-submit ang user ng email sa login form
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email'] ?? '');
     
     if (!empty($email)) {
-        // 1. Generate 6-digit OTP
+        // 1. Gumawa ng random 6-digit OTP
         $otp = rand(100000, 999999);
         
-        // 2. Save/Update sa SQLite database
+        // 2. I-save sa SQLite database at alamin ang role ng user
         $db_file = '/tmp/qrcode_database.sqlite';
         $pdo = new PDO("sqlite:" . $db_file);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -29,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         $stmt->execute(['email' => $email]);
         $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
         
+        // Kung walang nakarehistro pang role, default as borrower maliban kung nilagyan sa db
         $role = $existing_user['role'] ?? 'borrower';
         
         $stmt = $pdo->prepare("INSERT INTO users (email, otp, role) VALUES (:email, :otp, :role) 
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         
         $_SESSION['login_email'] = $email;
 
-        // 3. Send OTP via Brevo API
+        // 3. Pagpapadala ng OTP sa Gmail sa pamamagitan ng Brevo API
         $brevo_api_key = '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';
         
         $data = [

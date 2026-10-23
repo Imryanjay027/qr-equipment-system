@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = 'wfbyfhr4404k2y9u2spiv101'; // Internal Docker service hostname
+$host = '136.158.33.74'; // Pampublikong IP ng VPS na may bukas na port 3306
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';

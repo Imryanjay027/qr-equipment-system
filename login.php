@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Susubukan natin pareho ang VPS IP at ang Docker Bridge Gateway para sigurado
-$hosts = ['136.158.33.74', '172.17.0.1'];
+// Gagamitin natin ang localhost sakaling nasa iisang container o iisang network na sila, kasama ang IP fallback
+$hosts = ['localhost', '127.0.0.1', '136.158.33.74', '172.17.0.1'];
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -11,24 +11,34 @@ $port = 3306;
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 $conn = null;
-$connected = false;
+$error_logs = [];
 
 foreach ($hosts as $host) {
     try {
         $conn = mysqli_init();
-        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 2);
         if (@$conn->real_connect($host, $user, $pass, $db, $port)) {
             $conn->set_charset("utf8mb4");
-            $connected = true;
             break;
         }
     } catch (Exception $e) {
+        $error_logs[$host] = $e->getMessage();
         continue;
     }
 }
 
-if (!$connected) {
-    die("Database connection failed: Hindi maabot ang database. Pakitiyak sa Coolify na ang MariaDB container ay naka-expose ang port o nakakonekta sa parehong network.");
+if (!$conn || $conn->connect_errno) {
+    echo "<div style='background: #ffebee; color: #c62828; padding: 20px; margin: 20px; border-radius: 5px; font-family: Arial;'>";
+    echo "<h3>Diagnosis ng Koneksyon sa Database:</h3>";
+    echo "<p>Nabigo ang lahat ng pagtatangkang kumonekta sa MariaDB.</p>";
+    echo "<ul>";
+    foreach($error_logs as $h => $err) {
+        echo "<li><strong>Host ($h):</strong> $err</li>";
+    }
+    echo "</ul>";
+    echo "<p><b>Solusyon sa Coolify:</b> Pumunta sa iyong MariaDB service sa Coolify dashboard, pumunta sa <b>Ports</b>, at i-expose ang port 3306 (halimbawa: i-map ang <code>3306:3306</code>) para maabot ito ng ibang aplikasyon.</p>";
+    echo "</div>";
+    exit;
 }
 ?>
 <!DOCTYPE html>

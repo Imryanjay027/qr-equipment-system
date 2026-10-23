@@ -39,11 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $_SESSION['login_email'] = $email;
 
-    // 3. Pagpapadala ng OTP sa Gmail gamit ang iyong Brevo API Key
+    // 3. Pagpapadala ng OTP sa Gmail gamit ang Brevo API
     $brevo_api_key = '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';
     
     $data = [
-        'sender' => ['name' => 'QR Equipment System', 'email' => 'noreply@qreqsystem.com'],
+        // Pinalitan natin ng iyong Gmail ang sender email para hindi i-block ng Brevo
+        'sender' => ['name' => 'QR Equipment System', 'email' => 'rayanjayleoligao64@gmail.com'],
         'to' => [['email' => $email]],
         'subject' => 'Your Login OTP Code',
         'htmlContent' => '<p>Your OTP code is: <strong>' . $otp . '</strong></p>'
@@ -59,10 +60,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'content-type: application/json'
     ]);
     
-    curl_exec($ch);
+    $response = curl_exec($ch);
+    
+    // Suriin kung nagka-error ang cURL
+    if (curl_errno($ch)) {
+        die('Curl error: ' . curl_error($ch));
+    }
+    
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    // 4. I-redirect sa verify_otp.php
+    // Kung hindi 200 o 201 ang status, ipapakita ang eksaktong error mula sa Brevo
+    if ($http_code !== 201 && $http_code !== 200) {
+        echo "<h3>Brevo API Error (HTTP Code: {$http_code})</h3>";
+        echo "<pre>" . htmlspecialchars($response) . "</pre>";
+        exit();
+    }
+
+    // 4. I-redirect sa verify_otp.php kapag matagumpay na naipadala
     header("Location: verify_otp.php");
     exit();
 }

@@ -11,12 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 1. Gumawa ng random 6-digit OTP
     $otp = rand(100000, 999999);
     
-    // 2. I-save sa SQLite database (at siguraduhing may role column)
+    // 2. I-save sa SQLite database
     $db_file = '/tmp/qrcode_database.sqlite';
     $pdo = new PDO("sqlite:" . $db_file);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Siguraduhing may table na may role column (default as 'borrower' kung bagong email)
+    // Siguraduhing may table na may role column
     $pdo->exec("CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE,
@@ -24,8 +24,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         role TEXT DEFAULT 'borrower'
     )");
     
-    // Alamin kung ang email na ito ay may role nang nakatakda, kung wala ay default sa 'borrower'
-    // (Maaari mong baguhin o i-update sa database kung ang email na ito ay para sa custodian)
+    // Idagdag ang role column kung sakaling lumang table ang naka-save sa /tmp
+    try {
+        $pdo->exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'borrower'");
+    } catch (PDOException $e) {
+        // Balewalain kung ang column ay umiiral na
+    }
+    
+    // Alamin kung ang email na ito ay may role nang nakatakda
     $stmt = $pdo->prepare("SELECT role FROM users WHERE email = :email");
     $stmt->execute(['email' => $email]);
     $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -40,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // I-save ang email sa session para magamit sa verification page
     $_SESSION['login_email'] = $email;
 
-    // 3. Pagpapadala ng OTP gamit ang Brevo API (cURL - Walang PHPMailer na kailangan)
+    // 3. Pagpapadala ng OTP gamit ang Brevo API (cURL)
     $brevo_api_key = 'XKEYSINB-YOUR_BREVO_API_KEY_HERE'; // Palitan ng iyong totoong Brevo API Key
     
     $data = [

@@ -1,9 +1,6 @@
 <?php
 session_start();
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email'] ?? '');
     
@@ -39,32 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         
         $_SESSION['login_email'] = $email;
 
-        // 3. PAGPAPADALA NG OTP VIA BREVO SMTP RELAY
-        // Siguraduhing may PHPMailer files ka o naka-install via composer.
-        require 'PHPMailer/src/Exception.php';
-        require 'PHPMailer/src/PHPMailer.php';
-        require 'PHPMailer/src/SMTP.php';
-
-        $mail = new PHPMailer(true);
-
-        try {
-            // Brevo SMTP Server Settings
-            $mail->isSMTP();
-            $mail->Host       = 'smtp-relay.brevo.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'rayanjayleoligao64@gmail.com'; // Ang email mo sa Brevo
-            $mail->Password   = 'ILAGAY_MO_DITO_ANG_BREVO_SMTP_PASSWORD'; // Brevo SMTP Key (mula sa Brevo Dashboard -> SMTP & API)
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-
-            // Sender at Recipient
-            $mail->setFrom('rayanjayleoligao64@gmail.com', 'QR Equipment System');
-            $mail->addAddress($email);
-
-            // Nilalaman ng Email
-            $mail->isHTML(true);
-            $mail->Subject = 'Your Login OTP Code - QR Equipment System';
-            $mail->Body    = '
+        // 3. PAGPAPADALA NG OTP VIA BREVO HTTP API (Native cURL - Walang external files needed)
+        $brevo_api_key = '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';
+        
+        $data = [
+            'sender' => ['name' => 'QR Equipment System', 'email' => 'rayanjayleoligao64@gmail.com'],
+            'to' => [['email' => $email]],
+            'subject' => 'Your Login OTP Code - QR Equipment System',
+            'htmlContent' => '
                 <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
                     <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                         <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
@@ -73,14 +52,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
                         <h1 style="text-align: center; font-size: 36px; letter-spacing: 5px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
                         <p style="font-size: 12px; color: #666; text-align: center; margin-top: 20px;">This code is valid for single use. Please do not share it with anyone.</p>
                     </div>
-                </div>';
+                </div>'
+        ];
 
-            $mail->send();
-        } catch (Exception $e) {
-            // Error handling kung kinakailangan
-        }
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'accept: application/json',
+            'api-key: ' . $brevo_api_key,
+            'content-type: application/json'
+        ]);
+        
+        @curl_exec($ch);
+        @curl_close($ch);
 
-        // 4. Awtomatikong mag-redirect sa verify page
+        // 4. Awtomatikong mag-redirect sa verify_otp.php
         header("Location: verify_otp.php");
         exit();
     }

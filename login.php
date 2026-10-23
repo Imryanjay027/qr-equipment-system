@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Susubukan nito ang iba't ibang posibleng host address para maiwasan ang name resolution error
-$hosts = ['wfbyfhr4k2y9u2spiv101', 'localhost', '127.0.0.1']; 
+// Mga posibleng host kasama ang Docker internal gateway IP at container bridge
+$hosts = ['wfbyfhr4k2y9u2spiv101', '172.17.0.1', 'host.docker.internal', 'localhost', '127.0.0.1']; 
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -29,7 +29,7 @@ foreach ($hosts as $host) {
 }
 
 if (!$connected) {
-    die("Database connection failed: Hindi ma-resolve o makakonekta sa database server.");
+    die("Database connection failed: Hindi makakonekta sa database server. Siguraduhing nasa iisang Docker network o tama ang IP ng database.");
 }
 ?>
 <!-- ILAGAY DITO ANG BUONG ORIHINAL MONG HTML, CSS, AT UI NG LOGIN PAGE -->

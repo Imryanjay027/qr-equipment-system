@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = '136.158.33.74'; 
+$host = 'wfbyfhr4404k2y9u2spiv101'; 
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';

@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-$host = '172.17.0.1';
+$host = '136.158.33.74'; // Public IP / Host IP
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -11,19 +11,11 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
     $conn = mysqli_init();
-    // Dagdag na options para maiwasan ang greeting packet / server has gone away errors
     $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
-    
-    // Subukan ang real_connect na may kasamang client flags kung kinakailangan
-    @$conn->real_connect($host, $user, $pass, $db, $port, NULL, MYSQLI_CLIENT_SSL_DISABLE_VERIFY ?? 0);
-    
-    if ($conn->connect_error) {
-        throw new Exception("Connect Error: " . $conn->connect_error);
-    }
-    
+    $conn->real_connect($host, $user, $pass, $db, $port);
     $conn->set_charset("utf8mb4");
 } catch (Exception $e) {
-    die("Database connection failed: " . $e->getMessage() . "<br><br><b>Tip:</b> Siguraduhin na ang MariaDB sa Coolify ay nagpapahintulot ng external/container connections (hindi naka-bind strictly sa 127.0.0.1 ng sarili nitong container).");
+    die("Database connection failed: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>

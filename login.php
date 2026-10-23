@@ -1,8 +1,7 @@
 <?php
 session_start();
 
-// Gagamitin natin ang localhost sakaling nasa iisang container o iisang network na sila, kasama ang IP fallback
-$hosts = ['localhost', '127.0.0.1', '136.158.33.74', '172.17.0.1'];
+$host = '172.17.0.1'; // Ito ang nagtagumpay na umabot sa server kani-kanina lang
 $user = 'root';
 $pass = 'ryan072797';
 $db   = 'qrcode';
@@ -10,35 +9,17 @@ $port = 3306;
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-$conn = null;
-$error_logs = [];
-
-foreach ($hosts as $host) {
-    try {
-        $conn = mysqli_init();
-        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 2);
-        if (@$conn->real_connect($host, $user, $pass, $db, $port)) {
-            $conn->set_charset("utf8mb4");
-            break;
-        }
-    } catch (Exception $e) {
-        $error_logs[$host] = $e->getMessage();
-        continue;
-    }
-}
-
-if (!$conn || $conn->connect_errno) {
-    echo "<div style='background: #ffebee; color: #c62828; padding: 20px; margin: 20px; border-radius: 5px; font-family: Arial;'>";
-    echo "<h3>Diagnosis ng Koneksyon sa Database:</h3>";
-    echo "<p>Nabigo ang lahat ng pagtatangkang kumonekta sa MariaDB.</p>";
-    echo "<ul>";
-    foreach($error_logs as $h => $err) {
-        echo "<li><strong>Host ($h):</strong> $err</li>";
-    }
-    echo "</ul>";
-    echo "<p><b>Solusyon sa Coolify:</b> Pumunta sa iyong MariaDB service sa Coolify dashboard, pumunta sa <b>Ports</b>, at i-expose ang port 3306 (halimbawa: i-map ang <code>3306:3306</code>) para maabot ito ng ibang aplikasyon.</p>";
-    echo "</div>";
-    exit;
+try {
+    $conn = mysqli_init();
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
+    
+    // Gamitin ang persistent connection para maiwasan ang "server has gone away" sa Docker gateway
+    $real_host = "p:".$host; 
+    
+    $conn->real_connect($real_host, $user, $pass, $db, $port);
+    $conn->set_charset("utf8mb4");
+} catch (Exception $e) {
+    die("Database connection failed: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>

@@ -1,22 +1,20 @@
 <?php
 session_start();
 
-$host = '136.158.33.74'; // Pampublikong IP ng VPS na may bukas na port 3306
-$user = 'root';
-$pass = 'ryan072797';
-$db   = 'qrcode';
-$port = 3306;
+// Zero-config database: SQLite (Hindi na kailangan ng Docker network o ports)
+$db_file = __DIR__ . '/database.sqlite';
 
 try {
-    $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
-    $options = [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_TIMEOUT            => 5,
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
-    ];
+    $pdo = new PDO("sqlite:" . $db_file);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    $pdo = new PDO($dsn, $user, $pass, $options);
+    // Awtomatikong gagawa ng table para sa login
+    $pdo->exec("CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT
+    )");
+    
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }

@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email'] ?? '');
     
@@ -8,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         // 1. Gumawa ng random 6-digit OTP
         $otp = rand(100000, 999999);
         
-        // 2. I-save sa SQLite database
+        // 2. I-save sa SQLite database at kunin ang role
         $db_file = '/tmp/qrcode_database.sqlite';
         $pdo = new PDO("sqlite:" . $db_file);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -36,30 +39,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         
         $_SESSION['login_email'] = $email;
 
-        // 3. PAGPAPADALA NG OTP GAMIT ANG PHP mail() NA NAKAKONEKTA SA GMAIL APP PASSWORD
-        // I-set ang SMTP configurations sa php.ini o direktang gamitin ang mail headers
-        $to = $email;
-        $subject = 'Your Login OTP Code - QR Equipment System';
-        
-        $message = '
-            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
-                <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
-                    <p>Hello,</p>
-                    <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
-                    <h1 style="text-align: center; font-size: 36px; letter-spacing: 5px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
-                    <p style="font-size: 12px; color: #666; text-align: center; margin-top: 20px;">This code is valid for single use. Please do not share it with anyone.</p>
-                </div>
-            </div>';
+        // 3. PAGPAPADALA NG OTP VIA BREVO SMTP RELAY
+        // Siguraduhing may PHPMailer files ka o naka-install via composer.
+        require 'PHPMailer/src/Exception.php';
+        require 'PHPMailer/src/PHPMailer.php';
+        require 'PHPMailer/src/SMTP.php';
 
-        $headers = "MIME-Version: 1.0" . "\r\n";
-        $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-        $headers .= "From: QR Equipment System <rayanjayleoligao64@gmail.com>" . "\r\n";
+        $mail = new PHPMailer(true);
 
-        // Subukang i-send gamit ang native mail function
-        @mail($to, $subject, $message, $headers);
+        try {
+            // Brevo SMTP Server Settings
+            $mail->isSMTP();
+            $mail->Host       = 'smtp-relay.brevo.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'rayanjayleoligao64@gmail.com'; // Ang email mo sa Brevo
+            $mail->Password   = 'ILAGAY_MO_DITO_ANG_BREVO_SMTP_PASSWORD'; // Brevo SMTP Key (mula sa Brevo Dashboard -> SMTP & API)
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
 
-        // 4. Awtomatikong mag-redirect sa verify_otp.php
+            // Sender at Recipient
+            $mail->setFrom('rayanjayleoligao64@gmail.com', 'QR Equipment System');
+            $mail->addAddress($email);
+
+            // Nilalaman ng Email
+            $mail->isHTML(true);
+            $mail->Subject = 'Your Login OTP Code - QR Equipment System';
+            $mail->Body    = '
+                <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
+                    <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
+                        <p>Hello,</p>
+                        <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
+                        <h1 style="text-align: center; font-size: 36px; letter-spacing: 5px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
+                        <p style="font-size: 12px; color: #666; text-align: center; margin-top: 20px;">This code is valid for single use. Please do not share it with anyone.</p>
+                    </div>
+                </div>';
+
+            $mail->send();
+        } catch (Exception $e) {
+            // Error handling kung kinakailangan
+        }
+
+        // 4. Awtomatikong mag-redirect sa verify page
         header("Location: verify_otp.php");
         exit();
     }

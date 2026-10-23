@@ -1,37 +1,21 @@
 <?php
 session_start();
 
-// Kunin ang host mula sa Coolify environment variables o gamitin ang fallback
-$host = getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: '172.17.0.1';
-$user = getenv('DB_USER') ?: getenv('MYSQL_USER') ?: 'root';
-$pass = getenv('DB_PASSWORD') ?: getenv('MYSQL_PASSWORD') ?: 'ryan072797';
-$db   = getenv('DB_NAME') ?: getenv('MYSQL_DATABASE') ?: 'qrcode';
+$host = '136.158.33.74';
+$user = 'root';
+$pass = 'ryan072797';
+$db   = 'qrcode';
 $port = 3306;
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-$conn = null;
-$connected = false;
-
-// Subukan ang iba't ibang posibleng koneksyon kabilang ang localhost at gateway
-$hosts_to_try = [$host, '172.17.0.1', 'localhost', '127.0.0.1'];
-
-foreach ($hosts_to_try as $h) {
-    try {
-        $conn = mysqli_init();
-        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
-        if (@$conn->real_connect($h, $user, $pass, $db, $port)) {
-            $conn->set_charset("utf8mb4");
-            $connected = true;
-            break;
-        }
-    } catch (Exception $e) {
-        continue;
-    }
-}
-
-if (!$connected) {
-    die("Database connection failed: Hindi makakonekta sa database. Siguraduhing naka-link ang App at Database sa Coolify.");
+try {
+    $conn = mysqli_init();
+    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
+    $conn->real_connect($host, $user, $pass, $db, $port);
+    $conn->set_charset("utf8mb4");
+} catch (Exception $e) {
+    die("Database connection failed: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>

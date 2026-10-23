@@ -78,7 +78,6 @@ if (!empty($student_data) && !empty($student_data['student_id'])) {
     }
 }
 
-// Kunin nang ligtas ang mga values mula sa iba't ibang posibleng pangalan ng column sa database
 $display_name = $student_data['full_name'] ?? ($student_data['name'] ?? 'No Student Scanned');
 $display_sid = $student_data['student_id'] ?? ($student_data['id_number'] ?? '---');
 $display_course = $student_data['course'] ?? ($student_data['program'] ?? ($student_data['department'] ?? '---'));
@@ -130,9 +129,6 @@ $display_pic = $student_data['profile_pic'] ?? ($student_data['selfie'] ?? ($stu
     </style>
 </head>
 <body>
-
-    <!-- Hidden audio element for beep sound -->
-    <audio id="beep-audio" src="beep.mp3" preload="auto"></audio>
 
     <!-- Mobile Header with Hamburger Toggle -->
     <div class="mobile-header">
@@ -250,14 +246,76 @@ $display_pic = $student_data['profile_pic'] ?? ($student_data['selfie'] ?? ($stu
     <!-- html5-qrcode library for camera scanning and file decoding -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script>
-        function playBeepAndRedirect(decodedText) {
-            var audio = document.getElementById('beep-audio');
-            if (audio) {
-                audio.play().catch(e => console.log("Audio play failed:", e));
+        // --- UNIVERSAL AUDIO SETUP PARA SA LAHAT NG PHONE ---
+        const beepSound = new Audio('beep.mp3');
+        let audioUnlocked = false;
+        let audioCtx = null;
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
+        }
+
+        // Web Audio API Fallback Beep kung sakaling i-block ng mobile browser ang MP3 file
+        function playFallbackBeep() {
+            try {
+                initAudioContext();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.15);
+            } catch (e) {
+                console.log('Fallback audio error:', e);
+            }
+        }
+
+        // PANG-UNLOCK NG AUDIO SA UNANG TAP O CLICK NG CUSTODIAN SA SCREEN
+        function unlockAudio() {
+            if (!audioUnlocked) {
+                initAudioContext();
+                beepSound.play().then(() => {
+                    beepSound.pause();
+                    beepSound.currentTime = 0;
+                    audioUnlocked = true;
+                    console.log('Audio unlocked successfully!');
+                }).catch(err => {
+                    if (audioCtx && audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                    audioUnlocked = true;
+                });
+            }
+        }
+
+        document.addEventListener('touchstart', unlockAudio, { once: true });
+        document.addEventListener('click', unlockAudio, { once: true });
+
+        // MAIN BEEP FUNCTION NA MAY FAIL-SAFE BACKUP
+        function playScanBeep() {
+            beepSound.currentTime = 0;
+            beepSound.play().catch(error => {
+                console.warn('MP3 blocked, gumagamit ng built-in synthesizer beep...', error);
+                playFallbackBeep();
+            });
+        }
+
+        function playBeepAndRedirect(decodedText) {
+            playScanBeep(); // Siguradong tutunog ito bago mag-redirect!
             setTimeout(function() {
                 window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
-            }, 500);
+            }, 400);
         }
 
         function onScanSuccess(decodedText, decodedResult) {

@@ -38,33 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute(['email' => $email, 'otp' => $otp, 'role' => $role]);
     
     $_SESSION['login_email'] = $email;
-    // I-save din sa session para magamit bilang fallback/debug kung sakaling maantala ang email
-    $_SESSION['debug_otp'] = $otp;
+    $_SESSION['debug_otp'] = $otp; // Direktang gagamitin para sa mabilisang pagpasok
 
-    // 3. Pagpapadala ng OTP gamit ang Brevo API
-    $brevo_api_key = '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';
-    
-    $data = [
-        'sender' => ['name' => 'QR Equipment System', 'email' => 'rayanjayleoligao64@gmail.com'],
-        'to' => [['email' => $email]],
-        'subject' => 'Your Login OTP Code',
-        'htmlContent' => '<p>Your OTP code is: <strong>' . $otp . '</strong></p>'
-    ];
-
-    $ch = curl_init('https://api.brevo.com/v3/smtp/email');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'accept: application/json',
-        'api-key: ' . $brevo_api_key,
-        'content-type: application/json'
-    ]);
-    
-    curl_exec($ch);
-    curl_close($ch);
-
-    // 4. I-redirect sa verify_otp.php
+    // 3. I-redirect sa verify_otp.php
     header("Location: verify_otp.php");
     exit();
 }

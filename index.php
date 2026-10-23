@@ -250,6 +250,7 @@ $display_pic = $student_data['profile_pic'] ?? ($student_data['selfie'] ?? ($stu
         const beepSound = new Audio('beep.mp3');
         let audioUnlocked = false;
         let audioCtx = null;
+        let isScanned = false; // Guard variable para maiwasan ang dobleng scan at tunog
 
         function initAudioContext() {
             if (!audioCtx) {
@@ -312,7 +313,11 @@ $display_pic = $student_data['profile_pic'] ?? ($student_data['selfie'] ?? ($stu
         }
 
         function playBeepAndRedirect(decodedText) {
-            playScanBeep(); // Siguradong tutunog ito bago mag-redirect!
+            if (isScanned) return; // Kung na-trigger na minsan, huwag nang ulitin ang tunog at redirection
+            isScanned = true;
+
+            playScanBeep(); // Siguradong isang beses lang tutunog
+            
             setTimeout(function() {
                 window.location.href = "index.php?uid=<?= $user_id; ?>&student_id=" + encodeURIComponent(decodedText);
             }, 400);
@@ -326,7 +331,7 @@ $display_pic = $student_data['profile_pic'] ?? ($student_data['selfie'] ?? ($stu
             "reader", { fps: 10, qrbox: 250 }, false);
         html5QrcodeScanner.render(onScanSuccess);
 
-        // File upload scanner integration
+        // File upload scanner integration na protektado rin ng isScanned guard
         const fileInput = document.getElementById('qr-file-input');
         if (fileInput) {
             fileInput.addEventListener('change', e => {

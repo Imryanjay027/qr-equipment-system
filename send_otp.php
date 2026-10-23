@@ -16,7 +16,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pdo = new PDO("sqlite:" . $db_file);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Siguraduhing may table na may role column
     $pdo->exec("CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE,
@@ -24,30 +23,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         role TEXT DEFAULT 'borrower'
     )");
     
-    // Idagdag ang role column kung sakaling lumang table ang naka-save sa /tmp
     try {
         $pdo->exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'borrower'");
-    } catch (PDOException $e) {
-        // Balewalain kung ang column ay umiiral na
-    }
+    } catch (PDOException $e) {}
     
-    // Alamin kung ang email na ito ay may role nang nakatakda
     $stmt = $pdo->prepare("SELECT role FROM users WHERE email = :email");
     $stmt->execute(['email' => $email]);
     $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     $role = $existing_user['role'] ?? 'borrower';
     
-    // I-update o i-insert ang user kasama ang bagong OTP
     $stmt = $pdo->prepare("INSERT INTO users (email, otp, role) VALUES (:email, :otp, :role) 
                            ON CONFLICT(email) DO UPDATE SET otp=:otp");
     $stmt->execute(['email' => $email, 'otp' => $otp, 'role' => $role]);
     
-    // I-save ang email sa session para magamit sa verification page
     $_SESSION['login_email'] = $email;
+    
+    // Pansamantalang ilalagay natin sa session para makita mo agad kung sakaling hindi pa pumasok sa Brevo
+    $_SESSION['debug_otp'] = $otp;
 
-    // 3. Pagpapadala ng OTP gamit ang Brevo API (cURL)
-    $brevo_api_key = 'XKEYSINB-YOUR_BREVO_API_KEY_HERE'; // Palitan ng iyong totoong Brevo API Key
+    // 3. Brevo API Integration (Palitan ang API key at verified email kapag nakapag-setup ka na)
+    $brevo_api_key = 'XKEYSINB-YOUR_BREVO_API_KEY_HERE'; 
     
     $data = [
         'sender' => ['name' => 'QR Equipment System', 'email' => 'noreply@qreqsystem.com'],
@@ -66,10 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'content-type: application/json'
     ]);
     
-    $response = curl_exec($ch);
+    curl_exec($ch);
     curl_close($ch);
 
-    // 4. I-redirect sa verify_otp.php
     header("Location: verify_otp.php");
     exit();
 }

@@ -1,14 +1,15 @@
 <?php
 session_start();
 
-// Functional PHPMailer / Native SMTP function using Brevo / SMTP
+// Functional Native SMTP function using Port 587 and STARTTLS
 function sendOtpEmail($toEmail, $otpCode) {
-    $smtpHost = 'ssl://smtp.gmail.com';
-    $smtpPort = 465;
+    $smtpHost = 'smtp.gmail.com';
+    $smtpPort = 587;
     $username = 'ryanjayleoligao64@gmail.com';
     $password = 'rtse abkj wqbz oxcg'; // Iyong Gmail App Password
 
-    $socket = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 30);
+    // Gamitin ang tcp:// para sa port 587 bago mag-STARTTLS
+    $socket = fsockopen("tcp://$smtpHost", $smtpPort, $errno, $errstr, 30);
     if (!$socket) {
         return false;
     }
@@ -27,6 +28,20 @@ function sendOtpEmail($toEmail, $otpCode) {
     $getResponse($socket);
 
     // EHLO Command
+    fputs($socket, "EHLO localhost\r\n");
+    $getResponse($socket);
+
+    // STARTTLS Command para mag-secure ng koneksyon sa port 587
+    fputs($socket, "STARTTLS\r\n");
+    $getResponse($socket);
+
+    // I-enable ang crypto para sa TLS handshake
+    if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+        fclose($socket);
+        return false;
+    }
+
+    // EHLO ulit pagkatapos mag-STARTTLS
     fputs($socket, "EHLO localhost\r\n");
     $getResponse($socket);
 
@@ -98,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['otp_code'] = $otp;
             $_SESSION['otp_expires'] = time() + 300; // 5 minutes
 
-            // Ipadala ang OTP via Gmail SMTP Port 465
+            // Ipadala ang OTP via Gmail SMTP Port 587
             if (sendOtpEmail($result['email'], $otp)) {
                 $_SESSION['step'] = 'verify_otp';
                 $successMsg = "Napadala na ang OTP code sa iyong email (" . htmlspecialchars($result['email']) . ").";

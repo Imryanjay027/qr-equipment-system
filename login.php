@@ -1,14 +1,82 @@
 <?php
 session_start();
 
+function sendGmailSMTP($toEmail, $otp, $gmailUser, $gmailAppPass) {
+    $timeout = 10;
+    $smtpHost = 'tls://smtp.gmail.com';
+    $smtpPort = 587;
+
+    $socket = fsockopen($smtpHost, $smtpPort, $errno, $errstr, $timeout);
+    if (!$socket) return false;
+
+    $read = fgets($socket, 512);
+    
+    fputs($socket, "EHLO localhost\r\n");
+    while ($line = fgets($socket, 512)) {
+        if (substr($line, 3, 1) == " ") break;
+    }
+
+    fputs($socket, "STARTTLS\r\n");
+    $read = fgets($socket, 512);
+
+    stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+
+    fputs($socket, "EHLO localhost\r\n");
+    while ($line = fgets($socket, 512)) {
+        if (substr($line, 3, 1) == " ") break;
+    }
+
+    fputs($socket, "AUTH LOGIN\r\n");
+    $read = fgets($socket, 512);
+
+    fputs($socket, base64_encode($gmailUser) . "\r\n");
+    $read = fgets($socket, 512);
+
+    fputs($socket, base64_encode($gmailAppPass) . "\r\n");
+    $read = fgets($socket, 512);
+
+    fputs($socket, "MAIL FROM: <" . $gmailUser . ">\r\n");
+    $read = fgets($socket, 512);
+
+    fputs($socket, "RCPT TO: <" . $toEmail . ">\r\n");
+    $read = fgets($socket, 512);
+
+    fputs($socket, "DATA\r\n");
+    $read = fgets($socket, 512);
+
+    $headers  = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: QR Equipment System <" . $gmailUser . ">\r\n";
+    $headers .= "To: <" . $toEmail . ">\r\n";
+    $headers .= "Subject: Your Login OTP Code - QR Equipment System\r\n";
+
+    $body = '
+    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
+        <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px;">
+            <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
+            <p>Hello,</p>
+            <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
+            <h1 style="text-align: center; font-size: 36px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
+        </div>
+    </div>';
+
+    fputs($socket, $headers . "\r\n" . $body . "\r\n.\r\n");
+    $read = fgets($socket, 512);
+
+    fputs($socket, "QUIT\r\n");
+    fclose($socket);
+
+    return true;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email'] ?? '');
     
     if (!empty($email)) {
-        // 1. Generate 6-digit OTP
+        // 1. Gumawa ng 6-digit OTP
         $otp = (string)rand(100000, 999999);
         
-        // 2. Database logic (SQLite)
+        // 2. Database logic
         $db_file = '/tmp/qrcode_database.sqlite';
         try {
             $pdo = new PDO("sqlite:" . $db_file);
@@ -37,40 +105,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $_SESSION['login_email'] = $email;
 
-            // 3. Resend API Integration
-            $resend_api_key = 're_fGQcd6w9_My7wW37qPHBqmko9GwjFsEm6'; // Ang bago mong API Key
-            
-            $postData = json_encode([
-                'from' => 'onboarding@resend.dev',
-                'to' => [$email],
-                'subject' => 'Your Login OTP Code - QR Equipment System',
-                'html' => '
-                    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
-                        <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px;">
-                            <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
-                            <p>Hello,</p>
-                            <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
-                            <h1 style="text-align: center; font-size: 36px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
-                        </div>
-                    </div>'
-            ]);
+            // 3. Google Gmail SMTP Credentials (Gamit ang App Password mo)
+            $gmail_user = 'ryanjayleoligao64@gmail.com';
+            $gmail_app_pass = 'opmpadmotiysdzsi';
 
-            $ch = curl_init('https://api.resend.com/emails');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . trim($resend_api_key),
-                'Content-Type: application/json',
-                'Accept: application/json'
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            
-            $response = curl_exec($ch);
-            curl_close($ch);
+            sendGmailSMTP($email, $otp, $gmail_user, $gmail_app_pass);
 
-            // Diretso sa OTP verification page!
+            // Diretso sa OTP verification page
             header("Location: verify_otp.php");
             exit();
 

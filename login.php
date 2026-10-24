@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $_SESSION['login_email'] = $email;
 
-            // 3. Resend API call (Palitan ang API key sa ibaba ng bagong Resend API Key mo)
-            $resend_api_key = 'ILAGAY_DITO_ANG_BAGONG_RESEND_API_KEY'; 
+            // 3. Resend API call (Gamit na ang BAGO mong API key)
+            $resend_api_key = 're_fGQcd6w9_My7wW37qPHBqmko9GwjFsEm6';
             
             $data = [
                 'from' => 'QR Equipment System <onboarding@resend.dev>',
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             $curl_error = curl_error($ch);
             curl_close($ch);
 
-            // PAG MAY ERROR SA EMAIL, TITINGNAN NATIN SA SCREEN
+            // Debug screen kapag may hindi nag-match o nag-error sa delivery
             if ($http_code !== 200 && $http_code !== 201) {
                 echo "<div style='padding: 30px; font-family: Arial; background: #fff3cd; color: #856404; border: 1px solid #ffeba2; border-radius: 8px; margin: 50px auto; max-width: 600px;'>";
                 echo "<h2>Email Delivery Debug Output</h2>";
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         <img src="logo.jpg" alt="Logo" class="logo" onerror="this.style.display='none'">
         <div class="system-title">QR-BASED EQUIPMENT MONITORING SYSTEM</div>
         
-        <h2>System Login</h2>
+        ## System Login
         <p>Enter your registered email address to receive an OTP.</p>
 
         <form action="login.php" method="POST">

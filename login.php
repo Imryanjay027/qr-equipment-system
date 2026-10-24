@@ -1,81 +1,127 @@
 <?php
 session_start();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
-    $email = trim($_POST['email'] ?? '');
-    
-    if (!empty($email)) {
-        // 1. Generate 6-digit OTP
-        $otp = (string)rand(100000, 999999);
-        
-        // 2. Database logic (SQLite)
-        $db_file = '/tmp/qrcode_database.sqlite';
-        try {
-            $pdo = new PDO("sqlite:" . $db_file);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            
-            $pdo->exec("CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE,
-                otp TEXT,
-                role TEXT DEFAULT 'borrower'
-            )");
-            
-            try {
-                $pdo->exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'borrower'");
-            } catch (PDOException $e) {}
-            
-            $stmt = $pdo->prepare("SELECT role FROM users WHERE email = :email");
-            $stmt->execute(['email' => $email]);
-            $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            $role = $existing_user['role'] ?? 'borrower';
-            
-            $stmt = $pdo->prepare("INSERT INTO users (email, otp, role) VALUES (:email, :otp, :role) 
-                                   ON CONFLICT(email) DO UPDATE SET otp=:otp");
-            $stmt->execute(['email' => $email, 'otp' => $otp, 'role' => $role]);
-            
-            $_SESSION['login_email'] = $email;
+// Functional PHPMailer / Native SMTP function using SSL (Port 465)
+function sendOtpEmail($toEmail, $otpCode) {
+    $smtpHost = 'ssl://smtp.gmail.com';
+    $smtpPort = 465;
+    $username = 'ryanjayleoligao64@gmail.com';
+    $password = 'rtse abkj wqbz oxcg'; // Iyong Gmail App Password
 
-            // 3. Resend API cURL Integration (Gumagamit ng HTTPS standard port 443 - Walang Socket Error)
-            $resend_api_key = 're_fGQcd6w9_My7wW37qPHBqmko9GwjFsEm6'; 
+    $socket = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 30);
+    if (!$socket) {
+        return false;
+    }
+
+    // Helper function para magbasa ng SMTP response
+    $getResponse = function($socket) {
+        $response = "";
+        while ($str = fgets($socket, 512)) {
+            $response .= $str;
+            if (substr($str, 3, 1) == " ") break;
+        }
+        return $response;
+    };
+
+    $getResponse($socket);
+
+    // EHLO Command
+    fputs($socket, "EHLO localhost\r\n");
+    $getResponse($socket);
+
+    // AUTH LOGIN
+    fputs($socket, "AUTH LOGIN\r\n");
+    $getResponse($socket);
+
+    fputs($socket, base64_encode($username) . "\r\n");
+    $getResponse($socket);
+
+    fputs($socket, base64_encode($password) . "\r\n");
+    $getResponse($socket);
+
+    // MAIL FROM & RCPT TO
+    fputs($socket, "MAIL FROM: <$username>\r\n");
+    $getResponse($socket);
+
+    fputs($socket, "RCPT TO: <$toEmail>\r\n");
+    $getResponse($socket);
+
+    // DATA Command
+    fputs($socket, "DATA\r\n");
+    $getResponse($socket);
+
+    // Headers & Body
+    $headers  = "From: Equipment Monitoring System <$username>\r\n";
+    $headers .= "To: <$toEmail>\r\n";
+    $headers .= "Subject: Your Login OTP Code\r\n";
+    $headers .= "MIME-Version: 1.0\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+
+    $message  = "<h2>Equipment Monitoring System</h2>";
+    $message .= "<p>Ang iyong OTP Verification Code para makapag-login ay:</p>";
+    $message .= "<h1 style='color: #2b6cb0; font-size: 32px;'>$otpCode</h1>";
+    $message .= "<p>Valid ang code na ito sa loob ng 5 minuto. Huwag ipamahagi kanino man.</p>";
+
+    $emailContent = $headers . "\r\n" . $message . "\r\n.\r\n";
+    fputs($socket, $emailContent);
+    $getResponse($socket);
+
+    // QUIT
+    fputs($socket, "QUIT\r\n");
+    fclose($socket);
+
+    return true;
+}
+
+// Logic para sa Form Handling (SQLite Database Integration)
+$db = new SQLite3('/app/database.sqlite'); // O ang eksaktong path ng iyong sqlite db file
+
+$errorMsg = '';
+$successMsg = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action']) && $_POST['action'] === 'login') {
+        $usernameInput = trim($_POST['username'] ?? '');
+        $passwordInput = trim($_POST['password'] ?? '');
+
+        // I-fetch ang user mula sa database
+        $stmt = $db->prepare('SELECT * FROM users WHERE username = :username');
+        $stmt->bindValue(':username', $usernameInput, SQLITE3_TEXT);
+        $result = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+
+        if ($result && password_verify($passwordInput, $result['password'])) {
+            // Generate OTP
+            $otp = rand(100000, 999999);
+            $_SESSION['pending_user_id'] = $result['id'];
+            $_SESSION['pending_email'] = $result['email'];
+            $_SESSION['otp_code'] = $otp;
+            $_SESSION['otp_expires'] = time() + 300; // 5 minutes
+
+            // Ipadala ang OTP via Gmail SMTP Port 465
+            if (sendOtpEmail($result['email'], $otp)) {
+                $_SESSION['step'] = 'verify_otp';
+                $successMsg = "Napadala na ang OTP code sa iyong email (" . htmlspecialchars($result['email']) . ").";
+            } else {
+                $errorMsg = "Bigo sa pagpapadala ng OTP code. Paki-subukan muli.";
+            }
+        } else {
+            $errorMsg = "Maling Username o Password!";
+        }
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'verify_otp') {
+        $enteredOtp = trim($_POST['otp'] ?? '');
+
+        if (time() > ($_SESSION['otp_expires'] ?? 0)) {
+            $errorMsg = "Expired na ang OTP code. Mag-login muli.";
+            unset($_SESSION['step']);
+        } elseif ($enteredOtp == ($_SESSION['otp_code'] ?? '')) {
+            // Success Verification
+            $_SESSION['user_id'] = $_SESSION['pending_user_id'];
+            unset($_SESSION['pending_user_id'], $_SESSION['pending_email'], $_SESSION['otp_code'], $_SESSION['otp_expires'], $_SESSION['step']);
             
-            $postData = json_encode([
-                'from' => 'onboarding@resend.dev',
-                'to' => [$email],
-                'subject' => 'Your Login OTP Code - QR Equipment System',
-                'html' => '
-                    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
-                        <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px;">
-                            <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
-                            <p>Hello,</p>
-                            <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
-                            <h1 style="text-align: center; font-size: 36px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
-                        </div>
-                    </div>'
-            ]);
-
-            $ch = curl_init('https://api.resend.com/emails');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . trim($resend_api_key),
-                'Content-Type: application/json',
-                'Accept: application/json'
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            
-            $response = curl_exec($ch);
-            curl_close($ch);
-
-            // Diretso sa OTP verification page
-            header("Location: verify_otp.php");
-            exit();
-
-        } catch (PDOException $e) {
-            die("Database Error: " . $e->getMessage());
+            header('Location: index.php');
+            exit;
+        } else {
+            $errorMsg = "Maling OTP Code! Paki-subukan muli.";
         }
     }
 }
@@ -85,36 +131,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - QR Equipment System</title>
+    <title>Login - QR Equipment Monitoring System</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        .logo { width: 90px; height: 90px; object-fit: contain; margin-bottom: 5px; border-radius: 50%; }
-        .system-title { color: #28a745; font-size: 15px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
-        .login-container h2 { margin-bottom: 5px; font-size: 20px; color: #333; }
-        p { color: #666; font-size: 13px; margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; text-align: left; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
-        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .btn-login { width: 100%; padding: 10px; background-color: #28a745; border: none; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
-        .btn-login:hover { background-color: #218838; }
+        body { font-family: Arial, sans-serif; background: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 100px 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .alert { padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        .alert-danger { background: #f8d7da; color: #721c24; }
+        .alert-success { background: #d4edda; color: #155724; }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <img src="logo.jpg" alt="Logo" class="logo" onerror="this.style.display='none'">
-        <div class="system-title">QR-BASED EQUIPMENT MONITORING SYSTEM</div>
-        
-        <h2>System Login</h2>
-        <p>Enter your registered email address to receive an OTP.</p>
 
+<div class="login-card">
+    <h2 style="text-align: center;">System Login</h2>
+
+    <?php if ($errorMsg): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($errorMsg) ?></div>
+    <?php endif; ?>
+
+    <?php if ($successMsg): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($successMsg) ?></div>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['step']) && $_SESSION['step'] === 'verify_otp'): ?>
+        <!-- STEP 2: OTP Verification Form -->
         <form action="login.php" method="POST">
+            <input type="hidden" name="action" value="verify_otp">
             <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email" required autofocus>
+                <label for="otp">Enter 6-Digit OTP Code:</label>
+                <input type="text" name="otp" id="otp" required maxlength="6" placeholder="123456" autofocus>
             </div>
-            <button type="submit" class="btn-login">Send OTP Code</button>
+            <button type="submit">Verify OTP</button>
         </form>
-    </div>
+    <?php else: ?>
+        <!-- STEP 1: Credentials Form -->
+        <form action="login.php" method="POST">
+            <input type="hidden" name="action" value="login">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" name="username" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" name="password" id="password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+    <?php endif; ?>
+</div>
+
 </body>
 </html>

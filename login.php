@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $_SESSION['login_email'] = $email;
 
-            // 3. Resend API call (Gamit na ang BAGO mong API key)
+            // 3. Resend API call
             $resend_api_key = 're_fGQcd6w9_My7wW37qPHBqmko9GwjFsEm6';
             
             $data = [
@@ -66,23 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $response = curl_exec($ch);
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curl_error = curl_error($ch);
             curl_close($ch);
 
-            // Debug screen kapag may hindi nag-match o nag-error sa delivery
-            if ($http_code !== 200 && $http_code !== 201) {
-                echo "<div style='padding: 30px; font-family: Arial; background: #fff3cd; color: #856404; border: 1px solid #ffeba2; border-radius: 8px; margin: 50px auto; max-width: 600px;'>";
-                echo "<h2>Email Delivery Debug Output</h2>";
-                echo "<b>HTTP Status Code:</b> " . $http_code . "<br>";
-                echo "<b>cURL Error:</b> " . ($curl_error ?: 'None') . "<br>";
-                echo "<b>Resend Response:</b> <pre>" . htmlspecialchars($response) . "</pre>";
-                echo "<hr>";
-                echo "<p><b>Generated OTP for testing:</b> <span style='font-size: 20px; color: #d9534f;'>" . $otp . "</span></p>";
-                echo "<a href='verify_otp.php' style='display: inline-block; padding: 10px 15px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;'>Proceed to Verify OTP Screen</a>";
-                echo "</div>";
-                exit();
-            }
-
+            // Itinago na natin ang dilaw na debug screen. Diretso na sa verify page anuman ang mangyari.
             header("Location: verify_otp.php");
             exit();
 
@@ -117,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         <img src="logo.jpg" alt="Logo" class="logo" onerror="this.style.display='none'">
         <div class="system-title">QR-BASED EQUIPMENT MONITORING SYSTEM</div>
         
-        ## System Login
+        <h2>System Login</h2>
         <p>Enter your registered email address to receive an OTP.</p>
 
         <form action="login.php" method="POST">

@@ -2,24 +2,23 @@
 session_start();
 
 function sendGmailSMTP($toEmail, $otp, $gmailUser, $gmailAppPass) {
-    $timeout = 10;
-    $smtpHost = 'tls://smtp.gmail.com';
-    $smtpPort = 587;
+    $timeout = 15;
+    // Paggamit ng Direct SSL sa Port 465 para maiwasan ang STARTTLS handshake error
+    $smtpHost = 'ssl://smtp.gmail.com';
+    $smtpPort = 465;
 
-    $socket = fsockopen($smtpHost, $smtpPort, $errno, $errstr, $timeout);
+    $context = stream_context_create([
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true
+        ]
+    ]);
+
+    $socket = stream_socket_client($smtpHost . ':' . $smtpPort, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
     if (!$socket) return false;
 
     $read = fgets($socket, 512);
-    
-    fputs($socket, "EHLO localhost\r\n");
-    while ($line = fgets($socket, 512)) {
-        if (substr($line, 3, 1) == " ") break;
-    }
-
-    fputs($socket, "STARTTLS\r\n");
-    $read = fgets($socket, 512);
-
-    stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 
     fputs($socket, "EHLO localhost\r\n");
     while ($line = fgets($socket, 512)) {
@@ -76,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
         // 1. Gumawa ng 6-digit OTP
         $otp = (string)rand(100000, 999999);
         
-        // 2. Database logic
+        // 2. Database logic (SQLite)
         $db_file = '/tmp/qrcode_database.sqlite';
         try {
             $pdo = new PDO("sqlite:" . $db_file);
@@ -105,11 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $_SESSION['login_email'] = $email;
 
-            // 3. Google Gmail SMTP Credentials (Gamit ang App Password mo)
+            // 3. Google Gmail SMTP Credentials
             $gmail_user = 'ryanjayleoligao64@gmail.com';
             $gmail_app_pass = 'opmpadmotiysdzsi';
 
-            sendGmailSMTP($email, $otp, $gmail_user, $gmail_app_pass);
+            @sendGmailSMTP($email, $otp, $gmail_user, $gmail_app_pass);
 
             // Diretso sa OTP verification page
             header("Location: verify_otp.php");

@@ -1,5 +1,13 @@
 <?php
-$conn = mysqli_connect("localhost", "root", "", "qrcode");
+$host = getenv('DB_HOST');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASS');
+$dbname = getenv('DB_NAME');
+$port = 3306;
+
+// Paggamit ng mysqli_connect kasama ang port
+$conn = mysqli_connect($host, $user, $pass, $dbname, $port);
+
 if (!$conn) {
     die("Connection Failed: " . mysqli_connect_error());
 }

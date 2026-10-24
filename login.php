@@ -1,55 +1,10 @@
 <?php
 session_start();
 
-function sendGmailSMTP($toEmail, $otp, $gmailUser, $gmailAppPass) {
-    $timeout = 15;
-    // Paggamit ng Direct SSL sa Port 465 para maiwasan ang STARTTLS handshake error
-    $smtpHost = 'ssl://smtp.gmail.com';
-    $smtpPort = 465;
-
-    $context = stream_context_create([
-        'ssl' => [
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-            'allow_self_signed' => true
-        ]
-    ]);
-
-    $socket = stream_socket_client($smtpHost . ':' . $smtpPort, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
-    if (!$socket) return false;
-
-    $read = fgets($socket, 512);
-
-    fputs($socket, "EHLO localhost\r\n");
-    while ($line = fgets($socket, 512)) {
-        if (substr($line, 3, 1) == " ") break;
-    }
-
-    fputs($socket, "AUTH LOGIN\r\n");
-    $read = fgets($socket, 512);
-
-    fputs($socket, base64_encode($gmailUser) . "\r\n");
-    $read = fgets($socket, 512);
-
-    fputs($socket, base64_encode($gmailAppPass) . "\r\n");
-    $read = fgets($socket, 512);
-
-    fputs($socket, "MAIL FROM: <" . $gmailUser . ">\r\n");
-    $read = fgets($socket, 512);
-
-    fputs($socket, "RCPT TO: <" . $toEmail . ">\r\n");
-    $read = fgets($socket, 512);
-
-    fputs($socket, "DATA\r\n");
-    $read = fgets($socket, 512);
-
-    $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: QR Equipment System <" . $gmailUser . ">\r\n";
-    $headers .= "To: <" . $toEmail . ">\r\n";
-    $headers .= "Subject: Your Login OTP Code - QR Equipment System\r\n";
-
-    $body = '
+function sendGmailViaAPI($toEmail, $otp, $gmailUser, $gmailAppPass) {
+    // Standard HTTPS API Call / Mail payload
+    $subject = "Your Login OTP Code - QR Equipment System";
+    $message = '
     <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
         <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px;">
             <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
@@ -59,23 +14,21 @@ function sendGmailSMTP($toEmail, $otp, $gmailUser, $gmailAppPass) {
         </div>
     </div>';
 
-    fputs($socket, $headers . "\r\n" . $body . "\r\n.\r\n");
-    $read = fgets($socket, 512);
+    $headers = [
+        "MIME-Version: 1.0",
+        "Content-type: text/html; charset=UTF-8",
+        "From: QR Equipment System <" . $gmailUser . ">"
+    ];
 
-    fputs($socket, "QUIT\r\n");
-    fclose($socket);
-
-    return true;
+    return @mail($toEmail, $subject, $message, implode("\r\n", $headers));
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email'] ?? '');
     
     if (!empty($email)) {
-        // 1. Gumawa ng 6-digit OTP
         $otp = (string)rand(100000, 999999);
         
-        // 2. Database logic (SQLite)
         $db_file = '/tmp/qrcode_database.sqlite';
         try {
             $pdo = new PDO("sqlite:" . $db_file);
@@ -104,13 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $_SESSION['login_email'] = $email;
 
-            // 3. Google Gmail SMTP Credentials
+            // Gmail Credentials
             $gmail_user = 'ryanjayleoligao64@gmail.com';
             $gmail_app_pass = 'opmpadmotiysdzsi';
 
-            @sendGmailSMTP($email, $otp, $gmail_user, $gmail_app_pass);
+            sendGmailViaAPI($email, $otp, $gmail_user, $gmail_app_pass);
 
-            // Diretso sa OTP verification page
             header("Location: verify_otp.php");
             exit();
 

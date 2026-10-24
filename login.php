@@ -8,7 +8,16 @@ function sendOtpEmail($toEmail, $otpCode) {
     $username = 'ryanjayleoligao64@gmail.com';
     $password = 'rtse abkj wqbz oxcg'; // Iyong Gmail App Password
 
-    $socket = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 30);
+    // Ayusin ang SSL context para maiwasan ang OpenSSL version / certificate errors sa server
+    $context = stream_context_create([
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true
+        ]
+    ]);
+
+    $socket = stream_socket_client("$smtpHost:$smtpPort", $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $context);
     if (!$socket) {
         return false;
     }

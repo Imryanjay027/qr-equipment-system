@@ -23,6 +23,7 @@ function sendOtpEmail($toEmail, $otpCode) {
         return $response;
     };
 
+    // Basahin ang initial greeting ng server
     $getResponse($socket);
 
     // EHLO Command
@@ -74,7 +75,7 @@ function sendOtpEmail($toEmail, $otpCode) {
 }
 
 // Logic para sa Form Handling (SQLite Database Integration)
-$db = new SQLite3('/app/database.sqlite'); // O ang eksaktong path ng iyong sqlite db file
+$db = new SQLite3('/app/database.sqlite'); 
 
 $errorMsg = '';
 $successMsg = '';
@@ -137,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .login-card { background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 100px 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
         button:hover { background: #0056b3; }
         .alert { padding: 10px; border-radius: 4px; margin-bottom: 15px; }

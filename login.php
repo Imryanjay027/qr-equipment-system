@@ -1,23 +1,14 @@
 <?php
 session_start();
 
-// Functional PHPMailer / Native SMTP function using SSL (Port 465)
+// Functional PHPMailer / Native SMTP function using Brevo / SMTP
 function sendOtpEmail($toEmail, $otpCode) {
     $smtpHost = 'ssl://smtp.gmail.com';
     $smtpPort = 465;
     $username = 'ryanjayleoligao64@gmail.com';
     $password = 'rtse abkj wqbz oxcg'; // Iyong Gmail App Password
 
-    // Ayusin ang SSL context para maiwasan ang OpenSSL version / certificate errors sa server
-    $context = stream_context_create([
-        'ssl' => [
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-            'allow_self_signed' => true
-        ]
-    ]);
-
-    $socket = stream_socket_client("$smtpHost:$smtpPort", $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $context);
+    $socket = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 30);
     if (!$socket) {
         return false;
     }

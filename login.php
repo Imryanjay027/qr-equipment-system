@@ -5,10 +5,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $email = trim($_POST['email'] ?? '');
     
     if (!empty($email)) {
-        // 1. Gumawa ng 6-digit OTP
+        // 1. Generate 6-digit OTP
         $otp = rand(100000, 999999);
         
-        // 2. Database logic
+        // 2. Database logic (SQLite)
         $db_file = '/tmp/qrcode_database.sqlite';
         try {
             $pdo = new PDO("sqlite:" . $db_file);
@@ -37,38 +37,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $_SESSION['login_email'] = $email;
 
-            // 3. Resend API call
+            // 3. Resend API Call
             $resend_api_key = 're_fGQcd6w9_My7wW37qPHBqmko9GwjFsEm6';
             
-            $data = [
-                'from' => 'QR Equipment System <onboarding@resend.dev>',
+            $payload = json_encode([
+                'from' => 'onboarding@resend.dev',
                 'to' => [$email],
-                'subject' => 'Your Login OTP Code - QR Equipment System',
-                'html' => '
-                    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9;">
-                        <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px;">
-                            <h3 style="color: #28a745; text-align: center;">QR EQUIPMENT SYSTEM</h3>
-                            <p>Hello,</p>
-                            <p>Here is your One-Time Password (OTP) to complete your login attempt:</p>
-                            <h1 style="text-align: center; font-size: 36px; color: #007bff; background: #e9ecef; padding: 12px; border-radius: 5px;">' . $otp . '</h1>
-                        </div>
-                    </div>'
-            ];
+                'subject' => 'Your OTP Code - QR Equipment Monitoring System',
+                'html' => '<p>Your OTP code is: <strong>' . $otp . '</strong></p>'
+            ]);
 
             $ch = curl_init('https://api.resend.com/emails');
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $resend_api_key,
+                'Authorization: Bearer ' . trim($resend_api_key),
                 'Content-Type: application/json'
             ]);
-            
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Tinitiyak na hindi haharangin ng SSL restriction sa server
+
             $response = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
 
-            // Itinago na natin ang dilaw na debug screen. Diretso na sa verify page anuman ang mangyari.
             header("Location: verify_otp.php");
             exit();
 

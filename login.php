@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             
             $_SESSION['login_email'] = $email;
 
-            // 3. Resend API call
-            $resend_api_key = 're_9moupy88_3ZfHSK7N8PdU1uLBavhH2dnD';
+            // 3. Resend API call (Palitan ang API key sa ibaba ng bagong Resend API Key mo)
+            $resend_api_key = 'ILAGAY_DITO_ANG_BAGONG_RESEND_API_KEY'; 
             
             $data = [
                 'from' => 'QR Equipment System <onboarding@resend.dev>',

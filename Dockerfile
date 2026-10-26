@@ -1,14 +1,10 @@
 FROM php:8.2-apache
 
-# I-update ang package lists at i-install ang mga kinakailangang dependencies
-RUN apt-get update && apt-get install -y \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    && docker-php-ext-install mysqli pdo pdo_mysql
+# Ang PHP 8.2-apache ay may built-in na mysqli at pdo_mysql, i-enable lang natin kung kinakailangan
+RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# Kopyahin ang project files sa tamang web directory ng container
+# Kopyahin ang buong project files sa web root ng Apache
 COPY . /var/www/html/
 
-# I-set ang tamang permissions kung kinakailangan
-RUN chown -www-data:www-data /var/www/html -R
+# Ayusin ang permissions
+RUN chown -R www-data:www-data /var/www/html

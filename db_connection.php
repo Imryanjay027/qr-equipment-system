@@ -1,8 +1,8 @@
 <?php
 $host = 'mariadb-database-scvzklpphi95efixy0m7hpyg';
 $db   = 'default';
-$user = 'mariadb';
-$pass = 'ryanjay09954040736'; // Eksaktong password mula sa Coolify dashboard
+$user = 'root'; 
+$pass = 'qOAF8F2klYnvxBSlj15uEx88gJxMM95J6QC6TJ1FYRgX9cHvqgA3QlmOhnETItCV';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 

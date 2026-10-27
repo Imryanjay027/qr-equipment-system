@@ -1,101 +1,187 @@
 <?php
 session_start();
-date_default_timezone_set('Asia/Manila');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+require_once 'db_connection.php';
 
-$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
-$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
-
-$conn = @new mysqli($host, $username, $password, $database, (int)$port);
-if ($conn->connect_error) {
-    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
+// Siguraduhing naka-login ang user
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
 }
 
-if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+$userId = $_SESSION['user_id'];
+
+try {
+    // Kunin ang impormasyon ng user mula sa database
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        session_destroy();
+        header("Location: login.php");
+        exit();
+    }
+} catch (PDOException $e) {
+    die("Database Error: " . $e->getMessage());
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Scanner - Equipment Monitoring</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html5-qrcode library -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <title>Borrower's Dashboard - Mary the Queen College of Quezon City</title>
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .scanner-card { max-width: 500px; margin: 30px auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; background-color: #000; }
-        #reader video { object-fit: cover !important; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { display: flex; background-color: #f4f7f6; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Styling */
+        .sidebar { width: 260px; background-color: #0b2514; color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+        .sidebar-top .logo-area { text-align: center; margin-bottom: 30px; }
+        .sidebar-top .logo-area img { width: 70px; height: 70px; border-radius: 50%; margin-bottom: 10px; }
+        .sidebar-top .logo-area h3 { font-size: 13px; line-height: 1.4; color: #fff; }
+        
+        .nav-links { list-style: none; }
+        .nav-links li { margin-bottom: 10px; }
+        .nav-links a { display: flex; align-items: center; color: white; text-decoration: none; padding: 12px 15px; border-radius: 6px; font-size: 14px; transition: background 0.2s; }
+        .nav-links a:hover, .nav-links li.active a { background-color: #1e4620; }
+        
+        .sidebar-bottom { font-size: 11px; color: #a3c1ad; text-style: italic; text-align: center; }
+
+        /* Main Content Styling */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        
+        /* Top Navbar */
+        .top-navbar { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+        .top-navbar .title h2 { font-size: 18px; color: #222; text-transform: uppercase; }
+        .top-navbar .title p { font-size: 12px; color: #777; }
+        .user-nav-info { display: flex; align-items: center; gap: 15px; }
+        .logout-btn { background-color: #dc3545; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; font-size: 13px; }
+        .logout-btn:hover { background-color: #c82333; }
+
+        /* Content Area */
+        .content-body { padding: 30px; }
+        
+        /* Profile Card */
+        .profile-card { background: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .profile-left { display: flex; align-items: center; gap: 20px; }
+        .profile-left img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #1e4620; }
+        .profile-info h3 { font-size: 18px; color: #333; }
+        .profile-info p { font-size: 13px; color: #666; margin-top: 3px; }
+        .qr-box { text-align: center; border: 1px dashed #ccc; padding: 10px; border-radius: 6px; background: #fafafa; }
+        .qr-box p { font-size: 10px; color: #555; margin-top: 5px; }
+
+        /* Table Section */
+        .section-box { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 25px; }
+        .section-header { background-color: #1e4620; color: white; padding: 12px 20px; font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th, td { padding: 12px 20px; border-bottom: 1px solid #eee; }
+        th { background-color: #265c29; color: white; }
+        .empty-row { text-align: center; padding: 25px; color: #777; font-style: italic; }
+
+        /* Action Banner */
+        .action-banner { background: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .action-banner-text h4 { font-size: 15px; color: #333; }
+        .action-banner-text p { font-size: 12px; color: #666; margin-top: 3px; }
+        .borrow-btn { background-color: #265c29; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; }
+        .borrow-btn:hover { background-color: #1e4620; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="scanner-card text-center">
-        <h4 class="fw-bold mb-1 text-success"><i class="fas fa-qrcode me-2"></i>QR Code Scanner</h4>
-        <p class="text-muted small mb-3">I-align ang QR code sa loob ng frame para mag-scan</p>
-        
-        <!-- Area para sa QR Reader -->
-        <div id="reader" style="min-height: 280px;"></div>
-        
-        <div id="scan-result" class="mt-3 alert alert-info d-none" role="alert">
-            <span id="result-text">Scanning...</span>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="logo-area">
+                <!-- Palitan ang logo.png kung kinakailangan -->
+                <img src="logo.png" alt="School Logo" onerror="this.src='https://via.placeholder.com/70'">
+                <h3>MARY THE QUEEN COLLEGE OF QUEZON CITY</h3>
+            </div>
+            <ul class="nav-links">
+                <li class="active"><a href="borrower.php">🏠 Dashboard</a></li>
+                <li><a href="borrow_item.php">➕ Borrow an Item</a></li>
+                <li><a href="history.php">📋 Returned Items / History</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-bottom">
+            <p>"Discipline today, excellence tomorrow."</p>
         </div>
     </div>
-</div>
 
-<script>
-    function onScanSuccess(decodedText, decodedResult) {
-        // Kapag matagumpay na na-scan ang QR code
-        document.getElementById('scan-result').classList.remove('d-none');
-        document.getElementById('result-text').innerText = "Scanned: " + decodedText;
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="title">
+                <h2>Borrower's Dashboard</h2>
+                <p>Equipment Borrowing, Return & Monitoring Portal</p>
+            </div>
+            <div class="user-nav-info">
+                <span>👤 <?php echo htmlspecialchars($user['name']); ?></span>
+                <a href="logout.php" class="logout-btn">Logout</a>
+            </div>
+        </div>
 
-        // Halimbawa: I-redirect papuntang registration o borrower page gamit ang scanned QR value
-        setTimeout(() => {
-            window.location.href = "registration.php?qr=" + encodeURIComponent(decodedText);
-        }, 1000);
-    }
+        <!-- Content Body -->
+        <div class="content-body">
+            
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <div class="profile-left">
+                    <?php if (!empty($user['profile_picture'])): ?>
+                        <img src="<?php echo $user['profile_picture']; ?>" alt="Live Selfie">
+                    <?php else: ?>
+                        <img src="https://via.placeholder.com/80" alt="Default Avatar">
+                    <?php endif; ?>
+                    <div class="profile-info">
+                        <h3><?php echo htmlspecialchars($user['name']); ?></h3>
+                        <p><strong>Student ID / User ID:</strong> MQC-<?php echo str_pad($user['id'], 4, '0', STR_PAD_LEFT); ?></p>
+                        <p><strong>Course / Year / Section:</strong> <?php echo htmlspecialchars($user['course_year_section'] ?? 'N/A'); ?></p>
+                    </div>
+                </div>
+                <div class="qr-box">
+                    <!-- Maaari mong palitan ito ng dynamic QR code kung kinakailangan -->
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=USER-<?php echo $user['id']; ?>" alt="QR Code">
+                    <p>Your QR Code</p>
+                </div>
+            </div>
 
-    function onScanFailure(error) {
-        // Karaniwang walang ginagawa rito habang patuloy na naghahanap ng QR code
-    }
+            <!-- My Borrowed Equipment Table -->
+            <div class="section-box">
+                <div class="section-header">
+                    <span>📦</span> My Borrowed Equipment
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Equipment Name</th>
+                            <th>Borrow Date / Due Date</th>
+                            <th>Status / Action</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dito mo ikokonekta ang query para sa mga hiniram na gamit -->
+                        <tr>
+                            <td colspan="5" class="empty-row">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-    // Optimization para sa Mobile Phones
-    const html5QrCode = new Html5Qrcode("reader");
-    
-    // Configurations para mabilis at hindi mag-lag sa mobile
-    const qrConfig = {
-        fps: 15, // Ibaba sa 15 fps para mabilis mag-process ang browser at camera ng phone
-        qrbox: { width: 220, height: 220 }, // Sukat ng scan box
-        aspectRatio: 1.0
-    };
+            <!-- Need to borrow an item banner -->
+            <div class="action-banner">
+                <div class="action-banner-text">
+                    <h4>Need to borrow an item?</h4>
+                    <p>Submit a new borrowing request from the inventory.</p>
+                </div>
+                <a href="borrow_item.php" class="borrow-btn">+ Borrow an Item</a>
+            </div>
 
-    // Pwersahin ang paggamit ng back camera (environment facing mode)
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        qrConfig, 
-        onScanSuccess, 
-        onScanFailure
-    ).catch(err => {
-        console.warn("Back camera fail, fallback to default camera:", err);
-        // Fallback kung sakaling hindi mahanap ang environment camera
-        html5QrCode.start(
-            { facingMode: "user" }, 
-            qrConfig, 
-            onScanSuccess, 
-            onScanFailure
-        );
-    });
-</script>
+        </div>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

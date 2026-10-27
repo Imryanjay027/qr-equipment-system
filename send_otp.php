@@ -38,12 +38,12 @@ if (!empty($email)) {
         $mail->isSMTP();
         $mail->Host       = 'smtp-relay.brevo.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'bed417001@smtp-brevo.com';[cite: 10]
-        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K';[cite: 10]
+        $mail->Username   = 'bed417001@smtp-brevo.com';
+        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        // Recipients - Subukan nating gamitin ang Brevo account email o default sender
+        // Recipients
         $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC Equipment Monitoring');
         $mail->addAddress($email);
 

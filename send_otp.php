@@ -6,12 +6,12 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Configuration para sa Database Connection (Nakase-set sa qr_equipment_db)
+// Configuration para sa Database Connection (Itinaguyod sa qr_equipment_db)
 $db_host = getenv('DB_HOST') ?: 'scvzklpphi95efixy0m7hpyg';
 $db_port = getenv('DB_PORT') ?: '3306';
 $db_user = getenv('DB_USER') ?: 'mariadb';
 $db_pass = getenv('DB_PASS') ?: 'pPjqOQG7NRXy20MSRfcuNVhtLTbiAR75w9CLeSceBwp06CQLGrUjgeLolgHCBzJH';
-$db_name = getenv('DB_NAME') ?: 'qr_equipment_db';
+$db_name = getenv('DB_NAME') ?: 'qr_equipment_db'; // Pinalitan mula 'default' patungong 'qr_equipment_db'
 
 // 1. Kumonekta sa MariaDB gamit ang PDO (may 3-second timeout limit)
 try {

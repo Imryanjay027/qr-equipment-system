@@ -3,7 +3,7 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection gamit ang Coolify Environment Variables o Fallback
+// Database Connection - Gamitin ang 'qrcode' bilang fallback kung walang DB_NAME sa environment
 $host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
 $port = getenv('DB_PORT') ?: '3306';
 $db   = getenv('DB_NAME') ?: 'qrcode';
@@ -33,10 +33,9 @@ if (!empty($email)) {
     $_SESSION['temp_email'] = $email;
 
     $otp = rand(100000, 999999);
-    // Mag-set ng expiration time (Halimbawa: 5 minuto mula ngayon)
     $expires_at = date("Y-m-d H:i:s", strtotime("+5 minutes"));
 
-    // 1. I-save ang OTP at Expiration sa DATABASE para mabasa ng verify_otp.php
+    // I-save ang OTP at Expiration sa database ng qrcode.users
     $stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE email = ?");
     $stmt->execute([$otp, $expires_at, $email]);
 
@@ -70,7 +69,7 @@ if (!empty($email)) {
 
         $mail->send();
         
-        // Kapag naipadala na, direktang i-redirect sa verify_otp.php para ma-input ang code!
+        // I-redirect sa verify_otp.php para ma-input ang OTP
         header("Location: verify_otp.php");
         exit();
 

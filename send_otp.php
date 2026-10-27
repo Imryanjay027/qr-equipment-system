@@ -10,7 +10,7 @@ require_once 'db_connection.php';
 $email = $_POST['email'] ?? '';
 
 if (empty($email)) {
-    die("ryanjayleoligao64@gmail.com");
+    die("Pakilagay ang iyong email address.");
 }
 
 // Mag-generate ng 6-digit OTP
@@ -30,7 +30,7 @@ try {
     $data = [
         'sender' => [
             'name'  => 'MQCQC Equipment Monitoring',
-            'email' => 'ang_registered_sender_email_mo@gmail.com' // Dapat verified sender email mo ito sa Brevo!
+            'email' => 'ryanjayleoligao64@gmail.com' // Dapat verified sender email mo ito sa Brevo!
         ],
         'to' => [
             [

@@ -1,12 +1,12 @@
 <?php
-// I-on ang error reporting para makita agad ang anumang isyu
+// I-on ang error reporting para makita agad ang anumang isyu kapag nag-test
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Tawagin ang database connection (na may auto-create table)
+// Tawagin ang database connection (na may auto-create ng table)
 require_once 'db_connection.php';
 
-// Kunin ang email mula sa POST request (o para sa testing)
+// Kunin ang email mula sa POST request
 $email = $_POST['email'] ?? '';
 
 if (empty($email)) {
@@ -21,16 +21,17 @@ try {
     $stmt = $pdo->prepare("INSERT INTO otp_table (email, otp_code, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))");
     $stmt->execute([$email, $otp]);
 
-    // 2. Brevo API v3 Configuration
-    // I-PASTE MO DITO SA LOOB NG QUOTES ANG IYONG BAGONG BREVO API KEY (yung xkeysib-...)
-    $apiKey = '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';
+    // 2. Brevo API Configuration
+    // === ILAGAY ANG MGA DATO MO DITO ===
+    $apiKey = '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'; // Palitan ng totoong Brevo API key mo
+    $senderEmail = 'ryanjayleoligao64@gmail.com'; // Palitan ng verified sender email mo sa Brevo
 
     $url = 'https://api.brevo.com/v3/smtp/email';
 
     $data = [
         'sender' => [
             'name'  => 'MQCQC Equipment Monitoring',
-            'email' => 'ryanjayleoligao64@gmail.com' // Dapat verified sender email mo ito sa Brevo!
+            'email' => $senderEmail
         ],
         'to' => [
             [
@@ -41,7 +42,7 @@ try {
         'htmlContent' => "<html><body><h2>MQCQC Equipment Monitoring System</h2><p>Ang iyong OTP code ay: <strong style='font-size: 20px; color: #007bff;'>$otp</strong></p><p>Mag-eexpire ito sa loob ng 5 minuto.</p></body></html>"
     ];
 
-    // 3. Ipadala sa Brevo gamit ang cURL
+    // 3. Ipadala sa Brevo API gamit ang cURL
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -62,10 +63,11 @@ try {
     } else {
         $result = json_decode($response, true);
         if ($httpCode >= 200 && $httpCode < 300) {
-            // Matagumpay na naipadala - i-redirect agad sa verify_otp.php kasama ang email
+            // Matagumpay ang pagpapadala — i-redirect agad sa verify_otp.php
             header("Location: verify_otp.php?email=" . urlencode($email));
             exit();
         } else {
+            // I-print ang error mula sa Brevo kapag pumalya
             echo "<h3 style='color: red;'>Brevo API Error (HTTP Status $httpCode):</h3>";
             echo "<pre>";
             print_r($result);

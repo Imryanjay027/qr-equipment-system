@@ -1,173 +1,282 @@
 <?php
 session_start();
-date_default_timezone_set('Asia/Manila');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+require_once 'db_connection.php';
 
-$host = getenv('MYSQL_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
-$port = getenv('MYSQL_PORT') ?: (getenv('DB_PORT') ?: 3306);
-$username = getenv('MYSQL_USER') ?: (getenv('DB_USER') ?: 'root');
-$password = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$database = getenv('MYSQL_DATABASE') ?: (getenv('DB_NAME') ?: 'qrcode');
+$error = '';
 
-$conn = @new mysqli($host, $username, $password, $database, (int)$port);
-if ($conn->connect_error) {
-    $conn = @new mysqli('mysql', $username, $password, $database, (int)$port);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if (empty($email) || empty($password)) {
+        $error = 'Please enter your email and password.';
+    } else {
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user && password_verify($password, $user['password'])) {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_name'] = $user['name'];
+                $_SESSION['user_role'] = $user['role'];
+
+                // Dito natin inayos ang redirection papunta sa tamang custodian dashboard file
+                if ($user['role'] === 'admin' || $user['role'] === 'custodian') {
+                    header("Location: custodian_dashboard.php");
+                } else {
+                    header("Location: borrower.php");
+                }
+                exit();
+            } else {
+                $error = 'Invalid email or password.';
+            }
+        } catch (PDOException $e) {
+            $error = 'Database Error: ' . $e->getMessage();
+        }
+    }
 }
-
-if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
-}
-
-$user_id = $_SESSION['user_id'] ?? ($_GET['uid'] ?? 1);
-
-// Kunin ang impormasyon ng naka-login na custodian mula sa database
-$user_data = null;
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ? OR student_id = ? LIMIT 1");
-if ($stmt) {
-    $stmt->bind_param("is", $user_id, $user_id);
-    $stmt->execute();
-    $user_data = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-}
-
-// Kunin nang ligtas ang mga values mula sa database
-$display_name = $user_data['full_name'] ?? ($user_data['name'] ?? 'System Custodian');
-$display_sid = $user_data['student_id'] ?? ($user_data['id_number'] ?? 'CUST001');
-$display_course = $user_data['course'] ?? ($user_data['program'] ?? ($user_data['department'] ?? 'Staff'));
-$display_year = $user_data['year_level'] ?? ($user_data['year'] ?? ($user_data['year_lvl'] ?? 'N/A'));
-$display_pic = $user_data['profile_pic'] ?? ($user_data['selfie'] ?? ($user_data['avatar'] ?? ''));
-$user_role = $user_data['role'] ?? ($user_data['user_type'] ?? 'CUSTODIAN');
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custodian Dashboard - MQCQC</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Login - QR-Based Equipment Monitoring System</title>
     <style>
-        :root { --sidebar-width: 260px; --primary-color: #217835; }
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f7f6; display: flex; height: 100vh; overflow: hidden; }
         
-        .sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.05); }
-        .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0c1e35; }
-        .sidebar-brand img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ffc107; }
-        .sidebar-brand h5 { font-size: 12px; font-weight: 700; line-height: 1.4; margin: 0; }
-        
-        .sidebar-menu { padding: 15px 10px; flex-grow: 1; }
-        .sidebar-menu a { display: flex; align-items: center; color: rgba(255,255,255,0.8); padding: 12px 15px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500; margin-bottom: 5px; transition: all 0.2s; cursor: pointer; }
-        .sidebar-menu a:hover, .sidebar-menu a.active { background-color: rgba(255,255,255,0.15); color: white; }
-        .sidebar-menu a i { width: 25px; font-size: 15px; }
+        .split-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
 
-        .sidebar-footer { padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: rgba(255,255,255,0.7); text-align: center; }
+        /* Left Panel na may School Background Image at Gradient Overlay */
+        .brand-panel {
+            flex: 1.1;
+            background: linear-gradient(rgba(0, 40, 20, 0.85), rgba(0, 30, 60, 0.9)), url('school_bg.jpg') no-repeat center center;
+            background-size: cover;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px 60px;
+        }
 
-        .main-content { margin-left: var(--sidebar-width); padding: 25px; }
-        
-        .top-navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 25px; }
-        .top-navbar h4 { font-size: 15px; font-weight: 700; color: #0c1e35; margin: 0; }
-        .top-navbar p { font-size: 11px; color: #777; margin: 0; }
+        .brand-top {
+            text-align: center;
+        }
 
-        .main-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); padding: 25px; margin-bottom: 25px; }
-        
-        .profile-section { display: flex; align-items: center; gap: 20px; }
-        .profile-avatar { width: 70px; height: 70px; background-color: #6c757d; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; object-fit: cover; border: 2px solid #217835; }
+        .brand-top img {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.9);
+            margin-bottom: 15px;
+            object-fit: cover;
+            background: white;
+        }
 
-        .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 12px 20px; align-items: center; justify-content: space-between; }
-        
-        @media (max-width: 768px) {
-            .sidebar { display: none; }
-            .main-content { margin-left: 0; padding: 15px; }
-            .mobile-header { display: flex; }
+        .brand-top h3 {
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: #e0e0e0;
+        }
+
+        .brand-top h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .brand-top p {
+            font-size: 12px;
+            color: #d0d0d0;
+            font-style: italic;
+        }
+
+        .features-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            background: rgba(0, 128, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px 18px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .feature-item .icon {
+            background: #008000;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 14px;
+        }
+
+        .form-panel {
+            flex: 1;
+            background: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-container h2 {
+            font-size: 24px;
+            color: #111;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .login-container .subtitle {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #333;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .error-msg {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .login-btn {
+            width: 100%;
+            background-color: #008000;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .register-footer {
+            text-align: center;
+            font-size: 13px;
+            color: #555;
+            margin-top: 25px;
+        }
+
+        .register-footer a {
+            color: #008000;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        @media (max-width: 900px) {
+            .split-container { flex-direction: column; overflow: auto; }
+            body { overflow: auto; }
+            .brand-panel { display: none; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Mobile Header with Hamburger Toggle -->
-    <div class="mobile-header">
-        <button class="btn text-white p-0 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
-            <i class="fas fa-bars fs-4"></i>
-        </button>
-        <span class="fw-bold" style="font-size: 13px;">MQCQC CUSTODIAN PANEL</span>
-        <span class="badge bg-warning text-dark" style="font-size: 10px;">STAFF</span>
-    </div>
+    <div class="split-container">
+        <div class="brand-panel">
+            <div class="brand-top">
+                <img src="logo.jpg" alt="School Logo" onerror="this.src='https://via.placeholder.com/90'">
+                <h3>MARY THE QUEEN COLLEGE OF QUEZON CITY</h3>
+                <h1>QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
+                <p>Together for a Smarter, Safer and More Efficient Campus</p>
+            </div>
 
-    <!-- Offcanvas Mobile Sidebar -->
-    <div class="offcanvas offcanvas-start bg-success text-white" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
-        <div class="offcanvas-header border-bottom border-light border-opacity-10" style="background-color: #0c1e35;">
-            <h5 class="offcanvas-title fs-6 fw-bold" id="mobileSidebarLabel">MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body d-flex flex-column justify-content-between p-3">
-            <div class="sidebar-menu">
-                <a href="custodian_dashboard.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="borrow_requests.php?uid=<?= $user_id; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
-                <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
-                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-            <div class="text-center py-2 border-top border-light border-opacity-10" style="font-size: 11px; color: rgba(255,255,255,0.7);">
-                <p class="mb-0">"Discipline today, excellence tomorrow."</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Desktop Sidebar -->
-    <div class="sidebar d-none d-md-flex">
-        <div>
-            <div class="sidebar-brand">
-                <img src="logo.jpg" alt="School Logo" onerror="this.src='uploads/default.png';">
-                <h5>MARY THE QUEEN COLLEGE OF QUEZON CITY</h5>
-            </div>
-            <div class="sidebar-menu">
-                <a href="custodian_dashboard.php?uid=<?= $user_id; ?>" class="active"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="borrow_requests.php?uid=<?= $user_id; ?>"><i class="fas fa-list-alt"></i> Borrowing Requests</a>
-                <a href="index.php?uid=<?= $user_id; ?>"><i class="fas fa-qrcode"></i> QR Scanner Portal</a>
-                <a href="login.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </div>
-        <div class="sidebar-footer">
-            <p class="mb-0">"Discipline today, excellence tomorrow."</p>
-        </div>
-    </div>
-
-    <!-- Main Content Area -->
-    <div class="main-content">
-        <div class="top-navbar d-none d-md-flex">
-            <div>
-                <h4>CUSTODIAN'S DASHBOARD</h4>
-                <p>Equipment Monitoring & Management Portal</p>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <span class="badge bg-success px-3 py-2" style="font-size: 11px;"><?= strtoupper(htmlspecialchars($user_role)); ?></span>
-            </div>
-        </div>
-
-        <div class="main-card">
-            <div class="profile-section mb-4">
-                <?php if (!empty($display_pic)): ?>
-                    <img src="<?= htmlspecialchars($display_pic); ?>" class="profile-avatar" alt="Custodian Selfie">
-                <?php else: ?>
-                    <div class="profile-avatar">
-                        <i class="fas fa-user-shield"></i>
-                    </div>
-                <?php endif; ?>
-                <div>
-                    <h4 class="fw-bold text-dark mb-1"><?= htmlspecialchars($display_name); ?></h4>
-                    <p class="text-muted mb-0 small">ID / Code: <strong><?= htmlspecialchars($display_sid); ?></strong></p>
-                    <p class="text-muted mb-0 small">Department / Role: <strong><?= htmlspecialchars($display_course); ?> / <?= htmlspecialchars($display_year); ?></strong></p>
-                    <span class="badge bg-success mt-1" style="font-size: 10px;">System Custodian</span>
+            <div class="features-list">
+                <div class="feature-item">
+                    <div class="icon">📦</div>
+                    <div><strong>Track Equipment</strong><br><span style="font-size:11px; color:#d0d0d0;">Seamless borrowing & return logs</span></div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">🛡️</div>
+                    <div><strong>Improve Accountability</strong><br><span style="font-size:11px; color:#d0d0d0;">Real-time condition monitoring</span></div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">⚡</div>
+                    <div><strong>Build a Smarter Campus</strong><br><span style="font-size:11px; color:#d0d0d0;">Automated digital verification</span></div>
                 </div>
             </div>
+        </div>
 
-            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-tachometer-alt me-2 text-success"></i>Welcome to Custodian Portal</h5>
-            <div class="card p-3 border-0 bg-light shadow-sm">
-                <p class="text-muted small mb-0">Maaari mong gamitin ang sidebar o ang hamburger menu sa itaas para mag-monitor ng mga request o mag-scan ng mga QR code ng mga estudyante.</p>
+        <div class="form-panel">
+            <div class="login-container">
+                <h2>Welcome Back!</h2>
+                <p class="subtitle">Login to your account to continue</p>
+
+                <?php if (!empty($error)): ?>
+                    <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
+                <?php endif; ?>
+
+                <form action="login.php" method="POST">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" name="email" required placeholder="Enter your email address">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required placeholder="Enter your password">
+                    </div>
+
+                    <button type="submit" class="login-btn">Login</button>
+                </form>
+
+                <div class="register-footer">
+                    Don't have an account yet? <a href="register.php">Register here</a>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

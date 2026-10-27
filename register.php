@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($name) || empty($email) || empty($password)) {
-        echo "<script>alert('All required fields must be filled!'); window.history.back();</script>";
+        echo "<script>alert('Lahat ng kinakailangang field ay punan!'); window.history.back();</script>";
         exit();
     }
 
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $checkStmt->execute([$email]);
         
         if ($checkStmt->rowCount() > 0) {
-            echo "<script>alert('This email is already registered!'); window.history.back();</script>";
+            echo "<script>alert('Ang email na ito ay nakarehistro na!'); window.history.back();</script>";
             exit();
         }
 
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, education_level, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$name, $email, $hashedPassword, $role, $education_level, $course_year_section, $profile_picture]);
 
-        echo "<script>alert('Registration successful! You can now log in.'); window.location.href='login.php';</script>";
+        echo "<script>alert('Matagumpay ang pag-rehistro! Maaari ka nang mag-login.'); window.location.href='login.php';</script>";
         exit();
 
     } catch (PDOException $e) {
@@ -60,14 +60,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f7f6; display: flex; height: 100vh; overflow: hidden; }
         
-        /* Split Screen Container */
         .split-container {
             display: flex;
             width: 100%;
             height: 100vh;
         }
 
-        /* Left Panel na may Background Image at Dark Green/Blue Gradient Overlay */
+        /* Left Panel na may School Background Image */
         .brand-panel {
             flex: 1.1;
             background: linear-gradient(rgba(0, 40, 20, 0.85), rgba(0, 30, 60, 0.9)), url('school_bg.jpg') no-repeat center center;
@@ -115,7 +114,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-style: italic;
         }
 
-        /* Feature items sa ibaba ng left panel */
         .features-list {
             display: flex;
             flex-direction: column;
@@ -146,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 14px;
         }
 
-        /* Right Panel (Form Container) */
+        /* Right Form Panel */
         .form-panel {
             flex: 1;
             background: #ffffff;
@@ -387,12 +385,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function startCamera() {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(stream => { video.srcObject = stream; video.play(); })
-                    .catch(err => { console.log("Webcam error: " + err); });
+                    .then(stream => { 
+                        video.srcObject = stream; 
+                        video.play().catch(e => console.log("Play error:", e));
+                    })
+                    .catch(err => { 
+                        console.log("Webcam error: " + err); 
+                        alert("Hindi ma-access ang camera. Siguraduhing naka-HTTPS at pinayagan ang camera permissions sa browser.");
+                    });
+            } else {
+                alert("Ang browser na ito ay hindi sumusuporta sa camera access.");
             }
         }
 
-        window.onload = function() { startCamera(); };
+        window.onload = function() { 
+            startCamera(); 
+        };
 
         function toggleRoleFields() {
             const role = document.getElementById('roleSelect').value;

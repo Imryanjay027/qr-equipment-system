@@ -3,11 +3,11 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection
-$host = 'localhost';
-$db   = 'qr_equipment_db';
-$user = 'root';
-$pass = '';
+// Database Connection (Dynamic para gumana sa Localhost at Coolify)
+$host = getenv('DB_HOST') ?: 'localhost';
+$db   = getenv('DB_NAME') ?: 'qr_equipment_db';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
         $mail->Username   = 'ryanjayleoligao64@gmail.com';
-        $mail->Password   = 'wfpwkymohpmghuqz'; // Bagong App Password na walang spaces
+        $mail->Password   = 'wfpwkymohpmghuqz'; // App Password
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 

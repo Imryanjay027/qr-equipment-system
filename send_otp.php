@@ -34,14 +34,14 @@ if (!empty($email)) {
 
     $mail = new PHPMailer(true);
     try {
-        // Server settings para sa Gmail SMTP
+        // Server settings para sa Gmail SMTP (Gamit ang Port 465 at SMTPS)
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
         $mail->Username   = 'ryanjayleoligao64@gmail.com';
         $mail->Password   = 'pqufygzvmkwvbfskd';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL
+        $mail->Port       = 465;                        // Port 465
 
         // Recipients
         $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC Equipment Monitoring');

@@ -1,5 +1,5 @@
 <?php
-$host = 'mariadb-database-scvzklpphi95efixy0m7hpyg';
+$host = 'scvzklpphi95efixy0m7hpyg'; // Tamang internal hostname para sa MariaDB sa Coolify
 $db   = 'default';
 $user = 'root'; 
 $pass = 'qOAF8F2klYnvxBSlj15uEx88gJxMM95J6QC6TJ1FYRgX9cHvqgA3QlmOhnETItCV';

@@ -57,77 +57,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>Register - QR-Based Equipment Monitoring System</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f7f6; display: flex; height: 100vh; overflow: hidden; }
         
+        /* Split Screen Container */
+        .split-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* Left Panel na may Background Image at Dark Green/Blue Gradient Overlay */
         .brand-panel {
-            flex: 1;
-            background: linear-gradient(135deg, #0b6623 0%, #004d1a 100%);
+            flex: 1.1;
+            background: linear-gradient(rgba(0, 40, 20, 0.85), rgba(0, 30, 60, 0.9)), url('school_bg.jpg') no-repeat center center;
+            background-size: cover;
             color: white;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
+            justify-content: space-between;
+            padding: 40px 60px;
+            position: relative;
+        }
+
+        .brand-top {
             text-align: center;
         }
 
-        .brand-panel img {
+        .brand-top img {
             width: 90px;
             height: 90px;
             border-radius: 50%;
-            border: 3px solid rgba(255,255,255,0.8);
-            margin-bottom: 20px;
-            object-fit: cover;
-        }
-
-        .brand-panel h2 {
-            font-size: 15px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            opacity: 0.9;
-        }
-
-        .brand-panel h1 {
-            font-size: 24px;
-            font-weight: bold;
+            border: 3px solid rgba(255,255,255,0.9);
             margin-bottom: 15px;
-            line-height: 1.3;
+            object-fit: cover;
+            background: white;
         }
 
-        .brand-panel p {
+        .brand-top h3 {
             font-size: 13px;
-            opacity: 0.8;
-            font-style: italic;
-            margin-bottom: 40px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: #e0e0e0;
         }
 
+        .brand-top h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-top p {
+            font-size: 12px;
+            color: #d0d0d0;
+            font-style: italic;
+        }
+
+        /* Feature items sa ibaba ng left panel */
         .features-list {
-            text-align: left;
-            width: 100%;
-            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .feature-item {
             display: flex;
             align-items: center;
-            margin-bottom: 15px;
             font-size: 13px;
-            background: rgba(255,255,255,0.1);
-            padding: 10px 15px;
-            border-radius: 8px;
+            background: rgba(0, 128, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px 18px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
         }
 
-        .feature-item span { margin-left: 10px; }
+        .feature-item .icon {
+            background: #008000;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 14px;
+        }
 
+        /* Right Panel (Form Container) */
         .form-panel {
             flex: 1;
             background: #ffffff;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 40px;
+            padding: 30px;
             overflow-y: auto;
         }
 
@@ -137,52 +163,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .register-container h2 {
-            font-size: 22px;
-            color: #222;
+            font-size: 24px;
+            color: #111;
             margin-bottom: 5px;
+            font-weight: bold;
         }
 
         .register-container .subtitle {
             font-size: 13px;
             color: #666;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .form-group {
             text-align: left;
-            margin-bottom: 18px;
+            margin-bottom: 15px;
         }
 
         .form-group label {
             display: block;
             font-size: 12px;
             color: #333;
-            margin-bottom: 6px;
-            font-weight: bold;
+            margin-bottom: 5px;
+            font-weight: 600;
         }
 
         .form-group input, .form-group select {
             width: 100%;
-            padding: 11px 14px;
+            padding: 10px 14px;
             border: 1px solid #ced4da;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #008000;
+            box-shadow: 0 0 0 3px rgba(0, 128, 0, 0.1);
         }
 
         .section-box {
-            background: #fafafa;
+            background: #f8f9fa;
             padding: 15px;
-            border: 1px dashed #ccc;
-            border-radius: 6px;
-            margin-top: 15px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            margin-top: 10px;
             text-align: center;
         }
 
         #webcam {
             width: 100%;
-            max-width: 280px;
-            height: 200px;
+            max-width: 260px;
+            height: 180px;
             background: #000;
             border-radius: 6px;
             object-fit: cover;
@@ -190,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .capture-btn {
-            background-color: #28a745;
+            background-color: #008000;
             color: white;
             border: none;
             padding: 8px 14px;
@@ -198,6 +231,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             cursor: pointer;
             font-size: 12px;
             font-weight: bold;
+        }
+
+        .capture-btn:hover {
+            background-color: #006600;
         }
 
         .submit-btn {
@@ -210,14 +247,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+
+        .submit-btn:hover {
+            background-color: #006600;
         }
 
         .login-link {
             text-align: center;
             font-size: 13px;
             color: #555;
-            margin-top: 20px;
+            margin-top: 15px;
         }
 
         .login-link a {
@@ -226,93 +268,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: bold;
         }
 
-        @media (max-width: 768px) {
-            body { flex-direction: column; overflow: auto; }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 900px) {
+            .split-container { flex-direction: column; overflow: auto; }
+            body { overflow: auto; }
             .brand-panel { display: none; }
         }
     </style>
 </head>
 <body>
 
-    <div class="brand-panel">
-        <img src="logo.jpg" alt="School Logo" onerror="this.src='https://via.placeholder.com/90'">
-        <h2>MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
-        <h1>QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
-        <p>Together for a Smarter, Safer and More Efficient Campus</p>
-        
-        <div class="features-list">
-            <div class="feature-item"><span>📦</span><span>Track Equipment & Borrowing System</span></div>
-            <div class="feature-item"><span>🛡️</span><span>Improve Accountability & Security</span></div>
-            <div class="feature-item"><span>⚡</span><span>Build a Smarter Campus Environment</span></div>
+    <div class="split-container">
+        <!-- Left Brand Panel with School Background -->
+        <div class="brand-panel">
+            <div class="brand-top">
+                <img src="logo.jpg" alt="School Logo" onerror="this.src='https://via.placeholder.com/90'">
+                <h3>MARY THE QUEEN COLLEGE OF QUEZON CITY</h3>
+                <h1>QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
+                <p>Together for a Smarter, Safer and More Efficient Campus</p>
+            </div>
+
+            <div class="features-list">
+                <div class="feature-item">
+                    <div class="icon">📦</div>
+                    <div><strong>Track Equipment</strong><br><span style="font-size:11px; color:#d0d0d0;">Seamless borrowing & return logs</span></div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">🛡️</div>
+                    <div><strong>Improve Accountability</strong><br><span style="font-size:11px; color:#d0d0d0;">Real-time condition monitoring</span></div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">⚡</div>
+                    <div><strong>Build a Smarter Campus</strong><br><span style="font-size:11px; color:#d0d0d0;">Automated digital verification</span></div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div class="form-panel">
-        <div class="register-container">
-            <h2>Create Your Account</h2>
-            <p class="subtitle">Fill in the details below to register</p>
+        <!-- Right Form Panel -->
+        <div class="form-panel">
+            <div class="register-container">
+                <h2>Create Your Account</h2>
+                <p class="subtitle">Fill in the details below to register</p>
 
-            <form action="register.php" method="POST" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" name="name" required placeholder="Enter your full name">
-                </div>
-
-                <div class="form-group">
-                    <label>Email Address</label>
-                    <input type="email" name="email" required placeholder="Enter your email address">
-                </div>
-
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" required placeholder="Enter your password">
-                </div>
-
-                <div class="form-group">
-                    <label>Register As</label>
-                    <select name="role" id="roleSelect" onchange="toggleRoleFields()" required>
-                        <option value="student" selected>Student</option>
-                        <option value="faculty">Faculty</option>
-                        <option value="staff">Staff</option>
-                        <option value="custodian">Property Custodian</option>
-                    </select>
-                </div>
-
-                <div id="studentFields">
+                <form action="register.php" method="POST" enctype="multipart/form-data">
                     <div class="form-group">
-                        <label>Education Level</label>
-                        <select name="education_level" id="eduLevel" onchange="updateEduFields()">
-                            <option value="College">College</option>
-                            <option value="Elementary-SHS">Elementary to SHS</option>
+                        <label>Full Name</label>
+                        <input type="text" name="name" required placeholder="Enter your full name">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" name="email" required placeholder="Enter your email address">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required placeholder="Enter your password">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Register As</label>
+                        <select name="role" id="roleSelect" onchange="toggleRoleFields()" required>
+                            <option value="student" selected>Student</option>
+                            <option value="faculty">Faculty</option>
+                            <option value="staff">Staff</option>
+                            <option value="custodian">Property Custodian</option>
                         </select>
                     </div>
 
-                    <div class="form-group" id="infoField">
-                        <label>Course & Year</label>
-                        <input type="text" name="course_year_section" placeholder="BSIT 3-A">
+                    <!-- Student Exclusive Fields -->
+                    <div id="studentFields">
+                        <div class="form-group">
+                            <label>Education Level</label>
+                            <select name="education_level" id="eduLevel" onchange="updateEduFields()">
+                                <option value="College">College</option>
+                                <option value="Elementary-SHS">Elementary to SHS</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="infoField">
+                            <label>Course & Year</label>
+                            <input type="text" name="course_year_section" placeholder="BSIT 3-A">
+                        </div>
+
+                        <div class="form-group section-box">
+                            <label style="text-align:left; margin-bottom: 6px; display:block; font-weight:600; font-size:12px;">Live Selfie Capture</label>
+                            <video id="webcam" autoplay playsinline></video><br>
+                            <button type="button" class="capture-btn" onclick="captureSnapshot()">📸 Capture Selfie</button>
+                            <canvas id="canvas" width="260" height="180" style="display:none;"></canvas>
+                            <input type="hidden" name="profile_picture" id="profilePictureInput" required>
+                        </div>
                     </div>
 
-                    <div class="form-group section-box">
-                        <label style="text-align:left; margin-bottom: 8px;">Live Selfie Verification</label>
-                        <video id="webcam" autoplay playsinline></video><br>
-                        <button type="button" class="capture-btn" onclick="captureSnapshot()">📸 Capture Selfie</button>
-                        <canvas id="canvas" width="280" height="200" style="display:none;"></canvas>
-                        <input type="hidden" name="profile_picture" id="profilePictureInput" required>
+                    <!-- Non-Student Exclusive Fields (Custodian, Faculty, Staff) -->
+                    <div id="staffFields" style="display: none;">
+                        <div class="form-group section-box">
+                            <label style="text-align:left; display:block; font-weight:600; font-size:12px; margin-bottom:5px;">Profile Picture (Optional)</label>
+                            <input type="file" name="profile_picture_file" accept="image/*" style="font-size:12px;">
+                        </div>
                     </div>
+
+                    <button type="submit" class="submit-btn">Register</button>
+                </form>
+
+                <div class="login-link">
+                    Already have an account? <a href="login.php">Login here</a>
                 </div>
-
-                <div id="staffFields" style="display: none;">
-                    <div class="form-group section-box">
-                        <label style="text-align:left;">Profile Picture (Optional)</label>
-                        <input type="file" name="profile_picture_file" accept="image/*" style="margin-top: 5px;">
-                    </div>
-                </div>
-
-                <button type="submit" class="submit-btn">Register</button>
-            </form>
-
-            <div class="login-link">
-                Already have an account? <a href="login.php">Login here</a>
             </div>
         </div>
     </div>
@@ -351,7 +415,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function captureSnapshot() {
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0, 280, 200);
+            context.drawImage(video, 0, 0, 260, 180);
             const imageData = canvas.toDataURL('image/png');
             document.getElementById('profilePictureInput').value = imageData;
             alert("Live selfie captured successfully!");

@@ -13,11 +13,11 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $entered_otp = trim($_POST['otp'] ?? '');
 
-    // Database Connection - Gamitin ang 127.0.0.1 para sa TCP connection sa Coolify container
-    $host = '127.0.0.1';
-    $db   = 'qr_equipment_db';
+    // Database Connection
+    $host = 'wfbyfhr4404k2y9u2spiv101';
+    $db   = 'qrcode';
     $user = 'root';
-    $pass = '';
+    $pass = 'ito_ang_password_mo_sa_coolify'; // Ilagay dito ang Root/Normal User Password mo sa Coolify
 
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);

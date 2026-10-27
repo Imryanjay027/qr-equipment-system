@@ -17,12 +17,12 @@ try {
     die("Database connection failed: " . $e->getMessage());
 }
 
-// PHPMailer Requires (Direktang nakareperensya sa phpmailer folder nang walang /src/)
-require_once 'phpmailer/Exception.php';
-require_once 'phpmailer/PHPMailer.php';
-require_once 'phpmailer/SMTP.php';
+// PHPMailer Requires (May kasamang src/ alinsunod sa setup_mailer.php)
+require_once 'phpmailer/src/Exception.php';
+require_once 'phpmailer/src/PHPMailer.php';
+require_once 'phpmailer/src/SMTP.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Magpatuloy sa paggawa at pagpapadala ng OTP dito...
+// Ilagay dito ang iyong OTP sending logic (Mailer configuration gamit ang Gmail App Password)

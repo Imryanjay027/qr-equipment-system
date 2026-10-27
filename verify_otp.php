@@ -13,11 +13,11 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $entered_otp = trim($_POST['otp'] ?? '');
 
-    // Database Connection
-    $host = 'localhost';
-    $db   = 'qr_equipment_db';
-    $user = 'root';
-    $pass = '';
+    // Database Connection (Dynamic para gumana sa Localhost at Coolify)
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $db   = getenv('DB_NAME') ?: 'qr_equipment_db';
+    $user = getenv('DB_USER') ?: 'root';
+    $pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
 
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);

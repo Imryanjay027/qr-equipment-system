@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connection.php'; // Siguraduhing konektado sa live database mo
+require_once 'db_connection.php';
 
 try {
     $sql = "CREATE TABLE IF NOT EXISTS users (
@@ -7,13 +7,16 @@ try {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'custodian',
+        role VARCHAR(50) DEFAULT 'borrower',
+        education_level VARCHAR(50) DEFAULT 'College',
+        course_year_section VARCHAR(255) NULL,
+        profile_picture LONGTEXT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )";
-    
+
     $pdo->exec($sql);
-    echo "<h2>Tagumpay! Nalikha na ang 'users' table sa database.</h2>";
+    echo "<h3>Tagumpay! Nalikha na ang 'users' table sa live database.</h3>";
 } catch (PDOException $e) {
-    echo "Error sa paggawa ng table: " . $e->getMessage();
+    echo "Error: " . $e->getMessage();
 }
 ?>

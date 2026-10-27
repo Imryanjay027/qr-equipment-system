@@ -10,7 +10,7 @@ require_once 'db_connection.php';
 $email = $_POST['email'] ?? '';
 
 if (empty($email)) {
-    die("ryanjayleoligao64@gmail.com.");
+    die("ryanjayleoligao64@gmail.com");
 }
 
 // Mag-generate ng 6-digit OTP
@@ -22,7 +22,7 @@ try {
     $stmt->execute([$email, $otp]);
 
     // 2. Brevo API v3 Configuration
-    // I-PASTE MO DITO SA LOOB NG QUOTES ANG BAGONG BREVO API KEY MO (yung xkeysib-...)
+    // I-PASTE MO DITO SA LOOB NG QUOTES ANG IYONG BAGONG BREVO API KEY (yung xkeysib-...)
     $apiKey = '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';
 
     $url = 'https://api.brevo.com/v3/smtp/email';
@@ -62,7 +62,9 @@ try {
     } else {
         $result = json_decode($response, true);
         if ($httpCode >= 200 && $httpCode < 300) {
-            echo "<h3 style='color: green;'>Success: OTP sent successfully to $email!</h3>";
+            // Matagumpay na naipadala - i-redirect agad sa verify_otp.php kasama ang email
+            header("Location: verify_otp.php?email=" . urlencode($email));
+            exit();
         } else {
             echo "<h3 style='color: red;'>Brevo API Error (HTTP Status $httpCode):</h3>";
             echo "<pre>";

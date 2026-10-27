@@ -17,7 +17,7 @@ try {
     die("Database connection failed: " . $e->getMessage());
 }
 
-// PHPMailer Requires (May kasamang src/ alinsunod sa setup_mailer.php)
+// PHPMailer Requires
 require_once 'phpmailer/src/Exception.php';
 require_once 'phpmailer/src/PHPMailer.php';
 require_once 'phpmailer/src/SMTP.php';
@@ -25,4 +25,39 @@ require_once 'phpmailer/src/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Ilagay dito ang iyong OTP sending logic (Mailer configuration gamit ang Gmail App Password)
+$email = $_POST['email'] ?? $_SESSION['email'] ?? 'ryanjayleoligao64@gmail.com';
+
+if (!empty($email)) {
+    $otp = rand(100000, 999999);
+    $_SESSION['otp'] = $otp;
+    $_SESSION['otp_email'] = $email;
+
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings para sa Gmail SMTP
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'ryanjayleoligao64@gmail.com';
+        $mail->Password   = 'pqufygzvmkwvbfskd';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+
+        // Recipients
+        $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC Equipment Monitoring');
+        $mail->addAddress($email);
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Your OTP Code';
+        $mail->Body    = 'Your One-Time Password (OTP) is: <b>' . $otp . '</b>';
+
+        $mail->send();
+        echo "Tagumpay! Naipadala na ang OTP sa iyong email ($email).";
+    } catch (Exception $e) {
+        echo "Hindi naipadala ang email. Mailer Error: {$mail->ErrorInfo}";
+    }
+} else {
+    echo "Walang nahanap na email address para pagpadalan ng OTP.";
+}
+?>

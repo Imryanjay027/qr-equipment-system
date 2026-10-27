@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_role'] ) || $_SESSION['user_role'] !== 'custodian') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'custodian') {
     header("Location: login.php");
     exit();
 }
@@ -18,8 +18,32 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col md:flex-row">
 
-    <!-- Left Sidebar -->
-    <div class="w-full md:w-72 bg-[#005a2b] text-white flex flex-col justify-between p-6 shadow-lg min-h-screen">
+    <!-- Mobile Top Navigation Bar with Hamburger -->
+    <div class="md:hidden bg-[#005a2b] text-white p-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-3">
+            <img src="logo.jpg" alt="Logo" class="w-8 h-8 rounded-full border border-white object-cover bg-white" onerror="this.src='https://via.placeholder.com/30'">
+            <span class="font-bold text-xs tracking-wider">CUSTODIAN PORTAL</span>
+        </div>
+        <button id="menu-btn" class="p-2 rounded-lg bg-[#004822] text-white focus:outline-none hover:bg-[#003b1c]">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Mobile Collapsible Menu (Lalabas kapag pinindot ang hamburger) -->
+    <div id="mobile-menu" class="hidden md:hidden bg-[#005a2b] text-white p-4 space-y-2 shadow-lg border-t border-emerald-800">
+        <a href="custodian_dashboard.php" class="block py-2.5 px-4 rounded-lg bg-[#007a38] text-white font-medium text-sm">Dashboard</a>
+        <a href="#" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">Borrowing Requests</a>
+        <a href="#" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">QR Scanner Portal</a>
+        <a href="logout.php" class="block py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-sm text-center transition">Logout</a>
+        <div class="pt-2 text-center border-t border-emerald-800">
+            <p class="text-[10px] italic text-emerald-200">"Discipline today, excellence tomorrow."</p>
+        </div>
+    </div>
+
+    <!-- Desktop Sidebar (Hidden sa mobile, lilitaw sa PC/Laptop) -->
+    <div class="hidden md:flex w-72 bg-[#005a2b] text-white flex-col justify-between p-6 shadow-lg min-h-screen">
         <div>
             <!-- School Logo & Header -->
             <div class="text-center mb-8">
@@ -64,23 +88,23 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
         <!-- Top Bar Header -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h1 class="text-xl md:text-2xl font-bold text-gray-800">PROPERTY CUSTODIAN PANEL</h1>
+                <h1 class="text-lg md:text-2xl font-bold text-gray-800">PROPERTY CUSTODIAN PANEL</h1>
                 <p class="text-xs md:text-sm text-gray-500">Equipment Borrowing, Return & Monitoring System</p>
             </div>
             
-            <div class="flex items-center space-x-3">
-                <div class="flex items-center space-x-2 text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-lg border">
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center space-x-2 text-xs md:text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-lg border">
                     <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     <span class="font-medium"><?php echo htmlspecialchars($custodian_name); ?></span>
                 </div>
-                <span class="px-3 py-1 bg-emerald-600 text-white rounded-md text-xs font-semibold tracking-wider">CUSTODIAN</span>
-                <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-xs font-bold transition shadow-sm">Logout</a>
+                <span class="hidden sm:inline-block px-3 py-1 bg-emerald-600 text-white rounded-md text-xs font-semibold tracking-wider">CUSTODIAN</span>
+                <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm">Logout</a>
             </div>
         </div>
 
         <!-- Dashboard Card Section -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-bold text-gray-800 mb-4">Dashboard Overview</h2>
+            <h2 class="text-base md:text-lg font-bold text-gray-800 mb-4">Dashboard Overview</h2>
             
             <!-- Total Active Requests Card -->
             <div class="border border-gray-200 rounded-xl p-5 max-w-sm bg-white shadow-sm">
@@ -91,5 +115,14 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
 
     </div>
 
+    <!-- JavaScript para sa Hamburger Menu Toggle -->
+    <script>
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+    </script>
 </body>
 </html>

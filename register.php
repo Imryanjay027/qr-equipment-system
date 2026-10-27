@@ -5,12 +5,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
-    $education_level = trim($_POST['education_level'] ?? 'College');
-    $course_year_section = trim($_POST['course_year_section'] ?? '');
-    $profile_picture = $_POST['profile_picture'] ?? ''; // Base64 image
+    $role = trim($_POST['role'] ?? 'student');
+    
+    $education_level = null;
+    $course_year_section = null;
+    $profile_picture = null;
 
-    if (empty($name) || empty($email) || empty($password) || empty($profile_picture)) {
-        echo "<script>alert('All fields and live selfie are required!'); window.history.back();</script>";
+    if ($role === 'student') {
+        $education_level = trim($_POST['education_level'] ?? 'College');
+        $course_year_section = trim($_POST['course_year_section'] ?? '');
+        $profile_picture = $_POST['profile_picture'] ?? ''; // Base64 mula sa webcam
+    } else {
+        // Para sa Custodian, Faculty, o Staff (File Upload)
+        if (isset($_FILES['profile_picture_file']) && $_FILES['profile_picture_file']['error'] === UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['profile_picture_file']['tmp_name'];
+            $fileData = file_get_contents($fileTmpPath);
+            $profile_picture = 'data:' . mime_content_type($fileTmpPath) . ';base64,' . base64_encode($fileData);
+        }
+    }
+
+    if (empty($name) || empty($email) || empty($password)) {
+        echo "<script>alert('Lahat ng pangunahing field ay kinakailangan!'); window.history.back();</script>";
         exit();
     }
 
@@ -19,17 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $checkStmt->execute([$email]);
         
         if ($checkStmt->rowCount() > 0) {
-            echo "<script>alert('This email is already registered!'); window.history.back();</script>";
+            echo "<script>alert('Ang email na ito ay nakarehistro na!'); window.history.back();</script>";
             exit();
         }
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $role = 'borrower';
 
         $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, education_level, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$name, $email, $hashedPassword, $role, $education_level, $course_year_section, $profile_picture]);
 
-        echo "<script>alert('Registration successful! You can now log in.'); window.location.href='login.php';</script>";
+        echo "<script>alert('Matagumpay ang pag-rehistro! Maaari ka nang mag-login.'); window.location.href='login.php';</script>";
         exit();
 
     } catch (PDOException $e) {
@@ -54,19 +68,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             width: 100%;
             max-width: 500px;
+            text-align: center;
         }
 
-        .register-container h2 {
+        .register-container img {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            object-fit: cover;
+        }
+
+        .register-container h1 {
+            font-size: 16px;
             color: #008000;
-            text-align: center;
-            margin-bottom: 25px;
-            font-size: 18px;
+            font-weight: bold;
             letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .register-container .subtitle {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 25px;
         }
 
         .form-group {
-            margin-bottom: 20px;
             text-align: left;
+            margin-bottom: 20px;
         }
 
         .form-group label {
@@ -91,22 +120,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-color: #007bff;
         }
 
-        .webcam-section {
-            text-align: center;
-            margin-top: 20px;
+        .section-box {
             background: #fafafa;
             padding: 15px;
             border: 1px dashed #ccc;
             border-radius: 6px;
-        }
-
-        .webcam-section label {
-            text-align: left;
-            display: block;
-            font-size: 13px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
+            margin-top: 15px;
         }
 
         #webcam {
@@ -123,12 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 10px 18px;
+            padding: 8px 15px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
             font-weight: bold;
-            transition: background 0.2s;
         }
 
         .capture-btn:hover {
@@ -146,7 +164,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: bold;
             cursor: pointer;
             margin-top: 25px;
-            transition: background 0.2s;
         }
 
         .submit-btn:hover {
@@ -165,17 +182,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-decoration: none;
             font-weight: bold;
         }
-
-        .login-link a:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
 
     <div class="register-container">
-        <h2>BORROWER REGISTRATION</h2>
-        <form action="register.php" method="POST">
+        <img src="logo.jpg" alt="School Logo" onerror="this.src='https://via.placeholder.com/75'">
+        
+        <h1>QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
+        <p class="subtitle">Account Registration</p>
+
+        <form action="register.php" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label>Full Name</label>
                 <input type="text" name="name" required placeholder="Juan Dela Cruz">
@@ -192,24 +209,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="form-group">
-                <label>Education Level</label>
-                <select name="education_level" id="eduLevel" onchange="updateFields()">
-                    <option value="College">College</option>
-                    <option value="Elementary-SHS">Elementary to SHS</option>
+                <label>Register As</label>
+                <select name="role" id="roleSelect" onchange="toggleRoleFields()" required>
+                    <option value="" disabled selected>Select Account Type</option>
+                    <option value="student">Student</option>
+                    <option value="faculty">Faculty</option>
+                    <option value="staff">Staff</option>
+                    <option value="custodian">Property Custodian</option>
                 </select>
             </div>
 
-            <div class="form-group" id="infoField">
-                <label>Course & Year</label>
-                <input type="text" name="course_year_section" required placeholder="BSIT 3-A">
+            <!-- Student Exclusive Fields -->
+            <div id="studentFields">
+                <div class="form-group">
+                    <label>Education Level</label>
+                    <select name="education_level" id="eduLevel" onchange="updateEduFields()">
+                        <option value="College">College</option>
+                        <option value="Elementary-SHS">Elementary to SHS</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="infoField">
+                    <label>Course & Year</label>
+                    <input type="text" name="course_year_section" placeholder="BSIT 3-A">
+                </div>
+
+                <div class="form-group section-box" style="text-align:center;">
+                    <label style="text-align:left;">Live Selfie Verification</label>
+                    <video id="webcam" autoplay playsinline></video><br>
+                    <button type="button" class="capture-btn" onclick="captureSnapshot()">📸 Capture Selfie</button>
+                    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+                    <input type="hidden" name="profile_picture" id="profilePictureInput">
+                </div>
             </div>
 
-            <div class="webcam-section">
-                <label>Live Selfie Verification</label>
-                <video id="webcam" autoplay playsinline></video><br>
-                <button type="button" class="capture-btn" onclick="captureSnapshot()">📸 Capture Selfie</button>
-                <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-                <input type="hidden" name="profile_picture" id="profilePictureInput" required>
+            <!-- Non-Student Exclusive Fields (Custodian, Faculty, Staff) -->
+            <div id="staffFields" style="display: none;">
+                <div class="form-group section-box">
+                    <label>Profile Picture (Optional)</label>
+                    <input type="file" name="profile_picture_file" accept="image/*">
+                </div>
             </div>
 
             <button type="submit" class="submit-btn">Register Account</button>
@@ -222,9 +261,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script>
         const video = document.getElementById('webcam');
+        
+        // Simulan ang webcam kung sakaling student ang naka-select
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => { video.srcObject = stream; })
-            .catch(err => { alert("Camera access denied or unavailable: " + err); });
+            .catch(err => { console.log("Webcam not accessed: " + err); });
+
+        function toggleRoleFields() {
+            const role = document.getElementById('roleSelect').value;
+            const studentFields = document.getElementById('studentFields');
+            const staffFields = document.getElementById('staffFields');
+            const profileInput = document.getElementById('profilePictureInput');
+
+            if (role === 'student') {
+                studentFields.style.display = 'block';
+                staffFields.style.display = 'none';
+                profileInput.required = true;
+            } else {
+                studentFields.style.display = 'none';
+                staffFields.style.display = 'block';
+                profileInput.required = false;
+            }
+        }
 
         function captureSnapshot() {
             const canvas = document.getElementById('canvas');
@@ -235,13 +293,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alert("Live selfie captured successfully!");
         }
 
-        function updateFields() {
+        function updateEduFields() {
             const level = document.getElementById('eduLevel').value;
             const infoField = document.getElementById('infoField');
             if (level === 'College') {
-                infoField.innerHTML = '<label>Course & Year</label><input type="text" name="course_year_section" required placeholder="BSIT 3-A">';
+                infoField.innerHTML = '<label>Course & Year</label><input type="text" name="course_year_section" placeholder="BSIT 3-A">';
             } else {
-                infoField.innerHTML = '<label>Grade & Section</label><input type="text" name="course_year_section" required placeholder="Grade 11 - St. Joseph">';
+                infoField.innerHTML = '<label>Grade & Section</label><input type="text" name="course_year_section" placeholder="Grade 11 - St. Joseph">';
             }
         }
     </script>

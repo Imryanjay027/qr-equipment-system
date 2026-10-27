@@ -1,120 +1,95 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'custodian') {
+if (!isset($_SESSION['user_role'] ) || $_SESSION['user_role'] !== 'custodian') {
     header("Location: login.php");
     exit();
 }
 
-$custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Custodian';
+$custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'System Custodian';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custodian Dashboard - QR Equipment System</title>
+    <title>Property Custodian Panel - QR Equipment Monitoring System</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-cover bg-center flex items-center justify-center relative" style="background-image: url('school_bg.jpg');">
-    
-    <!-- Dark Overlay -->
-    <div class="absolute inset-0 bg-black/60"></div>
+<body class="bg-gray-100 min-h-screen flex flex-col md:flex-row">
 
-    <!-- Main Wrapper -->
-    <div class="relative z-10 w-full max-w-6xl mx-auto p-3 md:p-6">
-        
-        <!-- Mobile Top Navbar with Hamburger -->
-        <div class="md:hidden bg-gray-900 text-white p-4 rounded-xl flex justify-between items-center mb-4 shadow-lg">
-            <span class="font-bold text-sm tracking-wider">CUSTODIAN PORTAL</span>
-            <button id="menu-btn" class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
-            </button>
-        </div>
-
-        <!-- Collapsible Mobile Menu -->
-        <div id="mobile-menu" class="hidden md:hidden bg-gray-900 text-white p-4 rounded-xl mb-4 space-y-2 shadow-xl">
-            <a href="custodian_dashboard.php" class="block py-2 px-3 rounded-lg bg-blue-600 text-white text-sm font-medium">Dashboard</a>
-            <a href="#" class="block py-2 px-3 rounded-lg hover:bg-gray-800 text-gray-300 text-sm">Manage Equipment</a>
-            <a href="#" class="block py-2 px-3 rounded-lg hover:bg-gray-800 text-gray-300 text-sm">Scan QR Code</a>
-            <a href="#" class="block py-2 px-3 rounded-lg hover:bg-gray-800 text-gray-300 text-sm">Transaction Logs</a>
-            <a href="logout.php" class="block py-2 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm text-center font-medium mt-2">Logout</a>
-        </div>
-
-        <!-- Desktop & Main Layout Container -->
-        <div class="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-4 min-h-[550px]">
-            
-            <!-- Desktop Sidebar (Hidden on Mobile) -->
-            <div class="hidden md:flex bg-gray-900 text-white p-6 flex-col justify-between">
-                <div>
-                    <div class="flex items-center space-x-3 mb-8">
-                        <span class="text-xl font-bold tracking-wider">CUSTODIAN PORTAL</span>
-                    </div>
-                    <nav class="space-y-3">
-                        <a href="custodian_dashboard.php" class="block py-2.5 px-4 rounded-lg bg-blue-600 text-white font-medium transition">Dashboard</a>
-                        <a href="#" class="block py-2.5 px-4 rounded-lg hover:bg-gray-800 text-gray-300 transition">Manage Equipment</a>
-                        <a href="#" class="block py-2.5 px-4 rounded-lg hover:bg-gray-800 text-gray-300 transition">Scan QR Code</a>
-                        <a href="#" class="block py-2.5 px-4 rounded-lg hover:bg-gray-800 text-gray-300 transition">Transaction Logs</a>
-                    </nav>
-                </div>
-                <div>
-                    <a href="logout.php" class="block text-center py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition">Logout</a>
-                </div>
+    <!-- Left Sidebar -->
+    <div class="w-full md:w-72 bg-[#005a2b] text-white flex flex-col justify-between p-6 shadow-lg min-h-screen">
+        <div>
+            <!-- School Logo & Header -->
+            <div class="text-center mb-8">
+                <img src="logo.jpg" alt="School Logo" class="w-20 h-20 mx-auto rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/80'">
+                <h2 class="text-xs font-bold tracking-wider leading-relaxed text-gray-100">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
             </div>
 
-            <!-- Content Area -->
-            <div class="md:col-span-3 p-5 md:p-10 flex flex-col justify-between">
-                <div>
-                    <header class="flex justify-between items-center border-b pb-4 mb-6">
-                        <div>
-                            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Equipment Monitoring</h1>
-                            <p class="text-xs md:text-sm text-gray-500">Welcome back, <span class="font-semibold text-blue-600"><?php echo htmlspecialchars($custodian_name); ?></span>!</p>
-                        </div>
-                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Active Session</span>
-                    </header>
+            <!-- Navigation Links -->
+            <nav class="space-y-2">
+                <a href="custodian_dashboard.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg bg-[#007a38] text-white font-medium shadow">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    <span>Borrowing Requests</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 124h.01M16 16h1m-4-10V4m-4 8H4m12 0h4m-4 8h4m-8-4v4m0-8h4"></path></svg>
+                    <span>QR Scanner Portal</span>
+                </a>
+            </nav>
+        </div>
 
-                    <!-- Quick Stats -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl shadow-sm">
-                            <p class="text-xs md:text-sm text-blue-600 font-medium">Total Equipment</p>
-                            <h3 class="text-2xl font-bold text-blue-900 mt-1">--</h3>
-                        </div>
-                        <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl shadow-sm">
-                            <p class="text-xs md:text-sm text-amber-600 font-medium">Currently Borrowed</p>
-                            <h3 class="text-2xl font-bold text-amber-900 mt-1">--</h3>
-                        </div>
-                        <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl shadow-sm">
-                            <p class="text-xs md:text-sm text-emerald-600 font-medium">Available</p>
-                            <h3 class="text-2xl font-bold text-emerald-900 mt-1">--</h3>
-                        </div>
-                    </div>
-
-                    <!-- Main Panel Notice -->
-                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-5 md:p-6 text-center">
-                        <h3 class="text-base md:text-lg font-semibold text-gray-700 mb-2">QR Code Scanning System Ready</h3>
-                        <p class="text-xs md:text-sm text-gray-500 mb-4">Gamitin ang scanner o i-monitor ang mga hiniram at isinasauling kagamitan ng paaralan.</p>
-                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition shadow">Simulan ang Pag-scan</button>
-                    </div>
-                </div>
-
-                <footer class="text-center text-xs text-gray-400 mt-6 pt-4 border-t">
-                    Mary the Queen College of Quezon City &copy; 2026 - Equipment Monitoring System
-                </footer>
+        <!-- Sidebar Footer / Logout & Motto -->
+        <div>
+            <div class="mb-6">
+                <a href="logout.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-red-700 text-gray-200 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    <span>Logout</span>
+                </a>
             </div>
-
+            <div class="text-center border-t border-emerald-800 pt-4">
+                <p class="text-[11px] italic text-emerald-200">"Discipline today, excellence tomorrow."</p>
+            </div>
         </div>
     </div>
 
-    <!-- Toggle Script para sa Hamburger Menu -->
-    <script>
-        const menuBtn = document.getElementById('menu-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-h-screen overflow-y-auto p-4 md:p-8">
+        
+        <!-- Top Bar Header -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-800">PROPERTY CUSTODIAN PANEL</h1>
+                <p class="text-xs md:text-sm text-gray-500">Equipment Borrowing, Return & Monitoring System</p>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-2 text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-lg border">
+                    <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    <span class="font-medium"><?php echo htmlspecialchars($custodian_name); ?></span>
+                </div>
+                <span class="px-3 py-1 bg-emerald-600 text-white rounded-md text-xs font-semibold tracking-wider">CUSTODIAN</span>
+                <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-xs font-bold transition shadow-sm">Logout</a>
+            </div>
+        </div>
 
-        menuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-    </script>
+        <!-- Dashboard Card Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Dashboard Overview</h2>
+            
+            <!-- Total Active Requests Card -->
+            <div class="border border-gray-200 rounded-xl p-5 max-w-sm bg-white shadow-sm">
+                <p class="text-sm font-medium text-gray-500 mb-1">Total Active Requests</p>
+                <h3 class="text-3xl font-bold text-emerald-700">1</h3>
+            </div>
+        </div>
+
+    </div>
+
 </body>
 </html>

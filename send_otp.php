@@ -3,12 +3,12 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection - Babasahin ang Environment Variables mula sa Coolify
-$host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
-$port = getenv('DB_PORT') ?: '3306';
-$db   = getenv('DB_NAME') ?: 'qrcode';
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASSWORD') ?: 'ryan072797';
+// Database Connection gamit ang Coolify Environment Variables
+$host = getenv('DB_HOST');
+$db   = getenv('DB_NAME');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : getenv('DB_PASS');
+$port = 3306;
 
 try {
     $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass);
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
         $mail->Username   = 'ryanjayleoligao64@gmail.com';
-        $mail->Password   = 'wfpwkymohpmghuqz'; // App Password
+        $mail->Password   = 'wfpwkymohpmghuqz'; 
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 

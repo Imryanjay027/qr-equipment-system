@@ -6,14 +6,14 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Configuration para sa Database Connection (Itinaguyod sa qr_equipment_db)
+// Configuration para sa Database Connection
 $db_host = getenv('DB_HOST') ?: 'scvzklpphi95efixy0m7hpyg';
 $db_port = getenv('DB_PORT') ?: '3306';
 $db_user = getenv('DB_USER') ?: 'mariadb';
 $db_pass = getenv('DB_PASS') ?: 'pPjqOQG7NRXy20MSRfcuNVhtLTbiAR75w9CLeSceBwp06CQLGrUjgeLolgHCBzJH';
-$db_name = getenv('DB_NAME') ?: 'qr_equipment_db'; // Pinalitan mula 'default' patungong 'qr_equipment_db'
+$db_name = getenv('DB_NAME') ?: 'qr_equipment_db';
 
-// 1. Kumonekta sa MariaDB gamit ang PDO (may 3-second timeout limit)
+// 1. Kumonekta sa MariaDB gamit ang PDO
 try {
     $dsn = "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4";
     $pdo = new PDO($dsn, $db_user, $db_pass, [
@@ -50,8 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $updateStmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE email = ?");
     $updateStmt->execute([$otp, $expires_at, $email]);
 
-    // 5. Brevo HTTP API Configuration (Port 443 - HTTPS)
-    $apiKey = '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';
+    // ==========================================
+    // 5. ILAGAY DITO ANG BAGONG BREVO API KEY MO
+    // ==========================================
+    $apiKey = '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';
 
     $postData = [
         'sender' => [
@@ -89,13 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Max 5 seconds timeout limit
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    // Suriin kung natanggap nang maayos ng Brevo ang request (201 Created o 200 OK)
+    // Suriin kung natanggap nang maayos ng Brevo ang request
     if ($httpCode === 201 || $httpCode === 200) {
         $_SESSION['otp_email'] = $email;
         header("Location: verify_otp.php");

@@ -38,8 +38,8 @@ if (!empty($email)) {
         $mail->isSMTP();
         $mail->Host       = 'smtp-relay.brevo.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'ryanjayleoligao64@gmail.com'; // Siguruhing ito ang Brevo login email mo
-        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K';
+        $mail->Username   = 'bed417001@smtp-brevo.com'; // Eksaktong Login mula sa Brevo[cite: 10]
+        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K'; // Ang iyong SMTP Key[cite: 10]
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 

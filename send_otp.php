@@ -3,10 +3,10 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection - Gamitin ang 'qrcode' bilang fallback kung walang DB_NAME sa environment
+// Database Connection - Hardcoded sa 'qrcode' para iwas 'default' table error
 $host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
 $port = getenv('DB_PORT') ?: '3306';
-$db   = getenv('DB_NAME') ?: 'qrcode';
+$db   = 'qrcode';
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : 'ryan072797';
 
@@ -25,23 +25,33 @@ require_once 'phpmailer/src/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Kunin ang email mula sa POST o SESSION
-$email = $_POST['email'] ?? $_SESSION['email'] ?? 'ryancabasag64@gmail.com';
+// Kunin ang email mula sa POST (galing sa login.php) o sa Session
+$email = $_POST['email'] ?? $_SESSION['temp_email'] ?? '';
 
 if (!empty($email)) {
-    // I-save ang temp_email sa session para mabasa ng verify_otp.php
+    // Suriin muna kung ang email na ito ay rehistrado sa database ng users
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
+    $stmt->execute([$email]);
+    $user_data = $stmt->fetch();
+
+    if (!$user_data) {
+        // Kung walang ganitong email sa database
+        echo "<script>alert('Ang email na ito ay hindi rehistrado sa sistema.'); window.location.href='login.php';</script>";
+        exit();
+    }
+
+    // I-save ang temp_email sa session para sa verification
     $_SESSION['temp_email'] = $email;
 
     $otp = rand(100000, 999999);
     $expires_at = date("Y-m-d H:i:s", strtotime("+5 minutes"));
 
-    // I-save ang OTP at Expiration sa database ng qrcode.users
-    $stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE email = ?");
-    $stmt->execute([$otp, $expires_at, $email]);
+    // I-update ang OTP code at expiration sa users table
+    $update_stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE email = ?");
+    $update_stmt->execute([$otp, $expires_at, $email]);
 
     $mail = new PHPMailer(true);
     try {
-        // Brevo SMTP Relay Configuration
         $mail->isSMTP();
         $mail->Host       = 'smtp-relay.brevo.com';
         $mail->SMTPAuth   = true;
@@ -50,7 +60,7 @@ if (!empty($email)) {
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        // Sender: Verified email sa Brevo
+        // Sender at Recipient
         $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC Equipment Monitoring');
         $mail->addAddress($email);
 
@@ -69,7 +79,7 @@ if (!empty($email)) {
 
         $mail->send();
         
-        // I-redirect sa verify_otp.php para ma-input ang OTP
+        // Pagka-send, diretso sa verify_otp.php para i-type ang code
         header("Location: verify_otp.php");
         exit();
 
@@ -77,6 +87,7 @@ if (!empty($email)) {
         echo "Hindi naipadala ang email. Mailer Error: {$mail->ErrorInfo}";
     }
 } else {
-    echo "Walang nahanap na email address para pagpadalan ng OTP.";
+    header("Location: login.php");
+    exit();
 }
 ?>

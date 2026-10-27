@@ -1,7 +1,8 @@
 <?php
 $host = getenv('DB_HOST');
 $user = getenv('DB_USER');
-$pass = getenv('DB_PASS');
+// Sinisigurong sasaloin nito ang DB_PASSWORD man o DB_PASS ang naka-set sa environment variables
+$pass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : getenv('DB_PASS');
 $dbname = getenv('DB_NAME');
 $port = 3306;
 

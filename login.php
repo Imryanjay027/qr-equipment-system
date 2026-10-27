@@ -21,8 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_role'] = $user['role'];
 
-                if ($user['role'] === 'admin' || $user['role'] === 'custodian') {
+                // Dito naka-set ang eksaktong redirection base sa role nila
+                if ($user['role'] === 'admin') {
                     header("Location: admin_dashboard.php");
+                } elseif ($user['role'] === 'custodian') {
+                    header("Location: custodian_dashboard.php");
                 } else {
                     header("Location: borrower.php");
                 }
@@ -52,7 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 100vh;
         }
 
-        /* Left Panel na may School Background Image at Gradient Overlay */
         .brand-panel {
             flex: 1.1;
             background: linear-gradient(rgba(0, 40, 20, 0.85), rgba(0, 30, 60, 0.9)), url('school_bg.jpg') no-repeat center center;

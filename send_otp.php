@@ -3,14 +3,14 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Tawagin ang database connection
+// Tawagin ang database connection (na may auto-create table)
 require_once 'db_connection.php';
 
 // Kunin ang email mula sa POST request (o para sa testing)
 $email = $_POST['email'] ?? '';
 
 if (empty($email)) {
-    die("Pakilagay ang iyong email address.");
+    die("ryanjayleoligao64@gmail.com.");
 }
 
 // Mag-generate ng 6-digit OTP
@@ -22,15 +22,15 @@ try {
     $stmt->execute([$email, $otp]);
 
     // 2. Brevo API v3 Configuration
-    // Palitan ang 'ILAGAY_MO_DITO_ANG_BREVO_API_KEY_MO' ng iyong totoong Brevo API key (xkeysib-...)
-    $apiKey = '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';
+    // I-PASTE MO DITO SA LOOB NG QUOTES ANG BAGONG BREVO API KEY MO (yung xkeysib-...)
+    $apiKey = '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';
 
     $url = 'https://api.brevo.com/v3/smtp/email';
 
     $data = [
         'sender' => [
             'name'  => 'MQCQC Equipment Monitoring',
-            'email' => 'ryanjayleoligao64@gmail.com' // Dapat verified sender email mo ito sa Brevo!
+            'email' => 'ang_registered_sender_email_mo@gmail.com' // Dapat verified sender email mo ito sa Brevo!
         ],
         'to' => [
             [

@@ -1,5 +1,5 @@
 <?php
-$host = 'scvzklpphi95efixy0m7hpyg'; // Kinuha mula sa internal MariaDB URL ng Coolify
+$host = 'scvzklpphi95efixy0m7hpyg'; // Eto ang eksaktong hostname sa Coolify internal URL
 $db   = 'default';
 $user = 'root'; 
 $pass = 'qOAF8F2klYnvxBSlj15uEx88gJxMM95J6QC6TJ1FYRgX9cHvqgA3QlmOhnETItCV';

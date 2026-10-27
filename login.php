@@ -1,63 +1,123 @@
-function sendOtpEmail($toEmail, $otpCode) {
-    $smtpHost = 'ssl://smtp.gmail.com';
-    $smtpPort = 465;
-    $username = 'ryanjayleoligao64@gmail.com';
-    $password = 'rtse abkj wqbz oxcg'; // Iyong Gmail App Password
+<?php
+session_start();
+?>
 
-    $socket = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 30);
-    if (!$socket) {
-        return false;
-    }
-
-    $getResponse = function($socket) {
-        $response = "";
-        while ($str = fgets($socket, 512)) {
-            $response .= $str;
-            if (substr($str, 3, 1) == " ") break;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - QR Equipment Monitoring System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-        return $response;
-    };
+        .login-container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        .login-container img {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
+            object-fit: contain;
+        }
+        .login-container h2 {
+            font-size: 18px;
+            color: #008000;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+        .login-container p {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+            background-color: #f8fafc;
+        }
+        .input-group input:focus {
+            border-color: #0066cc;
+            outline: none;
+            background-color: #fff;
+        }
+        button[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            background-color: #0066ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button[type="submit"]:hover {
+            background-color: #0052cc;
+        }
+        .register-link {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+        .register-link a {
+            color: #0066ff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Nakaturo sa logo.jpg -->
+        <img src="logo.jpg" alt="School Logo">
+        
+        <h2>QR-BASED EQUIPMENT MONITORING SYSTEM</h2>
+        <p>Enter your email to receive an OTP</p>
+        
+        <!-- Naka-turo na diretso sa send_otp.php -->
+        <form action="send_otp.php" method="POST">
+            <div class="input-group">
+                <label>Email Address</label>
+                <input type="email" name="email" required placeholder="example@gmail.com">
+            </div>
+            <button type="submit" name="send_otp">Send OTP</button>
+        </form>
 
-    $getResponse($socket);
-
-    fputs($socket, "EHLO localhost\r\n");
-    $getResponse($socket);
-
-    fputs($socket, "AUTH LOGIN\r\n");
-    $getResponse($socket);
-
-    fputs($socket, base64_encode($username) . "\r\n");
-    $getResponse($socket);
-
-    fputs($socket, base64_encode($password) . "\r\n");
-    $getResponse($socket);
-
-    fputs($socket, "MAIL FROM: <$username>\r\n");
-    $getResponse($socket);
-
-    fputs($socket, "RCPT TO: <$toEmail>\r\n");
-    $getResponse($socket);
-
-    fputs($socket, "DATA\r\n");
-    $getResponse($socket);
-
-    $headers  = "From: Equipment Monitoring System <$username>\r\n";
-    $headers .= "To: <$toEmail>\r\n";
-    $headers .= "Subject: Your Login OTP Code\r\n";
-    $headers .= "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-
-    $message  = "<h2>Equipment Monitoring System</h2>";
-    $message .= "<p>Ang iyong OTP Verification Code para makapag-login ay:</p>";
-    $message .= "<h1 style='color: #2b6cb0; font-size: 32px;'>$otpCode</h1>";
-    $message .= "<p>Valid ang code na ito sa loob ng 5 minuto. Huwag ipamahagi kanino man.</p>";
-
-    $emailContent = $headers . "\r\n" . $message . "\r\n.\r\n";
-    fputs($socket, $emailContent);
-    $getResponse($socket);
-
-    fputs($socket, "QUIT\r\n");
-    fclose($socket);
-
-    return true;
-}
+        <div class="register-link">
+            Don't have an account yet? <a href="register.php">Register here</a>
+        </div>
+    </div>
+</body>
+</html>

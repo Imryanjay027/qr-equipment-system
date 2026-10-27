@@ -3,11 +3,11 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection - Gamitin ang 127.0.0.1 para sa TCP connection sa Coolify container
-$host = '127.0.0.1';
-$db   = 'qr_equipment_db';
+// Database Connection - Gamitin ang tamang Coolify internal credentials
+$host = 'wfbyfhr4404k2y9u2spiv101';
+$db   = 'qrcode';
 $user = 'root';
-$pass = '';
+$pass = 'ito_ang_password_mo_sa_coolify'; // Ilagay dito ang Root/Normal User Password mo sa Coolify
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);

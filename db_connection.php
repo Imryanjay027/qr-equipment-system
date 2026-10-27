@@ -1,9 +1,10 @@
 <?php
 $host = getenv('DB_HOST');
 $user = getenv('DB_USER');
-// Sinisigurong sasaloin nito ang DB_PASSWORD man o DB_PASS ang naka-set sa environment variables
 $pass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : getenv('DB_PASS');
-$dbname = getenv('DB_NAME');
+
+// Sinisigurong sasaloin nito ang DB_DATABASE o DB_NAME man ang nakalagay
+$dbname = getenv('DB_DATABASE') !== false ? getenv('DB_DATABASE') : getenv('DB_NAME');
 $port = 3306;
 
 $conn = @new mysqli($host, $user, $pass, $dbname, $port);

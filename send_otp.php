@@ -25,7 +25,7 @@ require_once 'phpmailer/src/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-$email = $_POST['email'] ?? $_SESSION['email'] ?? 'ryanjayleoligao64@gmail.com';
+$email = $_POST['email'] ?? $_SESSION['email'] ?? 'ryancabasag64@gmail.com';
 
 if (!empty($email)) {
     $otp = rand(100000, 999999);
@@ -38,12 +38,12 @@ if (!empty($email)) {
         $mail->isSMTP();
         $mail->Host       = 'smtp-relay.brevo.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'bed417001@smtp-brevo.com'; // Eksaktong Login mula sa Brevo[cite: 10]
-        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K'; // Ang iyong SMTP Key[cite: 10]
+        $mail->Username   = 'bed417001@smtp-brevo.com';[cite: 10]
+        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K';[cite: 10]
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        // Recipients
+        // Recipients - Subukan nating gamitin ang Brevo account email o default sender
         $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC Equipment Monitoring');
         $mail->addAddress($email);
 

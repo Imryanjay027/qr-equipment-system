@@ -3,14 +3,15 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection - Coolify MariaDB Configuration
-$host = 'wfbyfhr4404k2y9u2spiv101';
-$db   = 'qrcode';
-$user = 'root';
-$pass = 'ryan072797';
+// Database Connection - Babasahin ang Environment Variables mula sa Coolify
+$host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
+$port = getenv('DB_PORT') ?: '3306';
+$db   = getenv('DB_NAME') ?: 'qrcode';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASSWORD') ?: 'ryan072797';
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());

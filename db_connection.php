@@ -1,19 +1,17 @@
 <?php
 $host = getenv('DB_HOST');
+$db   = getenv('DB_DATABASE') !== false ? getenv('DB_DATABASE') : getenv('DB_NAME');
 $user = getenv('DB_USER');
-
-// Sinisigurong sasalo sa parehong DB_PASSWORD o DB_PASS mula sa environment variables
 $pass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : getenv('DB_PASS');
 
-// Sinisigurong sasalo sa parehong DB_DATABASE o DB_NAME mula sa environment variables
-$dbname = getenv('DB_DATABASE') !== false ? getenv('DB_DATABASE') : getenv('DB_NAME');
-$port = 3306;
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
-$conn = @new mysqli($host, $user, $pass, $dbname, $port);
-
-if ($conn->connect_error) {
-    die("Database Connection Failed: " . $conn->connect_error);
+try {
+    $pdo = new PDO($dsn, $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // Matagumpay ang koneksyon
+} catch (\PDOException $e) {
+    // Ipakita ang eksaktong error kung sakaling magkaaberya
+    die("Database Connection Error: " . $e->getMessage());
 }
-
-$conn->set_charset("utf8mb4");
 ?>

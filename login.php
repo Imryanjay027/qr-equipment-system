@@ -62,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex-direction: column;
             justify-content: space-between;
             padding: 40px 60px;
-            position: relative;
         }
 
         .brand-top {
@@ -91,7 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 22px;
             font-weight: bold;
             margin-bottom: 10px;
-            letter-spacing: 0.5px;
         }
 
         .brand-top p {
@@ -130,7 +128,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 14px;
         }
 
-        /* Right Form Panel */
         .form-panel {
             flex: 1;
             background: #ffffff;
@@ -178,12 +175,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 6px;
             font-size: 13px;
             outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .form-group input:focus {
-            border-color: #008000;
-            box-shadow: 0 0 0 3px rgba(0, 128, 0, 0.1);
         }
 
         .error-msg {
@@ -207,11 +198,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: bold;
             cursor: pointer;
             margin-top: 10px;
-            transition: background 0.2s;
-        }
-
-        .login-btn:hover {
-            background-color: #006600;
         }
 
         .register-footer {
@@ -227,10 +213,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: bold;
         }
 
-        .register-footer a:hover {
-            text-decoration: underline;
-        }
-
         @media (max-width: 900px) {
             .split-container { flex-direction: column; overflow: auto; }
             body { overflow: auto; }
@@ -241,7 +223,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="split-container">
-        <!-- Left Brand Panel with School Background -->
         <div class="brand-panel">
             <div class="brand-top">
                 <img src="logo.jpg" alt="School Logo" onerror="this.src='https://via.placeholder.com/90'">
@@ -266,7 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <!-- Right Form Panel -->
         <div class="form-panel">
             <div class="login-container">
                 <h2>Welcome Back!</h2>

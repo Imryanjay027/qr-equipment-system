@@ -34,14 +34,14 @@ if (!empty($email)) {
 
     $mail = new PHPMailer(true);
     try {
-        // Server settings para sa Gmail SMTP (Gamit ang Port 465 at SMTPS)
+        // Server settings para sa Brevo SMTP Relay
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = 'smtp-relay.brevo.com';
         $mail->SMTPAuth   = true;
         $mail->Username   = 'ryanjayleoligao64@gmail.com';
-        $mail->Password   = 'pqufygzvmkwvbfskd';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL
-        $mail->Port       = 465;                        // Port 465
+        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
 
         // Recipients
         $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC Equipment Monitoring');

@@ -13,14 +13,15 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $entered_otp = trim($_POST['otp'] ?? '');
 
-    // Database Connection - Coolify MariaDB Configuration
-    $host = 'wfbyfhr4404k2y9u2spiv101';
-    $db   = 'qrcode';
-    $user = 'root';
-    $pass = 'ryan072797';
+    // Database Connection - Babasahin ang Environment Variables mula sa Coolify
+    $host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
+    $port = getenv('DB_PORT') ?: '3306';
+    $db   = getenv('DB_NAME') ?: 'qrcode';
+    $user = getenv('DB_USER') ?: 'root';
+    $pass = getenv('DB_PASSWORD') ?: 'ryan072797';
 
     try {
-        $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+        $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         // Suriin ang OTP at expiration sa database

@@ -1,9 +1,9 @@
 <?php
-// 1. I-on ang error reporting para makita natin kapag may sablay sa execution
+// I-on ang error reporting para makita agad ang anumang isyu
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// 2. Tawagin ang database connection
+// Tawagin ang database connection
 require_once 'db_connection.php';
 
 // Kunin ang email mula sa POST request (o para sa testing)
@@ -13,25 +13,24 @@ if (empty($email)) {
     die("Pakilagay ang iyong email address.");
 }
 
-// 3. Mag-generate ng 6-digit OTP
+// Mag-generate ng 6-digit OTP
 $otp = rand(100000, 999999);
 
 try {
-    // 4. I-save muna ang OTP sa database
+    // 1. I-save muna ang OTP sa database
     $stmt = $pdo->prepare("INSERT INTO otp_table (email, otp_code, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))");
     $stmt->execute([$email, $otp]);
 
-    // 5. Brevo API v3 Configuration
-    // I-PASTE MO DITO ANG IYONG BREVO API KEY (yung xkeysib-...)
+    // 2. Brevo API v3 Configuration
+    // Palitan ang 'ILAGAY_MO_DITO_ANG_BREVO_API_KEY_MO' ng iyong totoong Brevo API key (xkeysib-...)
     $apiKey = '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';
 
     $url = 'https://api.brevo.com/v3/smtp/email';
 
-    // Ihanda ang payload/data para sa Brevo API
     $data = [
         'sender' => [
             'name'  => 'MQCQC Equipment Monitoring',
-            'email' => 'ryanjayleoligao64@gmail.com' // DAPAT verified sender email mo ito sa Brevo!
+            'email' => 'ryanjayleoligao64@gmail.com' // Dapat verified sender email mo ito sa Brevo!
         ],
         'to' => [
             [
@@ -42,7 +41,7 @@ try {
         'htmlContent' => "<html><body><h2>MQCQC Equipment Monitoring System</h2><p>Ang iyong OTP code ay: <strong style='font-size: 20px; color: #007bff;'>$otp</strong></p><p>Mag-eexpire ito sa loob ng 5 minuto.</p></body></html>"
     ];
 
-    // 6. Ipadala sa Brevo gamit ang cURL
+    // 3. Ipadala sa Brevo gamit ang cURL
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);

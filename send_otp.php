@@ -1,92 +1,79 @@
 <?php
+// Simulan ang session para makuha o maimbak ang OTP at user info
 session_start();
+
+// I-enable ang error reporting para makita agad sa logs kung sakaling magkaaberya
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database Connection - Hardcoded sa 'qrcode' para iwas 'default' table error
-$host = getenv('DB_HOST') ?: 'wfbyfhr4404k2y9u2spiv101';
-$port = getenv('DB_PORT') ?: '3306';
-$db   = 'qrcode';
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : 'ryan072797';
+// Kunin ang mga environment variables na sinet natin sa Coolify
+$db_host = getenv('DB_HOST') ?: 'vps.araosds.cloud';
+$db_port = getenv('DB_PORT') ?: '3000';
+$db_user = getenv('DB_USER') ?: 'mariadb';
+$db_pass = getenv('DB_PASS') ?: getenv('DB_PASSWORD');
+$db_name = getenv('DB_NAME') ?: 'default';
 
+// Gumamit ng PDO para sa mabilis at secure na koneksyon sa MariaDB gamit ang tamang port
 try {
-    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (\PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
+    $dsn = "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4";
+    $pdo = new PDO($dsn, $db_user, $db_pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_TIMEOUT => 5 // 5 seconds database connection timeout para iwas 504
+    ]);
+} catch (PDOException $e) {
+    // Kung sakaling mag-timeout o pumalya ang DB, sabihin agad sa halip na mag-hang
+    http_response_code(500);
+    die("Database Connection Error: " . $e->getMessage());
 }
 
-// PHPMailer Requires
-require_once 'phpmailer/src/Exception.php';
-require_once 'phpmailer/src/PHPMailer.php';
-require_once 'phpmailer/src/SMTP.php';
+// Suriin kung POST request ang ginawa mula sa login page
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-// Kunin ang email mula sa POST (galing sa login.php) o sa Session
-$email = $_POST['email'] ?? $_SESSION['temp_email'] ?? '';
-
-if (!empty($email)) {
-    // Suriin muna kung ang email na ito ay rehistrado sa database ng users
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
-    $stmt->execute([$email]);
-    $user_data = $stmt->fetch();
-
-    if (!$user_data) {
-        // Kung walang ganitong email sa database
-        echo "<script>alert('Ang email na ito ay hindi rehistrado sa sistema.'); window.location.href='login.php';</script>";
-        exit();
+    if (empty($email)) {
+        die("Please provide a valid email address.");
     }
 
-    // I-save ang temp_email sa session para sa verification
-    $_SESSION['temp_email'] = $email;
+    // 1. I-verify muna kung rehistrado ang email sa database
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    if (!$user) {
+        die("Email address not found in the system.");
+    }
+
+    // 2. Gumawa ng 6-digit OTP code
     $otp = rand(100000, 999999);
-    $expires_at = date("Y-m-d H:i:s", strtotime("+5 minutes"));
+    $expires_at = date("Y-m-d H:i:s", strtotime("+10 minutes"));
 
-    // I-update ang OTP code at expiration sa users table
-    $update_stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE email = ?");
-    $update_stmt->execute([$otp, $expires_at, $email]);
+    // 3. I-save o i-update ang OTP sa database para sa user na ito
+    $updateStmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE email = ?");
+    $updateStmt->execute([$otp, $expires_at, $email]);
 
-    $mail = new PHPMailer(true);
-    try {
-        $mail->isSMTP();
-        $mail->Host       = 'smtp-relay.brevo.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = 'bed417001@smtp-brevo.com';
-        $mail->Password   = 'xsmtpsib-654e3a69f3ede9ebad7b087075af141adcb0d07d749bb609b5bb13d12ae33b40-bnm2a9542oVHPC6K';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+    // 4. Pagpapadala ng Email (Gamit ang Brevo SMTP o mail function na may timeout)
+    // Ilagay dito ang iyong email sending logic (Halimbawa: PHPMailer o mail function)
+    $subject = "Your MQCQC Equipment Monitoring OTP Code";
+    $message = "Your verification code is: $otp. It will expire in 10 minutes.";
+    $headers = "From: no-reply@mqcqc.edu.ph\r\n";
 
-        // Sender at Recipient
-        $mail->setFrom('ryanjayleoligao64@gmail.com', 'MQCQC Equipment Monitoring');
-        $mail->addAddress($email);
+    // Sinusubukan itong ipadala nang mabilis
+    $mail_sent = @mail($email, $subject, $message, $headers);
 
-        // Content
-        $mail->isHTML(true);
-        $mail->Subject = 'MQCQC System - Your OTP Code';
-        $mail->Body    = '
-            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-                <h2 style="color: #0056b3;">MQCQC Equipment Monitoring System</h2>
-                <p>Magandang araw!</p>
-                <p>Ang iyong One-Time Password (OTP) para sa pag-login ay:</p>
-                <h1 style="background-color: #f4f4f4; padding: 10px 20px; display: inline-block; letter-spacing: 4px; color: #333;">' . $otp . '</h1>
-                <p>Mag-e-expire ang kodigong ito sa loob ng 5 minuto.</p>
-            </div>
-        ';
-
-        $mail->send();
+    if ($mail_sent) {
+        // I-save ang email sa session para magamit sa verification page
+        $_SESSION['otp_email'] = $email;
         
-        // Pagka-send, diretso sa verify_otp.php para i-type ang code
+        // I-redirect sa OTP verification input page
         header("Location: verify_otp.php");
         exit();
-
-    } catch (Exception $e) {
-        echo "Hindi naipadala ang email. Mailer Error: {$mail->ErrorInfo}";
+    } else {
+        http_response_code(500);
+        echo "Failed to send OTP email. Please try again later.";
     }
-} else {
+}
+else {
+    // Kung nilagyan ng diretso sa URL
     header("Location: login.php");
     exit();
 }

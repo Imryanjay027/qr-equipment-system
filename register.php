@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($role === 'student') {
         $education_level = trim($_POST['education_level'] ?? 'College');
         $course_year_section = trim($_POST['course_year_section'] ?? '');
-        $profile_picture = $_POST['profile_picture'] ?? ''; // Base64 mula sa webcam
+        $profile_picture = $_POST['profile_picture'] ?? ''; 
     } else {
         if (isset($_FILES['profile_picture_file']) && $_FILES['profile_picture_file']['error'] === UPLOAD_ERR_OK) {
             $fileTmpPath = $_FILES['profile_picture_file']['tmp_name'];
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($name) || empty($email) || empty($password)) {
-        echo "<script>alert('Lahat ng pangunahing field ay kinakailangan!'); window.history.back();</script>";
+        echo "<script>alert('All required fields must be filled!'); window.history.back();</script>";
         exit();
     }
 
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $checkStmt->execute([$email]);
         
         if ($checkStmt->rowCount() > 0) {
-            echo "<script>alert('Ang email na ito ay nakarehistro na!'); window.history.back();</script>";
+            echo "<script>alert('This email is already registered!'); window.history.back();</script>";
             exit();
         }
 
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, education_level, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$name, $email, $hashedPassword, $role, $education_level, $course_year_section, $profile_picture]);
 
-        echo "<script>alert('Matagumpay ang pag-rehistro! Maaari ka nang mag-login.'); window.location.href='login.php';</script>";
+        echo "<script>alert('Registration successful! You can now log in.'); window.location.href='login.php';</script>";
         exit();
 
     } catch (PDOException $e) {
@@ -60,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
         body { background-color: #f4f7f6; display: flex; height: 100vh; overflow: hidden; }
         
-        /* Left Brand Panel */
         .brand-panel {
             flex: 1;
             background: linear-gradient(135deg, #0b6623 0%, #004d1a 100%);
@@ -71,7 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             padding: 40px;
             text-align: center;
-            position: relative;
         }
 
         .brand-panel img {
@@ -123,7 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .feature-item span { margin-left: 10px; }
 
-        /* Right Form Panel */
         .form-panel {
             flex: 1;
             background: #ffffff;
@@ -171,11 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 6px;
             font-size: 13px;
             outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-            border-color: #008000;
         }
 
         .section-box {
@@ -219,11 +211,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: bold;
             cursor: pointer;
             margin-top: 20px;
-            transition: background 0.2s;
-        }
-
-        .submit-btn:hover {
-            background-color: #006600;
         }
 
         .login-link {
@@ -239,10 +226,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: bold;
         }
 
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
             .brand-panel { display: none; }
@@ -251,7 +234,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-    <!-- Kaliwang Bahagi: Brand & Features Panel -->
     <div class="brand-panel">
         <img src="logo.jpg" alt="School Logo" onerror="this.src='https://via.placeholder.com/90'">
         <h2>MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
@@ -259,22 +241,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p>Together for a Smarter, Safer and More Efficient Campus</p>
         
         <div class="features-list">
-            <div class="feature-item">
-                <span>📦</span>
-                <span>Track Equipment & Borrowing System</span>
-            </div>
-            <div class="feature-item">
-                <span>🛡️</span>
-                <span>Improve Accountability & Security</span>
-            </div>
-            <div class="feature-item">
-                <span>⚡</span>
-                <span>Build a Smarter Campus Environment</span>
-            </div>
+            <div class="feature-item"><span>📦</span><span>Track Equipment & Borrowing System</span></div>
+            <div class="feature-item"><span>🛡️</span><span>Improve Accountability & Security</span></div>
+            <div class="feature-item"><span>⚡</span><span>Build a Smarter Campus Environment</span></div>
         </div>
     </div>
 
-    <!-- Kanang Bahagi: Registration Form Panel -->
     <div class="form-panel">
         <div class="register-container">
             <h2>Create Your Account</h2>
@@ -306,7 +278,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </select>
                 </div>
 
-                <!-- Student Exclusive Fields -->
                 <div id="studentFields">
                     <div class="form-group">
                         <label>Education Level</label>
@@ -330,7 +301,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <!-- Non-Student Exclusive Fields (Custodian, Faculty, Staff) -->
                 <div id="staffFields" style="display: none;">
                     <div class="form-group section-box">
                         <label style="text-align:left;">Profile Picture (Optional)</label>
@@ -353,19 +323,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function startCamera() {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(stream => {
-                        video.srcObject = stream;
-                        video.play();
-                    })
-                    .catch(err => {
-                        console.log("Webcam error: " + err);
-                    });
+                    .then(stream => { video.srcObject = stream; video.play(); })
+                    .catch(err => { console.log("Webcam error: " + err); });
             }
         }
 
-        window.onload = function() {
-            startCamera();
-        };
+        window.onload = function() { startCamera(); };
 
         function toggleRoleFields() {
             const role = document.getElementById('roleSelect').value;

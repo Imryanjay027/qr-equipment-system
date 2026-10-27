@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
 
     if (empty($email) || empty($password)) {
-        $error = 'Mangyaring ilagay ang email at password.';
+        $error = 'Please enter your email and password.';
     } else {
         try {
             $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit();
             } else {
-                $error = 'Maling email o password.';
+                $error = 'Invalid email or password.';
             }
         } catch (PDOException $e) {
             $error = 'Database Error: ' . $e->getMessage();
@@ -61,11 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 75px;
             border-radius: 50%;
             margin-bottom: 15px;
+            object-fit: cover;
         }
 
         .login-container h1 {
             font-size: 16px;
-            color: #008000; /* Berdeng kulay ayon sa larawan */
+            color: #008000;
             font-weight: bold;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
@@ -105,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .login-btn {
             width: 100%;
-            background-color: #0066ff; /* Asul na button ayon sa larawan */
+            background-color: #0066ff;
             color: white;
             padding: 12px;
             border: none;
@@ -151,8 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <div class="login-container">
-        <!-- Logo ng Paaralan -->
-        <img src="logo.png" alt="School Logo" onerror="this.src='https://via.placeholder.com/75'">
+        <!-- Nakaturo na sa logo.jpg -->
+        <img src="logo.jpg" alt="School Logo" onerror="this.src='https://via.placeholder.com/75'">
         
         <h1>QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
         <p class="subtitle">Enter your email and password to login</p>
@@ -169,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" name="password" required placeholder="Ilagay ang iyong password">
+                <input type="password" name="password" required placeholder="Enter your password">
             </div>
 
             <button type="submit" class="login-btn">Login</button>

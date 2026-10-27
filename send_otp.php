@@ -6,14 +6,14 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Configuration para sa Database Connection (Internal Coolify Docker Network)
+// Configuration para sa Database Connection (Nakase-set sa qr_equipment_db)
 $db_host = getenv('DB_HOST') ?: 'scvzklpphi95efixy0m7hpyg';
 $db_port = getenv('DB_PORT') ?: '3306';
 $db_user = getenv('DB_USER') ?: 'mariadb';
 $db_pass = getenv('DB_PASS') ?: 'pPjqOQG7NRXy20MSRfcuNVhtLTbiAR75w9CLeSceBwp06CQLGrUjgeLolgHCBzJH';
-$db_name = getenv('DB_NAME') ?: 'default';
+$db_name = getenv('DB_NAME') ?: 'qr_equipment_db';
 
-// 1. Kumonekta sa MariaDB gamit ang PDO (may 3-second timeout limit para maiwasan ang hanging)
+// 1. Kumonekta sa MariaDB gamit ang PDO (may 3-second timeout limit)
 try {
     $dsn = "mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4";
     $pdo = new PDO($dsn, $db_user, $db_pass, [
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Pakilagay ang isang valid na email address.");
     }
 
-    // 2. I-verify kung ang email ay umiiral sa database
+    // 2. I-verify kung ang email ay umiiral sa database ng users
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postData = [
         'sender' => [
             'name' => 'MQCQC Equipment Monitoring',
-            'email' => 'no-reply@mqcqc.edu.ph' // Pwede mong palitan batay sa na-verify mong sender sa Brevo
+            'email' => 'no-reply@mqcqc.edu.ph'
         ],
         'to' => [
             [

@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_name'] = $matched_user['full_name'];
         $_SESSION['user_role'] = $matched_user['role'];
         $_SESSION['user_selfie'] = $matched_user['selfie'];
+        $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
 
         if ($matched_user['role'] === 'custodian') {
             header("Location: custodian_dashboard.php");
@@ -50,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-0 m-0 font-sans">
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
+        <!-- Kaliwang Bahagi: Branding & Background -->
         <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
@@ -75,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
         </div>
 
+        <!-- Kanang Bahagi: Login Form -->
         <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 lg:p-10 overflow-y-auto">
             <div class="max-w-md w-full mx-auto">
                 <div class="mb-6">

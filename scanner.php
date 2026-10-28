@@ -5,7 +5,21 @@ if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'custodian';
 }
 
-$custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'System Custodian';
+$custodian_name = isset($_SESSION['user_name'] ) ? $_SESSION['user_name'] : 'System Custodian';
+
+// Kunin ang active requests mula sa session para magamit sa dynamic JavaScript lookup
+$active_requests = isset($_SESSION['borrow_requests']) ? $_SESSION['borrow_requests'] : [
+    [
+        'id' => 1,
+        'student_id' => 'admin',
+        'full_name' => 'Ryan Jay Leoligao',
+        'course_year' => 'BSIT 3rd Year',
+        'item' => 'Extension',
+        'borrow_date' => '2026-10-20 12:30:00',
+        'return_due' => '2026-10-20 16:30:00',
+        'status' => 'Pending'
+    ]
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -130,6 +144,9 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
     </div>
 
     <script>
+        // Ipasa ang PHP session requests papuntang JavaScript
+        const borrowRequests = <?php echo json_encode($active_requests); ?>;
+
         const menuBtn = document.getElementById('menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
         menuBtn.addEventListener('click', () => {
@@ -149,6 +166,9 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
         function onScanSuccess(decodedText) {
             playBeepSound();
             
+            // Hanapin kung ang na-scan na QR text ay tumutugma sa student_id o kaya ay gamitin ang unang request kung sakaling demo QR
+            let matchedBorrower = borrowRequests.find(req => req.student_id.toLowerCase() === decodedText.toLowerCase()) || borrowRequests[0];
+
             document.getElementById('scan-result-container').innerHTML = `
                 <div class="flex flex-col space-y-3">
                     <div class="flex items-center justify-between border-b pb-2">
@@ -159,13 +179,13 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
                     <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4">
                         <img src="logo.jpg" alt="Live Selfie" class="w-20 h-20 rounded-full object-cover border-2 border-emerald-600 bg-white shadow-sm flex-shrink-0" onerror="this.src='https://via.placeholder.com/80'">
                         <div class="flex-1 w-full text-left space-y-1 text-xs md:text-sm">
-                            <p><strong class="text-gray-700">Student ID:</strong> <span class="text-gray-900 font-medium">admin</span></p>
-                            <p><strong class="text-gray-700">Full Name:</strong> <span class="text-gray-900 font-medium">Ryan Jay Leoligao</span></p>
-                            <p><strong class="text-gray-700">Course & Year:</strong> <span class="text-gray-900 font-medium">BSIT 3rd Year</span></p>
-                            <p><strong class="text-gray-700">Equipment to Borrow:</strong> <span class="text-gray-900 font-medium">Extension</span></p>
-                            <p><strong class="text-gray-700">Borrow Date:</strong> <span class="text-gray-900 font-medium">2026-10-20 12:30:00</span></p>
-                            <p><strong class="text-gray-700">Return Due:</strong> <span class="text-gray-900 font-medium">2026-10-20 16:30:00</span></p>
-                            <p><strong class="text-gray-700">Status / Remarks:</strong> <span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[11px]">Pending / Active Borrow</span></p>
+                            <p><strong class="text-gray-700">Student ID:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.student_id}</span></p>
+                            <p><strong class="text-gray-700">Full Name:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.full_name}</span></p>
+                            <p><strong class="text-gray-700">Course & Year:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.course_year}</span></p>
+                            <p><strong class="text-gray-700">Equipment to Borrow:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.item}</span></p>
+                            <p><strong class="text-gray-700">Borrow Date:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.borrow_date || '2026-10-20 12:30:00'}</span></p>
+                            <p><strong class="text-gray-700">Return Due:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.return_due}</span></p>
+                            <p><strong class="text-gray-700">Status / Remarks:</strong> <span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[11px]">${matchedBorrower.status}</span></p>
                         </div>
                     </div>
                 </div>

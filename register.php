@@ -5,25 +5,38 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $error_message = "";
 $success_message = "";
-$users_file = 'users.json';
 
-// Initialize users.json kung wala pa
-if (!file_exists($users_file)) {
-    $default_users = [
-        [
-            'student_id' => 'admin',
-            'email' => 'admin@mqcqc.edu.ph',
-            'full_name' => 'Ryan Jay Leoligao',
-            'password' => 'admin123',
-            'role' => 'custodian',
-            'course_year' => 'Administrator',
-            'selfie' => 'logo.jpg'
-        ]
-    ];
-    @file_put_contents($users_file, json_encode($default_users, JSON_PRETTY_PRINT));
+$upload_dir = 'uploads/';
+if (!is_dir($upload_dir)) {
+    @mkdir($upload_dir, 0777, true);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$db_file = $upload_dir . 'database.sqlite';
+try {
+    $db = new PDO("sqlite:" . $db_file);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $db->exec("CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id TEXT UNIQUE,
+        email TEXT UNIQUE,
+        full_name TEXT,
+        password TEXT,
+        role TEXT,
+        course_year TEXT,
+        selfie TEXT
+    )");
+
+    $stmtCheck = $db->query("SELECT COUNT(*) FROM users");
+    if ($stmtCheck->fetchColumn() == 0) {
+        $stmtAdmin = $db->prepare("INSERT INTO users (student_id, email, full_name, password, role, course_year, selfie) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmtAdmin->execute(['admin', 'admin@mqcqc.edu.ph', 'Ryan Jay Leoligao', 'admin123', 'custodian', 'Administrator', 'logo.jpg']);
+    }
+} catch (PDOException $e) {
+    $error_message = "Database Error: " . $e->getMessage();
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error_message)) {
     $student_id = trim($_POST['student_id']);
     $full_name = trim($_POST['full_name']);
     $email = trim($_POST['email']);
@@ -38,46 +51,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = str_replace(' ', '+', $data);
         $decoded_data = base64_decode($data);
         
-        $upload_dir = 'uploads/';
-        if (!is_dir($upload_dir)) {
-            @mkdir($upload_dir, 0777, true);
-        }
         $file_name = time() . '_selfie.jpg';
         $selfie_path = $upload_dir . $file_name;
         @file_put_contents($selfie_path, $decoded_data);
     }
 
-    $users = [];
-    if (file_exists($users_file)) {
-        $users = json_decode(file_get_contents($users_file), true) ?: [];
-    }
+    try {
+        $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(student_id) = LOWER(?)");
+        $stmt->execute([$email, $student_id]);
+        $existingUser = $stmt->fetch();
 
-    $isDuplicate = false;
-    foreach ($users as $user) {
-        if (strcasecmp($user['email'], $email) === 0) {
-            $isDuplicate = true;
-            $error_message = "This email address is already registered!";
-            break;
+        if ($existingUser) {
+            if (strtolower($existingUser['email']) === strtolower($email)) {
+                $error_message = "This email address is already registered!";
+            } else {
+                $error_message = "This Student/Employee ID is already in use!";
+            }
+        } else {
+            $insert = $db->prepare("INSERT INTO users (student_id, email, full_name, password, role, course_year, selfie) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $insert->execute([$student_id, $email, $full_name, $password, $role, $course_year, $selfie_path]);
+            $success_message = "Account successfully registered! You can now login below.";
         }
-        if (strcasecmp($user['student_id'], $student_id) === 0) {
-            $isDuplicate = true;
-            $error_message = "This Student/Employee ID is already in use!";
-            break;
-        }
-    }
-
-    if (!$isDuplicate) {
-        $users[] = [
-            'student_id' => $student_id,
-            'email' => $email,
-            'full_name' => $full_name,
-            'password' => $password,
-            'role' => $role,
-            'course_year' => $course_year,
-            'selfie' => $selfie_path
-        ];
-        @file_put_contents($users_file, json_encode($users, JSON_PRETTY_PRINT));
-        $success_message = "Account successfully registered! You can now login.";
+    } catch (PDOException $e) {
+        $error_message = "Registration Error: " . $e->getMessage();
     }
 }
 ?>
@@ -91,37 +87,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-0 m-0 font-sans">
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
-        <!-- Kaliwang Bahagi: Centered Logo & Title kasama ang school_bg.jpg -->
-        <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
+        <!-- Kaliwang Bahagi: School Branding -->
+        <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-6 sm:p-8 lg:p-12 text-white overflow-hidden min-h-[350px] lg:min-h-screen">
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
             
             <div class="relative z-10 flex flex-col items-center text-center mx-auto max-w-lg pt-4">
-                <img src="logo.jpg" alt="Logo" class="w-20 h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
-                <h2 class="text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
-                <h1 class="text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
+                <img src="logo.jpg" alt="Logo" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
+                <h2 class="text-[11px] sm:text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
+                <h1 class="text-lg sm:text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
             </div>
 
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
-                <p class="text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
+                <p class="text-xs sm:text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
                 <div class="space-y-3 text-left">
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Track Equipment - Seamless borrowing & return logs</span>
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Track Equipment - Seamless borrowing & return logs</span>
                     </div>
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Improve Accountability - Real-time condition monitoring</span>
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Improve Accountability - Real-time condition monitoring</span>
                     </div>
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Build a Smarter Campus - Automated digital verification</span>
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Build a Smarter Campus - Automated digital verification</span>
                     </div>
                 </div>
             </div>
 
-            <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
+            <div class="relative z-10 text-[11px] sm:text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
         </div>
 
-        <!-- Kanang Bahagi: Form -->
-        <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 lg:p-10 overflow-y-auto">
+        <!-- Kanang Bahagi: Registration Form -->
+        <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 sm:p-8 lg:p-10 overflow-y-auto">
             <div class="max-w-md w-full mx-auto">
                 <div class="mb-6">
                     <h2 class="text-xl font-bold text-gray-800">Create Account</h2>
@@ -185,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="submit" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-3 rounded-lg text-sm font-semibold transition shadow-md">Register</button>
                     </div>
                 </form>
-                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">Already have an account? <a href="login.php" class="text-emerald-700 font-semibold hover:underline">Login here</a></div>
+                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">Already have an account? <a href="login.php" class="text-emerald-700 font-semibold underline">Login here</a></div>
             </div>
         </div>
     </div>
@@ -216,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const capturedPreview = document.getElementById('captured-preview');
         const selfieBase64Input = document.getElementById('selfie_base64');
         let streamInstance = null;
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
             .then(stream => { streamInstance = stream; video.srcObject = stream; })
             .catch(err => { console.warn("Webcam error:", err); });
         captureBtn.addEventListener('click', () => {

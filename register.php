@@ -5,18 +5,22 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $error_message = "";
 $success_message = "";
+$json_users_file = 'users.json';
 
-if (!isset($_SESSION['registered_users'])) {
-    $_SESSION['registered_users'] = [
+// Initialize users.json kung wala pa
+if (!file_exists($json_users_file)) {
+    $default_users = [
         [
             'student_id' => 'admin',
             'email' => 'admin@mqcqc.edu.ph',
             'full_name' => 'Ryan Jay Leoligao',
             'password' => 'admin123',
             'role' => 'custodian',
+            'course_year' => 'Administrator',
             'selfie' => 'logo.jpg'
         ]
     ];
+    file_put_contents($json_users_file, json_encode($default_users, JSON_PRETTY_PRINT));
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -42,16 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $file_name = time() . '_selfie.jpg';
         $selfie_path = $upload_dir . $file_name;
-        
-        // I-save nang may error suppression para maiwasan ang permission warning
         @file_put_contents($selfie_path, $decoded_data);
         if (file_exists($selfie_path)) {
             @chmod($selfie_path, 0644);
         }
     }
 
+    $users = json_decode(file_get_contents($json_users_file), true) ?: [];
+
     $isDuplicate = false;
-    foreach ($_SESSION['registered_users'] as $user) {
+    foreach ($users as $user) {
         if (strcasecmp($user['email'], $email) === 0) {
             $isDuplicate = true;
             $error_message = "Test Case Failed: This email address is already registered in the system!";
@@ -65,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$isDuplicate) {
-        $_SESSION['registered_users'][] = [
+        $users[] = [
             'student_id' => $student_id,
             'email' => $email,
             'full_name' => $full_name,
@@ -74,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'course_year' => $course_year,
             'selfie' => $selfie_path
         ];
+        file_put_contents($json_users_file, json_encode($users, JSON_PRETTY_PRINT));
         $success_message = "Test Case Passed: Account successfully registered!";
     }
 }
@@ -87,92 +92,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-0 m-0 font-sans">
-
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
-        
-        <!-- Kaliwang Bahagi: Centered Logo & Title kasama ang school_bg.jpg -->
         <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
-
             <div class="relative z-10 flex flex-col items-center text-center mx-auto max-w-lg pt-4">
                 <img src="logo.jpg" alt="Logo" class="w-20 h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
                 <h2 class="text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
                 <h1 class="text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
             </div>
-
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
                 <p class="text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
-                
                 <div class="space-y-3 text-left">
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-emerald-300"></span> Track Equipment - Seamless borrowing & return logs
-                        </span>
+                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Track Equipment - Seamless borrowing & return logs</span>
                     </div>
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-emerald-300"></span> Improve Accountability - Real-time condition monitoring
-                        </span>
+                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Improve Accountability - Real-time condition monitoring</span>
                     </div>
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-emerald-300"></span> Build a Smarter Campus - Automated digital verification
-                        </span>
+                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Build a Smarter Campus - Automated digital verification</span>
                     </div>
                 </div>
             </div>
-
-            <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">
-                Property Custodian & Borrower Portal &copy; 2026
-            </div>
+            <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
         </div>
 
-        <!-- Kanang Bahagi: Registration Form -->
         <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 lg:p-10 overflow-y-auto">
             <div class="max-w-md w-full mx-auto">
-                
                 <div class="mb-6">
                     <h2 class="text-xl font-bold text-gray-800">Create Account</h2>
                     <p class="text-xs text-gray-500">Please fill out the details to register.</p>
                 </div>
-
                 <?php if (!empty($error_message)): ?>
-                    <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-medium">
-                        <?php echo htmlspecialchars($error_message); ?>
-                    </div>
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-medium"><?php echo htmlspecialchars($error_message); ?></div>
                 <?php endif; ?>
-
                 <?php if (!empty($success_message)): ?>
                     <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-medium">
                         <?php echo htmlspecialchars($success_message); ?>
-                        <div class="mt-2">
-                            <a href="login.php" class="text-emerald-900 font-bold underline">Login here &rarr;</a>
-                        </div>
+                        <div class="mt-2"><a href="login.php" class="text-emerald-900 font-bold underline">Login here &rarr;</a></div>
                     </div>
                 <?php endif; ?>
-
                 <form action="register.php" method="POST" id="register-form" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Student / Employee ID</label>
                         <input type="text" name="student_id" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="e.g. MQCQC-12345">
                     </div>
-
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
                         <input type="text" name="full_name" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="First Name and Last Name">
                     </div>
-
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
                         <input type="email" name="email" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="email@mqcqc.edu.ph">
                     </div>
-
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
                         <input type="password" name="password" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your password">
                     </div>
-
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Register As</label>
@@ -183,58 +160,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="custodian">Property Custodian</option>
                             </select>
                         </div>
-                        
                         <div id="course-container">
                             <label id="course-label" class="block text-xs font-semibold text-gray-700 mb-1">Course & Year / Grade & Section</label>
                             <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A or Grade 11-ICT" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                     </div>
-
-                    <!-- Live Selfie Capture Widget -->
                     <div id="selfie-section" class="bg-slate-50 border border-gray-200 p-4 rounded-xl">
                         <label class="block text-xs font-semibold text-gray-700 mb-2">Live Selfie Capture</label>
-                        
                         <div class="relative w-full bg-black rounded-lg overflow-hidden border border-gray-300 mb-3 flex items-center justify-center min-h-[180px]">
                             <video id="webcam" autoplay playsinline class="w-full h-[180px] object-cover"></video>
                             <canvas id="canvas" class="hidden"></canvas>
                             <img id="captured-preview" src="" alt="Captured Selfie" class="hidden w-full h-[180px] object-cover">
                         </div>
-
                         <input type="hidden" name="selfie_base64" id="selfie_base64">
-
                         <div class="flex gap-2">
-                            <button type="button" id="capture-btn" class="flex-1 bg-[#005a2b] hover:bg-[#004822] text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">
-                                Capture Selfie
-                            </button>
-                            <button type="button" id="retake-btn" class="hidden flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">
-                                Retake Photo
-                            </button>
+                            <button type="button" id="capture-btn" class="flex-1 bg-[#005a2b] hover:bg-[#004822] text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">Capture Selfie</button>
+                            <button type="button" id="retake-btn" class="hidden flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">Retake Photo</button>
                         </div>
                     </div>
-
                     <div class="pt-2">
-                        <button type="submit" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-3 rounded-lg text-sm font-semibold transition shadow-md">
-                            Register
-                        </button>
+                        <button type="submit" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-3 rounded-lg text-sm font-semibold transition shadow-md">Register</button>
                     </div>
                 </form>
-
-                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">
-                    Already have an account? <a href="login.php" class="text-emerald-700 font-semibold hover:underline">Login here</a>
-                </div>
-
+                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">Already have an account? <a href="login.php" class="text-emerald-700 font-semibold hover:underline">Login here</a></div>
             </div>
         </div>
-
     </div>
-
     <script>
         function toggleCourseField() {
             const roleSelect = document.getElementById('role-select');
             const courseContainer = document.getElementById('course-container');
             const courseInput = document.getElementById('course_input');
             const courseLabel = document.getElementById('course-label');
-
             if (roleSelect.value === 'borrower') {
                 courseContainer.style.display = 'block';
                 courseInput.required = true;
@@ -251,48 +208,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 courseInput.value = '';
             }
         }
-
         toggleCourseField();
-
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const captureBtn = document.getElementById('capture-btn');
         const retakeBtn = document.getElementById('retake-btn');
         const capturedPreview = document.getElementById('captured-preview');
         const selfieBase64Input = document.getElementById('selfie_base64');
-
         let streamInstance = null;
-
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then(stream => {
-                streamInstance = stream;
-                video.srcObject = stream;
-            })
-            .catch(err => {
-                console.warn("Webcam access denied or unavailable:", err);
-            });
-
+            .then(stream => { streamInstance = stream; video.srcObject = stream; })
+            .catch(err => { console.warn("Webcam access denied or unavailable:", err); });
         captureBtn.addEventListener('click', () => {
-            if (!streamInstance) {
-                alert("Camera access is not available.");
-                return;
-            }
+            if (!streamInstance) { alert("Camera access is not available."); return; }
             canvas.width = video.videoWidth || 320;
             canvas.height = video.videoHeight || 240;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
             const dataURL = canvas.toDataURL('image/jpeg');
             selfieBase64Input.value = dataURL;
-            
             capturedPreview.src = dataURL;
             capturedPreview.classList.remove('hidden');
             video.classList.add('hidden');
-            
             captureBtn.classList.add('hidden');
             retakeBtn.classList.remove('hidden');
         });
-
         retakeBtn.addEventListener('click', () => {
             selfieBase64Input.value = '';
             capturedPreview.classList.add('hidden');

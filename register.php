@@ -83,49 +83,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
         
-        <!-- Kaliwang Bahagi: Binabaan ang opacity para mas luminaw ang school_bg.jpg -->
-        <div class="lg:w-6/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[300px] lg:min-h-screen">
-            <div class="absolute inset-0 bg-cover bg-center opacity-60 mix-blend-overlay" style="background-image: url('school_bg.jpg');"></div>
-            <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
+        <!-- Kaliwang Bahagi: Eksaktong Layout at Estilo ayon sa Reference Image mo -->
+        <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
+            <!-- Background Image na school_bg.jpg -->
+            <div class="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay" style="background-image: url('school_bg.jpg');"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/90 via-[#004822]/60 to-transparent"></div>
 
+            <!-- Top Logo & Title -->
             <div class="relative z-10 flex items-center space-x-4">
                 <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white shadow-md" onerror="this.src='https://via.placeholder.com/60'">
                 <div>
                     <h2 class="text-xs md:text-sm font-bold tracking-wider text-emerald-200">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
-                    <h1 class="text-lg md:text-2xl font-black tracking-tight text-white">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
+                    <h1 class="text-xl md:text-3xl font-black tracking-tight text-white">QR-BASED EQUIPMENT MONITORING SYSTEM[cite: 3]</h1>
                 </div>
             </div>
 
+            <!-- Middle Tagline & Green Boxes katulad sa reference image -->
             <div class="relative z-10 my-auto py-8 max-w-xl">
-                <p class="text-sm md:text-base text-gray-100 italic mb-6 font-medium">"Together for a Smarter, Safer and More Efficient Campus"</p>
+                <p class="text-sm md:text-base text-gray-100 italic mb-6 font-medium">"Together for a Smarter, Safer and More Efficient Campus"[cite: 3]</p>
                 
                 <div class="space-y-3">
-                    <div class="flex items-center space-x-3 bg-black/40 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                        <span class="text-xs md:text-sm font-medium">Track Equipment - Seamless borrowing & return logs</span>
+                    <div class="bg-[#005a2b]/80 border border-emerald-400/50 p-3.5 rounded-lg shadow-md backdrop-blur-sm">
+                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-300"></span> Track Equipment - Seamless borrowing & return logs[cite: 3]
+                        </span>
                     </div>
-                    <div class="flex items-center space-x-3 bg-black/40 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                        <span class="text-xs md:text-sm font-medium">Improve Accountability - Real-time condition monitoring</span>
+                    <div class="bg-[#005a2b]/80 border border-emerald-400/50 p-3.5 rounded-lg shadow-md backdrop-blur-sm">
+                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-300"></span> Improve Accountability - Real-time condition monitoring[cite: 3]
+                        </span>
                     </div>
-                    <div class="flex items-center space-x-3 bg-black/40 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                        <span class="text-xs md:text-sm font-medium">Build a Smarter Campus - Automated digital verification</span>
+                    <div class="bg-[#005a2b]/80 border border-emerald-400/50 p-3.5 rounded-lg shadow-md backdrop-blur-sm">
+                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-300"></span> Build a Smarter Campus - Automated digital verification[cite: 3]
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <div class="relative z-10 text-xs text-emerald-300">
+            <!-- Footer Note -->
+            <div class="relative z-10 text-xs text-emerald-200">
                 Property Custodian & Borrower Portal &copy; 2026
             </div>
         </div>
 
-        <!-- Kanang Bahagi: English Form -->
-        <div class="lg:w-6/12 bg-white flex flex-col justify-center p-6 lg:p-12">
-            <div class="max-w-md w-full mx-auto my-auto">
+        <!-- Kanang Bahagi: Kumpletong Form ng Borrower at Custodian na hindi binago -->
+        <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 lg:p-10 overflow-y-auto">
+            <div class="max-w-md w-full mx-auto">
                 
-                <div class="mb-6 text-center lg:text-left">
-                    <h2 class="text-xl font-bold text-gray-800">Create Account</h2>
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-gray-800">Create Account[cite: 3]</h2>
                     <p class="text-xs text-gray-500">Please fill out the details to register.</p>
                 </div>
 
@@ -139,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-medium">
                         <?php echo htmlspecialchars($success_message); ?>
                         <div class="mt-2">
-                            <a href="login.php" class="text-emerald-900 font-bold underline">Login here &rarr;</a>
+                            <a href="login.php" class="text-emerald-900 font-bold underline">Login here &rarr;[cite: 3]</a>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -162,14 +169,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
-                        <input type="password" name="password" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="********">
+                        <input type="password" name="password" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your password[cite: 8]">
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">User Role</label>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Register As[cite: 8]</label>
                             <select name="role" id="role-select" onchange="toggleCourseField()" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
-                                <option value="borrower">Student</option>
+                                <option value="borrower">Student[cite: 8]</option>
                                 <option value="faculty">Faculty</option>
                                 <option value="staff">Staff</option>
                                 <option value="custodian">Property Custodian</option>
@@ -178,13 +185,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         <div id="course-container">
                             <label id="course-label" class="block text-xs font-semibold text-gray-700 mb-1">Course & Year / Grade & Section</label>
-                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A or Grade 11-ICT" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
+                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A[cite: 8] or Grade 11-ICT" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                     </div>
 
-                    <!-- Live Selfie Capture Widget -->
+                    <!-- Malaking Live Selfie Capture Widget na may Video Stream -->
                     <div id="selfie-section" class="bg-slate-50 border border-gray-200 p-4 rounded-xl">
-                        <label class="block text-xs font-semibold text-gray-700 mb-2">Live Selfie Capture</label>
+                        <label class="block text-xs font-semibold text-gray-700 mb-2">Live Selfie Capture[cite: 3]</label>
                         
                         <div class="relative w-full bg-black rounded-lg overflow-hidden border border-gray-300 mb-3 flex items-center justify-center min-h-[180px]">
                             <video id="webcam" autoplay playsinline class="w-full h-[180px] object-cover"></video>
@@ -196,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <div class="flex gap-2">
                             <button type="button" id="capture-btn" class="flex-1 bg-[#005a2b] hover:bg-[#004822] text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">
-                                Capture Selfie
+                                Capture Selfie[cite: 3]
                             </button>
                             <button type="button" id="retake-btn" class="hidden flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">
                                 Retake Photo
@@ -206,13 +213,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="pt-2">
                         <button type="submit" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-3 rounded-lg text-sm font-semibold transition shadow-md">
-                            Register Account
+                            Register[cite: 3]
                         </button>
                     </div>
                 </form>
 
                 <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">
-                    Already have an account? <a href="login.php" class="text-emerald-700 font-semibold hover:underline">Login here</a>
+                    Already have an account? <a href="login.php" class="text-emerald-700 font-semibold hover:underline">Login here[cite: 3]</a>
                 </div>
 
             </div>

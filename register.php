@@ -5,9 +5,11 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $error_message = "";
 $success_message = "";
+$users_file = 'users.json';
 
-if (!isset($_SESSION['system_users'])) {
-    $_SESSION['system_users'] = [
+// Initialize users.json kung wala pa
+if (!file_exists($users_file)) {
+    $default_users = [
         [
             'student_id' => 'admin',
             'email' => 'admin@mqcqc.edu.ph',
@@ -18,6 +20,7 @@ if (!isset($_SESSION['system_users'])) {
             'selfie' => 'logo.jpg'
         ]
     ];
+    @file_put_contents($users_file, json_encode($default_users, JSON_PRETTY_PRINT));
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -44,17 +47,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         @file_put_contents($selfie_path, $decoded_data);
     }
 
+    $users = [];
+    if (file_exists($users_file)) {
+        $users = json_decode(file_get_contents($users_file), true) ?: [];
+    }
+
     $isDuplicate = false;
-    foreach ($_SESSION['system_users'] as $user) {
+    foreach ($users as $user) {
         if (strcasecmp($user['email'], $email) === 0) {
             $isDuplicate = true;
             $error_message = "This email address is already registered!";
             break;
         }
+        if (strcasecmp($user['student_id'], $student_id) === 0) {
+            $isDuplicate = true;
+            $error_message = "This Student/Employee ID is already in use!";
+            break;
+        }
     }
 
     if (!$isDuplicate) {
-        $_SESSION['system_users'][] = [
+        $users[] = [
             'student_id' => $student_id,
             'email' => $email,
             'full_name' => $full_name,
@@ -63,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'course_year' => $course_year,
             'selfie' => $selfie_path
         ];
+        @file_put_contents($users_file, json_encode($users, JSON_PRETTY_PRINT));
         $success_message = "Account successfully registered! You can now login.";
     }
 }

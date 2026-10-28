@@ -47,12 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($_SESSION['registered_users'] as $user) {
         if (strcasecmp($user['email'], $email) === 0) {
             $isDuplicate = true;
-            $error_message = "Test Case Failed: Ang email address na ito ay nakarehistro na sa sistema!";
+            $error_message = "Test Case Failed: This email address is already registered in the system!";
             break;
         }
         if (strcasecmp($user['student_id'], $student_id) === 0) {
             $isDuplicate = true;
-            $error_message = "Test Case Failed: Ang ID na ito ay nagamit na!";
+            $error_message = "Test Case Failed: This Student/Employee ID is already in use!";
             break;
         }
     }
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'course_year' => $course_year,
             'selfie' => $selfie_path
         ];
-        $success_message = "Test Case Passed: Matagumpay na nakapag-register ang account!";
+        $success_message = "Test Case Passed: Account successfully registered!";
     }
 }
 ?>
@@ -83,10 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
         
-        <!-- Kaliwang Bahagi: School Branding & Background Image (school_bg.jpg) -->
+        <!-- Kaliwang Bahagi: Binabaan ang opacity para mas luminaw ang school_bg.jpg -->
         <div class="lg:w-6/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[300px] lg:min-h-screen">
-            <div class="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay" style="background-image: url('school_bg.jpg');"></div>
-            <div class="absolute inset-0 bg-gradient-to-t from-[#002613] via-[#004822]/90 to-transparent"></div>
+            <div class="absolute inset-0 bg-cover bg-center opacity-60 mix-blend-overlay" style="background-image: url('school_bg.jpg');"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
 
             <div class="relative z-10 flex items-center space-x-4">
                 <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white shadow-md" onerror="this.src='https://via.placeholder.com/60'">
@@ -97,18 +97,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="relative z-10 my-auto py-8 max-w-xl">
-                <p class="text-sm md:text-base text-gray-200 italic mb-6">"Together for a Smarter, Safer and More Efficient Campus"</p>
+                <p class="text-sm md:text-base text-gray-100 italic mb-6 font-medium">"Together for a Smarter, Safer and More Efficient Campus"</p>
                 
                 <div class="space-y-3">
-                    <div class="flex items-center space-x-3 bg-black/30 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
+                    <div class="flex items-center space-x-3 bg-black/40 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
                         <span class="text-xs md:text-sm font-medium">Track Equipment - Seamless borrowing & return logs</span>
                     </div>
-                    <div class="flex items-center space-x-3 bg-black/30 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
+                    <div class="flex items-center space-x-3 bg-black/40 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
                         <span class="text-xs md:text-sm font-medium">Improve Accountability - Real-time condition monitoring</span>
                     </div>
-                    <div class="flex items-center space-x-3 bg-black/30 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
+                    <div class="flex items-center space-x-3 bg-black/40 p-3 rounded-lg border border-emerald-500/30 backdrop-blur-sm">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
                         <span class="text-xs md:text-sm font-medium">Build a Smarter Campus - Automated digital verification</span>
                     </div>
@@ -120,13 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <!-- Kanang Bahagi: Registration Form -->
+        <!-- Kanang Bahagi: English Form -->
         <div class="lg:w-6/12 bg-white flex flex-col justify-center p-6 lg:p-12">
             <div class="max-w-md w-full mx-auto my-auto">
                 
                 <div class="mb-6 text-center lg:text-left">
                     <h2 class="text-xl font-bold text-gray-800">Create Account</h2>
-                    <p class="text-xs text-gray-500">I-fill out ang mga detalye para makapagrehistro.</p>
+                    <p class="text-xs text-gray-500">Please fill out the details to register.</p>
                 </div>
 
                 <?php if (!empty($error_message)): ?>
@@ -139,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-medium">
                         <?php echo htmlspecialchars($success_message); ?>
                         <div class="mt-2">
-                            <a href="login.php" class="text-emerald-900 font-bold underline">Mag-login na dito &rarr;</a>
+                            <a href="login.php" class="text-emerald-900 font-bold underline">Login here &rarr;</a>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -147,12 +147,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <form action="register.php" method="POST" id="register-form" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Student / Employee ID</label>
-                        <input type="text" name="student_id" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Hal. MQCQC-12345">
+                        <input type="text" name="student_id" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="e.g. MQCQC-12345">
                     </div>
 
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
-                        <input type="text" name="full_name" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Pangalan at Apelyido">
+                        <input type="text" name="full_name" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="First Name and Last Name">
                     </div>
 
                     <div>
@@ -176,10 +176,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </select>
                         </div>
                         
-                        <!-- Dynamic Field: Lumalabas lang kapag Student ang pinili -->
                         <div id="course-container">
                             <label id="course-label" class="block text-xs font-semibold text-gray-700 mb-1">Course & Year / Grade & Section</label>
-                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A o Grade 11-ICT" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
+                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A or Grade 11-ICT" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                     </div>
 
@@ -232,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 courseContainer.style.display = 'block';
                 courseInput.required = true;
                 courseLabel.innerText = "Course & Year / Grade & Section";
-                courseInput.placeholder = "e.g. BSIT 3-A o Grade 11-ICT";
+                courseInput.placeholder = "e.g. BSIT 3-A or Grade 11-ICT";
             } else if (roleSelect.value === 'faculty' || roleSelect.value === 'staff') {
                 courseContainer.style.display = 'block';
                 courseInput.required = false;
@@ -245,7 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Run on load
         toggleCourseField();
 
         const video = document.getElementById('webcam');
@@ -268,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         captureBtn.addEventListener('click', () => {
             if (!streamInstance) {
-                alert("Hindi ma-access ang camera.");
+                alert("Camera access is not available.");
                 return;
             }
             canvas.width = video.videoWidth || 320;

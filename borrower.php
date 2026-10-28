@@ -1,187 +1,129 @@
 <?php
 session_start();
-require_once 'db_connection.php';
 
-// Siguraduhing naka-login ang user
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
+$json_file = 'requests.json';
+
+// Initialize requests.json kung wala pa
+if (!file_exists($json_file)) {
+    $initial_data = [
+        [
+            'id' => 1,
+            'student_id' => 'admin',
+            'full_name' => 'Ryan Jay Leoligao',
+            'course_year' => 'BSIT 3rd Year',
+            'item' => 'Extension',
+            'borrow_date' => date('Y-m-d H:i:s'),
+            'return_due' => date('Y-m-d H:i:s', strtotime('+4 hours')),
+            'status' => 'Pending'
+        ]
+    ];
+    file_put_contents($json_file, json_encode($initial_data, JSON_PRETTY_PRINT));
 }
 
-$userId = $_SESSION['user_id'];
+$requests = json_decode(file_get_contents($json_file), true);
+$success_msg = "";
 
-try {
-    // Kunin ang impormasyon ng user mula sa database
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->execute([$userId]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+// Handle New Borrow Submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['borrow_item'])) {
+    $new_request = [
+        'id' => time(),
+        'student_id' => isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'MQCQC-2026-001',
+        'full_name' => isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Ryan Jay Leoligao',
+        'course_year' => 'BSIT 3rd Year',
+        'item' => trim($_POST['item']),
+        'borrow_date' => date('Y-m-d H:i:s'),
+        'return_due' => trim($_POST['return_due']),
+        'status' => 'Pending'
+    ];
 
-    if (!$user) {
-        session_destroy();
-        header("Location: login.php");
-        exit();
-    }
-} catch (PDOException $e) {
-    die("Database Error: " . $e->getMessage());
+    $requests[] = $new_request;
+    file_put_contents($json_file, json_encode($requests, JSON_PRETTY_PRINT));
+    $success_msg = "Matagumpay na naisumite ang borrowing request!";
+    
+    // Refresh data
+    $requests = json_decode(file_get_contents($json_file), true);
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Borrower's Dashboard - Mary the Queen College of Quezon City</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { display: flex; background-color: #f4f7f6; height: 100vh; overflow: hidden; }
-        
-        /* Sidebar Styling */
-        .sidebar { width: 260px; background-color: #0b2514; color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
-        .sidebar-top .logo-area { text-align: center; margin-bottom: 30px; }
-        .sidebar-top .logo-area img { width: 70px; height: 70px; border-radius: 50%; margin-bottom: 10px; }
-        .sidebar-top .logo-area h3 { font-size: 13px; line-height: 1.4; color: #fff; }
-        
-        .nav-links { list-style: none; }
-        .nav-links li { margin-bottom: 10px; }
-        .nav-links a { display: flex; align-items: center; color: white; text-decoration: none; padding: 12px 15px; border-radius: 6px; font-size: 14px; transition: background 0.2s; }
-        .nav-links a:hover, .nav-links li.active a { background-color: #1e4620; }
-        
-        .sidebar-bottom { font-size: 11px; color: #a3c1ad; text-style: italic; text-align: center; }
-
-        /* Main Content Styling */
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
-        
-        /* Top Navbar */
-        .top-navbar { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
-        .top-navbar .title h2 { font-size: 18px; color: #222; text-transform: uppercase; }
-        .top-navbar .title p { font-size: 12px; color: #777; }
-        .user-nav-info { display: flex; align-items: center; gap: 15px; }
-        .logout-btn { background-color: #dc3545; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; font-size: 13px; }
-        .logout-btn:hover { background-color: #c82333; }
-
-        /* Content Area */
-        .content-body { padding: 30px; }
-        
-        /* Profile Card */
-        .profile-card { background: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 25px; }
-        .profile-left { display: flex; align-items: center; gap: 20px; }
-        .profile-left img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #1e4620; }
-        .profile-info h3 { font-size: 18px; color: #333; }
-        .profile-info p { font-size: 13px; color: #666; margin-top: 3px; }
-        .qr-box { text-align: center; border: 1px dashed #ccc; padding: 10px; border-radius: 6px; background: #fafafa; }
-        .qr-box p { font-size: 10px; color: #555; margin-top: 5px; }
-
-        /* Table Section */
-        .section-box { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 25px; }
-        .section-header { background-color: #1e4620; color: white; padding: 12px 20px; font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
-        
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-        th, td { padding: 12px 20px; border-bottom: 1px solid #eee; }
-        th { background-color: #265c29; color: white; }
-        .empty-row { text-align: center; padding: 25px; color: #777; font-style: italic; }
-
-        /* Action Banner */
-        .action-banner { background: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .action-banner-text h4 { font-size: 15px; color: #333; }
-        .action-banner-text p { font-size: 12px; color: #666; margin-top: 3px; }
-        .borrow-btn { background-color: #265c29; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: bold; }
-        .borrow-btn:hover { background-color: #1e4620; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borrower Dashboard - QR Equipment Monitoring System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen flex flex-col">
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-top">
-            <div class="logo-area">
-                <!-- Palitan ang logo.png kung kinakailangan -->
-                <img src="logo.png" alt="School Logo" onerror="this.src='https://via.placeholder.com/70'">
-                <h3>MARY THE QUEEN COLLEGE OF QUEZON CITY</h3>
-            </div>
-            <ul class="nav-links">
-                <li class="active"><a href="borrower.php">🏠 Dashboard</a></li>
-                <li><a href="borrow_item.php">➕ Borrow an Item</a></li>
-                <li><a href="history.php">📋 Returned Items / History</a></li>
-            </ul>
-        </div>
-        <div class="sidebar-bottom">
-            <p>"Discipline today, excellence tomorrow."</p>
-        </div>
+    <!-- Top Navigation -->
+    <div class="bg-[#005a2b] text-white px-6 py-4 flex justify-between items-center shadow-md">
+        <h1 class="text-sm md:text-base font-bold tracking-wider">BORROWER PORTAL - MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
+        <a href="logout.php" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-xs font-semibold transition">Logout</a>
     </div>
 
     <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Navbar -->
-        <div class="top-navbar">
-            <div class="title">
-                <h2>Borrower's Dashboard</h2>
-                <p>Equipment Borrowing, Return & Monitoring Portal</p>
+    <div class="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full space-y-6">
+        
+        <?php if (!empty($success_msg)): ?>
+            <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-sm font-medium">
+                <?php echo $success_msg; ?>
             </div>
-            <div class="user-nav-info">
-                <span>👤 <?php echo htmlspecialchars($user['name']); ?></span>
-                <a href="logout.php" class="logout-btn">Logout</a>
-            </div>
+        <?php endif; ?>
+
+        <!-- Form para humiram ng equipment -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-base font-bold text-slate-800 mb-4">Mag-request ng Kagamitan (Borrow Equipment)</h2>
+            <form action="borrower.php" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Pangalan ng Kagamitan / Item</label>
+                    <input type="text" name="item" required placeholder="Hal. Projector, HDMI, Extension" class="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Petsa at Oras ng Pagbabalik (Return Due)</label>
+                    <input type="datetime-local" name="return_due" required class="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-600">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" name="borrow_item" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-2 rounded-lg text-sm font-semibold transition shadow-sm">
+                        Isumite ang Request
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <!-- Content Body -->
-        <div class="content-body">
-            
-            <!-- Profile Card -->
-            <div class="profile-card">
-                <div class="profile-left">
-                    <?php if (!empty($user['profile_picture'])): ?>
-                        <img src="<?php echo $user['profile_picture']; ?>" alt="Live Selfie">
-                    <?php else: ?>
-                        <img src="https://via.placeholder.com/80" alt="Default Avatar">
-                    <?php endif; ?>
-                    <div class="profile-info">
-                        <h3><?php echo htmlspecialchars($user['name']); ?></h3>
-                        <p><strong>Student ID / User ID:</strong> MQC-<?php echo str_pad($user['id'], 4, '0', STR_PAD_LEFT); ?></p>
-                        <p><strong>Course / Year / Section:</strong> <?php echo htmlspecialchars($user['course_year_section'] ?? 'N/A'); ?></p>
-                    </div>
-                </div>
-                <div class="qr-box">
-                    <!-- Maaari mong palitan ito ng dynamic QR code kung kinakailangan -->
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=USER-<?php echo $user['id']; ?>" alt="QR Code">
-                    <p>Your QR Code</p>
-                </div>
-            </div>
-
-            <!-- My Borrowed Equipment Table -->
-            <div class="section-box">
-                <div class="section-header">
-                    <span>📦</span> My Borrowed Equipment
-                </div>
-                <table>
+        <!-- Listahan ng Active Requests ng Estudyante -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-base font-bold text-slate-800 mb-4">Aking mga Hiniram at Status</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr>
-                            <th>Student ID</th>
-                            <th>Equipment Name</th>
-                            <th>Borrow Date / Due Date</th>
-                            <th>Status / Action</th>
-                            <th>Action</th>
+                        <tr class="bg-slate-800 text-white text-xs uppercase">
+                            <th class="p-3 rounded-l-lg">Item</th>
+                            <th class="p-3">Borrow Date</th>
+                            <th class="p-3">Return Due</th>
+                            <th class="p-3 rounded-r-lg">Status</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- Dito mo ikokonekta ang query para sa mga hiniram na gamit -->
-                        <tr>
-                            <td colspan="5" class="empty-row">Walang kasalukuyang hiniram na aktibong kagamitan.</td>
-                        </tr>
+                    <tbody class="text-sm divide-y divide-slate-100">
+                        <?php if (empty($requests)): ?>
+                            <tr><td colspan="4" class="p-4 text-center text-gray-500 italic">Walang kasalukuyang request.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($requests as $req): ?>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-medium text-slate-800"><?php echo htmlspecialchars($req['item']); ?></td>
+                                <td class="p-3 text-slate-600"><?php echo htmlspecialchars($req['borrow_date']); ?></td>
+                                <td class="p-3 text-slate-600"><?php echo htmlspecialchars($req['return_due']); ?></td>
+                                <td class="p-3">
+                                    <span class="px-2.5 py-1 rounded text-xs font-bold <?php echo ($req['status'] === 'Pending') ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'; ?>">
+                                        <?php echo htmlspecialchars($req['status']); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-
-            <!-- Need to borrow an item banner -->
-            <div class="action-banner">
-                <div class="action-banner-text">
-                    <h4>Need to borrow an item?</h4>
-                    <p>Submit a new borrowing request from the inventory.</p>
-                </div>
-                <a href="borrow_item.php" class="borrow-btn">+ Borrow an Item</a>
-            </div>
-
         </div>
-    </div>
 
+    </div>
 </body>
 </html>

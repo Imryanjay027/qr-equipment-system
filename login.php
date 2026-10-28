@@ -9,7 +9,19 @@ $db_file = $upload_dir . 'database.sqlite';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
-    $password = $_POST['password'];
+    $password = trim($_POST['password']);
+
+    // Hardcoded fallback para sa Custodian kung sakaling kailanganin ng client ninyo
+    if (strcasecmp($email, 'admin@mqcqc.edu.ph') === 0 && $password === 'admin123') {
+        $_SESSION['user_id'] = 'admin';
+        $_SESSION['user_name'] = 'Ryan Jay Leoligao';
+        $_SESSION['user_role'] = 'custodian';
+        $_SESSION['user_selfie'] = 'logo.jpg';
+        $_SESSION['course_year'] = 'Administrator';
+        
+        header("Location: custodian_dashboard.php");
+        exit();
+    }
 
     if (file_exists($db_file)) {
         try {
@@ -27,20 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_selfie'] = $matched_user['selfie'];
                 $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
 
-                if ($matched_user['role'] === 'custodian') {
+                if (strtolower($matched_user['role']) === 'custodian') {
                     header("Location: custodian_dashboard.php");
                 } else {
                     header("Location: borrower.php");
                 }
                 exit();
             } else {
-                $error_message = "Invalid email or password.";
+                $error_message = "Invalid email or password. (Sinubukan ang: " . htmlspecialchars($email) . ")";
             }
         } catch (PDOException $e) {
-            $error_message = "Database connection error.";
+            $error_message = "Database error: " . $e->getMessage();
         }
     } else {
-        $error_message = "Invalid email or password.";
+        $error_message = "Wala pang nakitang database. Mangyaring mag-register muna.";
     }
 }
 ?>

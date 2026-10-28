@@ -4,27 +4,19 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $error_message = "";
-
-if (!isset($_SESSION['system_users'])) {
-    $_SESSION['system_users'] = [
-        [
-            'student_id' => 'admin',
-            'email' => 'admin@mqcqc.edu.ph',
-            'full_name' => 'Ryan Jay Leoligao',
-            'password' => 'admin123',
-            'role' => 'custodian',
-            'course_year' => 'Administrator',
-            'selfie' => 'logo.jpg'
-        ]
-    ];
-}
+$users_file = 'users.json';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
+    $users = [];
+    if (file_exists($users_file)) {
+        $users = json_decode(file_get_contents($users_file), true) ?: [];
+    }
+
     $matched_user = null;
-    foreach ($_SESSION['system_users'] as $user) {
+    foreach ($users as $user) {
         if (strcasecmp($user['email'], $email) === 0 && $user['password'] === $password) {
             $matched_user = $user;
             break;
@@ -36,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_name'] = $matched_user['full_name'];
         $_SESSION['user_role'] = $matched_user['role'];
         $_SESSION['user_selfie'] = $matched_user['selfie'];
-        $_SESSION['course_year'] = $matched_user['course_year'];
+        $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
 
         if ($matched_user['role'] === 'custodian') {
             header("Location: custodian_dashboard.php");

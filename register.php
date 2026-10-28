@@ -5,11 +5,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $error_message = "";
 $success_message = "";
-$json_users_file = 'users.json';
 
-// Initialize default admin kung wala pa ang users.json
-if (!file_exists($json_users_file)) {
-    $default_users = [
+if (!isset($_SESSION['system_users'])) {
+    $_SESSION['system_users'] = [
         [
             'student_id' => 'admin',
             'email' => 'admin@mqcqc.edu.ph',
@@ -20,7 +18,6 @@ if (!file_exists($json_users_file)) {
             'selfie' => 'logo.jpg'
         ]
     ];
-    file_put_contents($json_users_file, json_encode($default_users, JSON_PRETTY_PRINT));
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -40,36 +37,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $upload_dir = 'uploads/';
         if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
-            chmod($upload_dir, 0777);
+            @mkdir($upload_dir, 0777, true);
         }
-        
         $file_name = time() . '_selfie.jpg';
         $selfie_path = $upload_dir . $file_name;
         @file_put_contents($selfie_path, $decoded_data);
-        if (file_exists($selfie_path)) {
-            @chmod($selfie_path, 0644);
-        }
     }
 
-    $users = json_decode(file_get_contents($json_users_file), true) ?: [];
-
     $isDuplicate = false;
-    foreach ($users as $user) {
+    foreach ($_SESSION['system_users'] as $user) {
         if (strcasecmp($user['email'], $email) === 0) {
             $isDuplicate = true;
-            $error_message = "Test Case Failed: This email address is already registered in the system!";
-            break;
-        }
-        if (strcasecmp($user['student_id'], $student_id) === 0) {
-            $isDuplicate = true;
-            $error_message = "Test Case Failed: This Student/Employee ID is already in use!";
+            $error_message = "This email address is already registered!";
             break;
         }
     }
 
     if (!$isDuplicate) {
-        $users[] = [
+        $_SESSION['system_users'][] = [
             'student_id' => $student_id,
             'email' => $email,
             'full_name' => $full_name,
@@ -78,8 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'course_year' => $course_year,
             'selfie' => $selfie_path
         ];
-        file_put_contents($json_users_file, json_encode($users, JSON_PRETTY_PRINT));
-        $success_message = "Test Case Passed: Account successfully registered!";
+        $success_message = "Account successfully registered! You can now login.";
     }
 }
 ?>
@@ -93,15 +77,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-0 m-0 font-sans">
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
-        <!-- Kaliwang Bahagi: Branding & Background -->
+        <!-- Kaliwang Bahagi: Centered Logo & Title kasama ang school_bg.jpg -->
         <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
+            
             <div class="relative z-10 flex flex-col items-center text-center mx-auto max-w-lg pt-4">
                 <img src="logo.jpg" alt="Logo" class="w-20 h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
                 <h2 class="text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
                 <h1 class="text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
             </div>
+
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
                 <p class="text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
                 <div class="space-y-3 text-left">
@@ -116,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
             </div>
+
             <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
         </div>
 
@@ -164,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div id="course-container">
                             <label id="course-label" class="block text-xs font-semibold text-gray-700 mb-1">Course & Year / Grade & Section</label>
-                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A or Grade 11-ICT" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
+                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                     </div>
                     <div id="selfie-section" class="bg-slate-50 border border-gray-200 p-4 rounded-xl">
@@ -198,16 +185,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 courseContainer.style.display = 'block';
                 courseInput.required = true;
                 courseLabel.innerText = "Course & Year / Grade & Section";
-                courseInput.placeholder = "e.g. BSIT 3-A or Grade 11-ICT";
             } else if (roleSelect.value === 'faculty' || roleSelect.value === 'staff') {
                 courseContainer.style.display = 'block';
                 courseInput.required = false;
                 courseLabel.innerText = "Department / Office";
-                courseInput.placeholder = "e.g. CCS Department / Registrar";
             } else {
                 courseContainer.style.display = 'none';
                 courseInput.required = false;
-                courseInput.value = '';
             }
         }
         toggleCourseField();
@@ -220,9 +204,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         let streamInstance = null;
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
             .then(stream => { streamInstance = stream; video.srcObject = stream; })
-            .catch(err => { console.warn("Webcam access denied or unavailable:", err); });
+            .catch(err => { console.warn("Webcam error:", err); });
         captureBtn.addEventListener('click', () => {
-            if (!streamInstance) { alert("Camera access is not available."); return; }
+            if (!streamInstance) { alert("Camera not available."); return; }
             canvas.width = video.videoWidth || 320;
             canvas.height = video.videoHeight || 240;
             const ctx = canvas.getContext('2d');

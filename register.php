@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     $role = isset($_POST['role']) ? $_POST['role'] : 'borrower';
-    $course_year = trim($_POST['course_year']);
+    $course_year = isset($_POST['course_year']) ? trim($_POST['course_year']) : '';
     
     $selfie_path = 'logo.jpg';
     if (!empty($_POST['selfie_base64'])) {
@@ -83,9 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
         
-        <!-- Kaliwang Bahagi: School Branding & Background Image -->
+        <!-- Kaliwang Bahagi: School Branding & Background Image (school_bg.jpg) -->
         <div class="lg:w-6/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[300px] lg:min-h-screen">
-            <div class="absolute inset-0 bg-cover bg-center opacity-20 mix-blend-overlay" style="background-image: url('logo.jpg');"></div>
+            <div class="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613] via-[#004822]/90 to-transparent"></div>
 
             <div class="relative z-10 flex items-center space-x-4">
@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <!-- Kanang Bahagi: Registration Form na may Malaking Live Selfie Capture -->
+        <!-- Kanang Bahagi: Registration Form -->
         <div class="lg:w-6/12 bg-white flex flex-col justify-center p-6 lg:p-12">
             <div class="max-w-md w-full mx-auto my-auto">
                 
@@ -168,20 +168,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">User Role</label>
-                            <select name="role" id="role-select" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
-                                <option value="borrower">Student / Borrower</option>
+                            <select name="role" id="role-select" onchange="toggleCourseField()" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
+                                <option value="borrower">Student</option>
                                 <option value="faculty">Faculty</option>
                                 <option value="staff">Staff</option>
                                 <option value="custodian">Property Custodian</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Course & Year / Department</label>
-                            <input type="text" name="course_year" placeholder="e.g. BSIT 3-A o Department" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
+                        
+                        <!-- Dynamic Field: Lumalabas lang kapag Student ang pinili -->
+                        <div id="course-container">
+                            <label id="course-label" class="block text-xs font-semibold text-gray-700 mb-1">Course & Year / Grade & Section</label>
+                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A o Grade 11-ICT" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                     </div>
 
-                    <!-- Malaking Live Selfie Capture Widget -->
+                    <!-- Live Selfie Capture Widget -->
                     <div id="selfie-section" class="bg-slate-50 border border-gray-200 p-4 rounded-xl">
                         <label class="block text-xs font-semibold text-gray-700 mb-2">Live Selfie Capture</label>
                         
@@ -220,6 +222,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        function toggleCourseField() {
+            const roleSelect = document.getElementById('role-select');
+            const courseContainer = document.getElementById('course-container');
+            const courseInput = document.getElementById('course_input');
+            const courseLabel = document.getElementById('course-label');
+
+            if (roleSelect.value === 'borrower') {
+                courseContainer.style.display = 'block';
+                courseInput.required = true;
+                courseLabel.innerText = "Course & Year / Grade & Section";
+                courseInput.placeholder = "e.g. BSIT 3-A o Grade 11-ICT";
+            } else if (roleSelect.value === 'faculty' || roleSelect.value === 'staff') {
+                courseContainer.style.display = 'block';
+                courseInput.required = false;
+                courseLabel.innerText = "Department / Office";
+                courseInput.placeholder = "e.g. CCS Department / Registrar";
+            } else {
+                courseContainer.style.display = 'none';
+                courseInput.required = false;
+                courseInput.value = '';
+            }
+        }
+
+        // Run on load
+        toggleCourseField();
+
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const captureBtn = document.getElementById('capture-btn');

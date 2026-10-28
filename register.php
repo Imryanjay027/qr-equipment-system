@@ -6,9 +6,11 @@ if (session_status() === PHP_SESSION_NONE) {
 $error_message = "";
 $success_message = "";
 
-$upload_dir = 'uploads/';
+// Siguraduhing nalilikha ang uploads folder at may tamang pahintulot
+$upload_dir = __DIR__ . '/uploads/';
 if (!is_dir($upload_dir)) {
     @mkdir($upload_dir, 0777, true);
+    @chmod($upload_dir, 0777);
 }
 
 $db_file = $upload_dir . 'database.sqlite';
@@ -52,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error_message)) {
         $decoded_data = base64_decode($data);
         
         $file_name = time() . '_selfie.jpg';
-        $selfie_path = $upload_dir . $file_name;
-        @file_put_contents($selfie_path, $decoded_data);
+        $selfie_path = 'uploads/' . $file_name;
+        @file_put_contents(__DIR__ . '/' . $selfie_path, $decoded_data);
     }
 
     try {

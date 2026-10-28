@@ -31,18 +31,18 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
         </button>
     </div>
 
-    <!-- Mobile Collapsible Menu (Lalabas kapag pinindot ang hamburger) -->
+    <!-- Mobile Collapsible Menu -->
     <div id="mobile-menu" class="hidden md:hidden bg-[#005a2b] text-white p-4 space-y-2 shadow-lg border-t border-emerald-800">
         <a href="custodian_dashboard.php" class="block py-2.5 px-4 rounded-lg bg-[#007a38] text-white font-medium text-sm">Dashboard</a>
-        <a href="#" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">Borrowing Requests</a>
-        <a href="#" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">QR Scanner Portal</a>
+        <a href="borrowing_requests.php" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">Borrowing Requests</a>
+        <a href="scanner.php" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">QR Scanner Portal</a>
         <a href="logout.php" class="block py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-sm text-center transition">Logout</a>
         <div class="pt-2 text-center border-t border-emerald-800">
             <p class="text-[10px] italic text-emerald-200">"Discipline today, excellence tomorrow."</p>
         </div>
     </div>
 
-    <!-- Desktop Sidebar (Hidden sa mobile, lilitaw sa PC/Laptop) -->
+    <!-- Desktop Sidebar -->
     <div class="hidden md:flex w-72 bg-[#005a2b] text-white flex-col justify-between p-6 shadow-lg min-h-screen">
         <div>
             <!-- School Logo & Header -->
@@ -57,18 +57,18 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                     <span>Dashboard</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
+                <a href="borrowing_requests.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                     <span>Borrowing Requests</span>
                 </a>
-                <a href="#" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 124h.01M16 16h1m-4-10V4m-4 8H4m12 0h4m-4 8h4m-8-4v4m0-8h4"></path></svg>
+                <a href="scanner.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h.01M16 16h1m-4-10V4m-4 8H4m12 0h4m-4 8h4m-8-4v4m0-8h4"></path></svg>
                     <span>QR Scanner Portal</span>
                 </a>
             </nav>
         </div>
 
-        <!-- Sidebar Footer / Logout & Motto -->
+        <!-- Sidebar Footer -->
         <div>
             <div class="mb-6">
                 <a href="logout.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-red-700 text-gray-200 transition">
@@ -106,16 +106,15 @@ $custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Syst
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 class="text-base md:text-lg font-bold text-gray-800 mb-4">Dashboard Overview</h2>
             
-            <!-- Total Active Requests Card -->
-            <div class="border border-gray-200 rounded-xl p-5 max-w-sm bg-white shadow-sm">
+            <a href="borrowing_requests.php" class="block border border-gray-200 rounded-xl p-5 max-w-sm bg-white shadow-sm hover:border-emerald-600 hover:shadow-md transition">
                 <p class="text-sm font-medium text-gray-500 mb-1">Total Active Requests</p>
                 <h3 class="text-3xl font-bold text-emerald-700">1</h3>
-            </div>
+                <span class="text-xs text-emerald-600 font-semibold mt-2 inline-block">View requests &rarr;</span>
+            </a>
         </div>
 
     </div>
 
-    <!-- JavaScript para sa Hamburger Menu Toggle -->
     <script>
         const menuBtn = document.getElementById('menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');

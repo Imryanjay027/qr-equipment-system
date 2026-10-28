@@ -37,10 +37,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $upload_dir = 'uploads/';
         if (!is_dir($upload_dir)) {
             mkdir($upload_dir, 0777, true);
+            chmod($upload_dir, 0777);
         }
+        
         $file_name = time() . '_selfie.jpg';
         $selfie_path = $upload_dir . $file_name;
-        file_put_contents($selfie_path, $decoded_data);
+        
+        // I-save nang may error suppression para maiwasan ang permission warning
+        @file_put_contents($selfie_path, $decoded_data);
+        if (file_exists($selfie_path)) {
+            @chmod($selfie_path, 0644);
+        }
     }
 
     $isDuplicate = false;
@@ -83,20 +90,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
         
-        <!-- Kaliwang Bahagi: Nakasentro (Centered) ang Logo at Title sa ibaba nito -->
+        <!-- Kaliwang Bahagi: Centered Logo & Title kasama ang school_bg.jpg -->
         <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
-            <!-- Background Image -->
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
 
-            <!-- Top / Center Logo & Title Group -->
             <div class="relative z-10 flex flex-col items-center text-center mx-auto max-w-lg pt-4">
                 <img src="logo.jpg" alt="Logo" class="w-20 h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
                 <h2 class="text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
                 <h1 class="text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
             </div>
 
-            <!-- Middle Tagline & Green Boxes -->
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
                 <p class="text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
                 
@@ -119,13 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Footer Note -->
             <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">
                 Property Custodian & Borrower Portal &copy; 2026
             </div>
         </div>
 
-        <!-- Kanang Bahagi: Form -->
+        <!-- Kanang Bahagi: Registration Form -->
         <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 lg:p-10 overflow-y-auto">
             <div class="max-w-md w-full mx-auto">
                 

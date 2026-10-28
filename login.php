@@ -4,19 +4,27 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $error_message = "";
-$json_users_file = 'users.json';
+
+if (!isset($_SESSION['system_users'])) {
+    $_SESSION['system_users'] = [
+        [
+            'student_id' => 'admin',
+            'email' => 'admin@mqcqc.edu.ph',
+            'full_name' => 'Ryan Jay Leoligao',
+            'password' => 'admin123',
+            'role' => 'custodian',
+            'course_year' => 'Administrator',
+            'selfie' => 'logo.jpg'
+        ]
+    ];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    $users = [];
-    if (file_exists($json_users_file)) {
-        $users = json_decode(file_get_contents($json_users_file), true) ?: [];
-    }
-
     $matched_user = null;
-    foreach ($users as $user) {
+    foreach ($_SESSION['system_users'] as $user) {
         if (strcasecmp($user['email'], $email) === 0 && $user['password'] === $password) {
             $matched_user = $user;
             break;
@@ -28,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_name'] = $matched_user['full_name'];
         $_SESSION['user_role'] = $matched_user['role'];
         $_SESSION['user_selfie'] = $matched_user['selfie'];
-        $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
+        $_SESSION['course_year'] = $matched_user['course_year'];
 
         if ($matched_user['role'] === 'custodian') {
             header("Location: custodian_dashboard.php");
@@ -51,15 +59,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-0 m-0 font-sans">
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
-        <!-- Kaliwang Bahagi: Branding & Background -->
+        <!-- Kaliwang Bahagi: Centered Logo & Title kasama ang school_bg.jpg -->
         <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
+            
             <div class="relative z-10 flex flex-col items-center text-center mx-auto max-w-lg pt-4">
                 <img src="logo.jpg" alt="Logo" class="w-20 h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
                 <h2 class="text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
                 <h1 class="text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
             </div>
+
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
                 <p class="text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
                 <div class="space-y-3 text-left">
@@ -74,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
             </div>
+
             <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
         </div>
 

@@ -4,38 +4,41 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $error_message = "";
-$users_file = 'users.json';
+$upload_dir = 'uploads/';
+$db_file = $upload_dir . 'database.sqlite';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    $users = [];
-    if (file_exists($users_file)) {
-        $users = json_decode(file_get_contents($users_file), true) ?: [];
-    }
+    if (file_exists($db_file)) {
+        try {
+            $db = new PDO("sqlite:" . $db_file);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $matched_user = null;
-    foreach ($users as $user) {
-        if (strcasecmp($user['email'], $email) === 0 && $user['password'] === $password) {
-            $matched_user = $user;
-            break;
+            $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) AND password = ?");
+            $stmt->execute([$email, $password]);
+            $matched_user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($matched_user) {
+                $_SESSION['user_id'] = $matched_user['student_id'];
+                $_SESSION['user_name'] = $matched_user['full_name'];
+                $_SESSION['user_role'] = $matched_user['role'];
+                $_SESSION['user_selfie'] = $matched_user['selfie'];
+                $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
+
+                if ($matched_user['role'] === 'custodian') {
+                    header("Location: custodian_dashboard.php");
+                } else {
+                    header("Location: borrower.php");
+                }
+                exit();
+            } else {
+                $error_message = "Invalid email or password.";
+            }
+        } catch (PDOException $e) {
+            $error_message = "Database connection error.";
         }
-    }
-
-    if ($matched_user) {
-        $_SESSION['user_id'] = $matched_user['student_id'];
-        $_SESSION['user_name'] = $matched_user['full_name'];
-        $_SESSION['user_role'] = $matched_user['role'];
-        $_SESSION['user_selfie'] = $matched_user['selfie'];
-        $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
-
-        if ($matched_user['role'] === 'custodian') {
-            header("Location: custodian_dashboard.php");
-        } else {
-            header("Location: borrower.php");
-        }
-        exit();
     } else {
         $error_message = "Invalid email or password.";
     }
@@ -51,37 +54,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-0 m-0 font-sans">
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
-        <!-- Kaliwang Bahagi: Centered Logo & Title kasama ang school_bg.jpg -->
-        <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-8 lg:p-12 text-white overflow-hidden min-h-[400px] lg:min-h-screen">
+        <!-- Kaliwang Bahagi: School Branding -->
+        <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-6 sm:p-8 lg:p-12 text-white overflow-hidden min-h-[350px] lg:min-h-screen">
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
             
             <div class="relative z-10 flex flex-col items-center text-center mx-auto max-w-lg pt-4">
-                <img src="logo.jpg" alt="Logo" class="w-20 h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
-                <h2 class="text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
-                <h1 class="text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
+                <img src="logo.jpg" alt="Logo" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-white object-cover bg-white shadow-lg mb-3" onerror="this.src='https://via.placeholder.com/80'">
+                <h2 class="text-[11px] sm:text-xs md:text-sm font-bold tracking-wider text-emerald-200 mb-1">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
+                <h1 class="text-lg sm:text-xl md:text-3xl font-black tracking-tight text-white leading-tight">QR-BASED EQUIPMENT MONITORING SYSTEM</h1>
             </div>
 
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
-                <p class="text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
+                <p class="text-xs sm:text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
                 <div class="space-y-3 text-left">
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Track Equipment - Seamless borrowing & return logs</span>
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Track Equipment - Seamless borrowing & return logs</span>
                     </div>
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Improve Accountability - Real-time condition monitoring</span>
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Improve Accountability - Real-time condition monitoring</span>
                     </div>
                     <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs md:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300"></span> Build a Smarter Campus - Automated digital verification</span>
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Build a Smarter Campus - Automated digital verification</span>
                     </div>
                 </div>
             </div>
 
-            <div class="relative z-10 text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
+            <div class="relative z-10 text-[11px] sm:text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
         </div>
 
         <!-- Kanang Bahagi: Login Form -->
-        <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 lg:p-10 overflow-y-auto">
+        <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 sm:p-8 lg:p-10 overflow-y-auto">
             <div class="max-w-md w-full mx-auto">
                 <div class="mb-6">
                     <h2 class="text-2xl font-bold text-gray-800">Welcome Back!</h2>
@@ -103,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="submit" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-3 rounded-lg text-sm font-semibold transition shadow-md">Login</button>
                     </div>
                 </form>
-                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">Don't have an account yet? <a href="register.php" class="text-emerald-700 font-semibold hover:underline">Register here</a></div>
+                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">Don't have an account yet? <a href="register.php" class="text-emerald-700 font-semibold underline">Register here</a></div>
             </div>
         </div>
     </div>

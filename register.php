@@ -6,39 +6,22 @@ if (session_status() === PHP_SESSION_NONE) {
 $error_message = "";
 $success_message = "";
 
-// Siguraduhing nalilikha ang uploads folder at may tamang pahintulot
-$upload_dir = __DIR__ . '/uploads/';
-if (!is_dir($upload_dir)) {
-    @mkdir($upload_dir, 0777, true);
-    @chmod($upload_dir, 0777);
+// Initialize session-based storage kung wala pa para maiwasan ang file permission errors sa cloud
+if (!isset($_SESSION['cloud_users'])) {
+    $_SESSION['cloud_users'] = [
+        [
+            'student_id' => 'admin',
+            'email' => 'admin@mqcqc.edu.ph',
+            'full_name' => 'Ryan Jay Leoligao',
+            'password' => 'admin123',
+            'role' => 'custodian',
+            'course_year' => 'Administrator',
+            'selfie' => 'logo.jpg'
+        ]
+    ];
 }
 
-$db_file = $upload_dir . 'database.sqlite';
-try {
-    $db = new PDO("sqlite:" . $db_file);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    $db->exec("CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id TEXT UNIQUE,
-        email TEXT UNIQUE,
-        full_name TEXT,
-        password TEXT,
-        role TEXT,
-        course_year TEXT,
-        selfie TEXT
-    )");
-
-    $stmtCheck = $db->query("SELECT COUNT(*) FROM users");
-    if ($stmtCheck->fetchColumn() == 0) {
-        $stmtAdmin = $db->prepare("INSERT INTO users (student_id, email, full_name, password, role, course_year, selfie) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmtAdmin->execute(['admin', 'admin@mqcqc.edu.ph', 'Ryan Jay Leoligao', 'admin123', 'custodian', 'Administrator', 'logo.jpg']);
-    }
-} catch (PDOException $e) {
-    $error_message = "Database Error: " . $e->getMessage();
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error_message)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_id = trim($_POST['student_id']);
     $full_name = trim($_POST['full_name']);
     $email = trim($_POST['email']);
@@ -53,29 +36,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error_message)) {
         $data = str_replace(' ', '+', $data);
         $decoded_data = base64_decode($data);
         
+        $upload_dir = __DIR__ . '/uploads/';
+        if (!is_dir($upload_dir)) {
+            @mkdir($upload_dir, 0777, true);
+        }
         $file_name = time() . '_selfie.jpg';
         $selfie_path = 'uploads/' . $file_name;
         @file_put_contents(__DIR__ . '/' . $selfie_path, $decoded_data);
     }
 
-    try {
-        $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(student_id) = LOWER(?)");
-        $stmt->execute([$email, $student_id]);
-        $existingUser = $stmt->fetch();
-
-        if ($existingUser) {
-            if (strtolower($existingUser['email']) === strtolower($email)) {
-                $error_message = "This email address is already registered!";
-            } else {
-                $error_message = "This Student/Employee ID is already in use!";
-            }
-        } else {
-            $insert = $db->prepare("INSERT INTO users (student_id, email, full_name, password, role, course_year, selfie) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $insert->execute([$student_id, $email, $full_name, $password, $role, $course_year, $selfie_path]);
-            $success_message = "Account successfully registered! You can now login below.";
+    $isDuplicate = false;
+    foreach ($_SESSION['cloud_users'] as $user) {
+        if (strcasecmp($user['email'], $email) === 0) {
+            $isDuplicate = true;
+            $error_message = "This email address is already registered!";
+            break;
         }
-    } catch (PDOException $e) {
-        $error_message = "Registration Error: " . $e->getMessage();
+        if (strcasecmp($user['student_id'], $student_id) === 0) {
+            $isDuplicate = true;
+            $error_message = "This Student/Employee ID is already in use!";
+            break;
+        }
+    }
+
+    if (!$isDuplicate) {
+        $_SESSION['cloud_users'][] = [
+            'student_id' => $student_id,
+            'email' => $email,
+            'full_name' => $full_name,
+            'password' => $password,
+            'role' => $role,
+            'course_year' => $course_year,
+            'selfie' => $selfie_path
+        ];
+        $success_message = "Account successfully registered! You can now login below.";
     }
 }
 ?>

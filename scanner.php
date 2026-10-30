@@ -25,7 +25,6 @@
                     <p class="text-xs font-semibold">Property Custodian</p>
                     <p class="text-[10px] text-emerald-300 uppercase">Custodian Dashboard</p>
                 </div>
-                <!-- Ibinalik na Dashboard Button -->
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
                 </a>
@@ -72,7 +71,6 @@
                     </div>
 
                     <div class="flex flex-col sm:flex-row gap-4 items-center bg-slate-50 p-4 rounded-xl border border-gray-200">
-                        <!-- Profile/Selfie ng Borrower -->
                         <img id="borrower-selfie" src="logo.jpg" alt="Borrower Photo" class="w-20 h-20 rounded-full border-2 border-emerald-600 object-cover shadow-md" onerror="this.src='https://via.placeholder.com/80'">
                         
                         <div class="text-xs space-y-1 w-full">
@@ -97,7 +95,6 @@
     <!-- Audio element para sa beep -->
     <audio id="beep-audio" src="beep.mp3" preload="auto"></audio>
 
-    <!-- Script para sa Live Camera at File Upload Scanning -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const html5QrCode = new Html5Qrcode("reader");
@@ -122,9 +119,10 @@
                 } catch(e) {}
             };
 
+            // Pinalakas at pinalaki ang scan config para sa mabilis na screen-to-webcam scanning
             const config = { 
-                fps: 30, 
-                qrbox: { width: 250, height: 250 }, 
+                fps: 60, 
+                qrbox: { width: 300, height: 300 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
@@ -132,13 +130,7 @@
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length) {
                     let selectedCameraId = devices[0].id;
-                    for (let i = 0; i < devices.length; i++) {
-                        const label = devices[i].label.toLowerCase();
-                        if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
-                            selectedCameraId = devices[i].id;
-                            break;
-                        }
-                    }
+                    // Kung laptop, usually ang devices[0] ang front/webcam ng laptop
                     html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
                         console.error("Unable to start live camera:", err);
                     });

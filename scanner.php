@@ -39,12 +39,18 @@
         <!-- Left Column: Live Camera Scanner -->
         <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 flex flex-col items-center">
             <h2 class="text-base font-bold text-gray-800 w-full text-left mb-1">Live Camera Scanner</h2>
-            <p class="text-xs text-gray-500 w-full text-left mb-4">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
+            <p class="text-xs text-gray-500 w-full text-left mb-3">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
+
+            <!-- Audio Unlock Banner para sa Mobile Test Case -->
+            <div id="audio-unlock-banner" class="w-full mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-xs flex justify-between items-center shadow-sm">
+                <span>🔊 I-click para paganahin ang Audio Beep sa Mobile</span>
+                <button id="unlock-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold transition">I-activate</button>
+            </div>
 
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang back camera scanner...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang mabilis na back camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -92,33 +98,36 @@
         QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
     </footer>
 
-    <!-- Audio element para sa beep -->
+    <!-- Audio element para sa beep.mp3 -->
     <audio id="beep-audio" src="beep.mp3" preload="auto"></audio>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const html5QrCode = new Html5Qrcode("reader");
             const beepAudio = document.getElementById('beep-audio');
+            const unlockBtn = document.getElementById('unlock-btn');
+            const unlockBanner = document.getElementById('audio-unlock-banner');
 
-            // I-unlock ang audio autoplay sa pamamagitan ng unang tap o click sa screen
-            let audioUnlocked = false;
-            const unlockAudio = () => {
-                if (!audioUnlocked) {
-                    beepAudio.play().then(() => {
-                        beepAudio.pause();
-                        beepAudio.currentTime = 0;
-                        audioUnlocked = true;
-                    }).catch(e => {});
-                }
-            };
-            window.addEventListener('click', unlockAudio, { once: true });
-            window.addEventListener('touchstart', unlockAudio, { once: true });
+            let isAudioEnabled = false;
+
+            // Pindutin ang button para i-unlock ang audio para sa test case
+            unlockBtn.addEventListener('click', () => {
+                beepAudio.play().then(() => {
+                    beepAudio.pause();
+                    beepAudio.currentTime = 0;
+                    isAudioEnabled = true;
+                    unlockBanner.innerHTML = '<span class="text-emerald-700 font-bold">✓ Na-activate na ang Audio Beep! Pwede nang mag-scan.</span>';
+                    setTimeout(() => unlockBanner.style.display = 'none', 2000);
+                }).catch(e => {
+                    alert("Hindi ma-play ang audio. Siguraduhing tama ang pangalan ng file na beep.mp3.");
+                });
+            });
 
             const handleScanSuccess = (decodedText) => {
-                // I-trigger ang beep audio pagka-scan
+                // Laging subukang patugtugin ang beep.mp3
                 beepAudio.currentTime = 0;
                 beepAudio.play().catch(e => {
-                    console.log("Audio play error:", e);
+                    console.log("Audio autoplay blocked by mobile browser:", e);
                 });
 
                 document.getElementById('result-placeholder').classList.add('hidden');
@@ -143,13 +152,12 @@
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Sapilitang paggamit ng Back Camera para sa Mobile Devices
+            // Mabilis na pag-activate ng Back Camera para sa Mobile
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
                 handleScanSuccess
             ).catch(err => {
-                console.warn("Environment camera failed, trying default user camera...", err);
                 html5QrCode.start(
                     { facingMode: "user" }, 
                     config, 

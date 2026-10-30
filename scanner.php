@@ -25,6 +25,7 @@
                     <p class="text-xs font-semibold">Property Custodian</p>
                     <p class="text-[10px] text-emerald-300 uppercase">Custodian Dashboard</p>
                 </div>
+                <!-- Ibinalik na Dashboard Button sa Navbar -->
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
                 </a>
@@ -119,7 +120,6 @@
                 } catch(e) {}
             };
 
-            // Pinalakas at pinalaki ang scan config para sa mabilis na screen-to-webcam scanning
             const config = { 
                 fps: 60, 
                 qrbox: { width: 300, height: 300 }, 
@@ -130,7 +130,6 @@
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length) {
                     let selectedCameraId = devices[0].id;
-                    // Kung laptop, usually ang devices[0] ang front/webcam ng laptop
                     html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
                         console.error("Unable to start live camera:", err);
                     });

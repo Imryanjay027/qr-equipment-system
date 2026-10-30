@@ -59,7 +59,7 @@ if (!isset($_SESSION['user_role'])) {
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang mabilis na back camera...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang ultra-fast native scanner...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -116,9 +116,11 @@ if (!isset($_SESSION['user_role'])) {
             const beepAudio = document.getElementById('beep-audio');
             const unlockBtn = document.getElementById('unlock-btn');
             const unlockBanner = document.getElementById('audio-unlock-banner');
+            let audioCtx = null;
 
-            // Pindutin ang button para i-unlock ang audio para sa test case
             unlockBtn.addEventListener('click', () => {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
                 beepAudio.play().then(() => {
                     beepAudio.pause();
                     beepAudio.currentTime = 0;
@@ -129,12 +131,30 @@ if (!isset($_SESSION['user_role'])) {
                 });
             });
 
-            const handleScanSuccess = (decodedText) => {
-                // Laging subukang patugtugin ang beep.mp3
+            const playBeepSound = () => {
                 beepAudio.currentTime = 0;
-                beepAudio.play().catch(e => {
-                    console.log("Audio autoplay blocked by mobile browser:", e);
-                });
+                beepAudio.play().catch(e => {});
+
+                try {
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                } catch (err) {}
+            };
+
+            const handleScanSuccess = (decodedText) => {
+                playBeepSound();
 
                 document.getElementById('result-placeholder').classList.add('hidden');
                 document.getElementById('result-content').classList.remove('hidden');
@@ -147,6 +167,7 @@ if (!isset($_SESSION['user_role'])) {
                 } catch(e) {}
             };
 
+            // High-performance configuration na may native barcode support at 60 FPS
             const config = { 
                 fps: 60, 
                 qrbox: { width: 300, height: 300 }, 
@@ -154,7 +175,6 @@ if (!isset($_SESSION['user_role'])) {
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Mabilis na pag-activate ng Back Camera para sa Mobile
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
@@ -191,7 +211,7 @@ if (!isset($_SESSION['user_role'])) {
                         if (code) {
                             handleScanSuccess(code.data);
                         } else {
-                            alert("Hindi mabasa ang QR code mula sa larawang ito. Subukang mag-upload ng mas malinaw na QR image.");
+                            alert("Hindi mabasa ang QR code mula sa larawang ito.");
                         }
                     };
                     img.src = event.target.result;

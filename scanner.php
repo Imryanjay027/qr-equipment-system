@@ -41,7 +41,7 @@
             <h2 class="text-base font-bold text-gray-800 w-full text-left mb-1">Live Camera Scanner</h2>
             <p class="text-xs text-gray-500 w-full text-left mb-3">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
 
-            <!-- Audio Unlock Banner para sa Mobile Test Case -->
+            <!-- Audio Unlock Banner para sa Test Case -->
             <div id="audio-unlock-banner" class="w-full mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-xs flex justify-between items-center shadow-sm">
                 <span>🔊 I-click para i-activate ang Audio Beep</span>
                 <button id="unlock-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold transition">I-activate</button>
@@ -50,7 +50,7 @@
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang high-speed auto scanner...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang ultra-fast optimized scanner...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -108,7 +108,7 @@
             const unlockBtn = document.getElementById('unlock-btn');
             const unlockBanner = document.getElementById('audio-unlock-banner');
 
-            // Pag-unlock ng audio para sa test case sa mobile at laptop
+            // Pag-unlock ng audio para sa test case
             unlockBtn.addEventListener('click', () => {
                 beepAudio.play().then(() => {
                     beepAudio.pause();
@@ -121,7 +121,6 @@
             });
 
             const handleScanSuccess = (decodedText) => {
-                // Pagpapatugtog ng beep.mp3 nang may kasiguruhan tuwing magtatagumpay ang scan
                 beepAudio.currentTime = 0;
                 beepAudio.play().catch(e => {
                     console.log("Audio play restricted:", e);
@@ -142,7 +141,7 @@
                 } catch(e) {}
             };
 
-            // High-Performance Configuration (60 FPS + Native Barcode Detector support para sa mabilis na pag-detect)
+            // Optimized Configuration para maiwasan ang lag at maging instant ang scan
             const config = { 
                 fps: 60, 
                 qrbox: { width: 250, height: 250 }, 
@@ -150,7 +149,19 @@
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Smart Camera Detection: Back Camera sa mobile, Default Webcam sa laptop
+            // Video Constraints para i-lock ang resolution sa optimal speed (720p)
+            const constraintsMobile = {
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            };
+
+            const constraintsLaptop = {
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            };
+
+            // Pagsisimula ng camera na may mabilis na resolution handling
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length) {
                     let selectedCameraId = devices[0].id;
@@ -168,11 +179,13 @@
                     }
 
                     html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
-                        html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {});
+                        html5QrCode.start(constraintsMobile, config, handleScanSuccess).catch(e => {
+                            html5QrCode.start({ facingMode: "user" }, config, handleScanSuccess).catch(ex => {});
+                        });
                     });
                 }
             }).catch(err => {
-                html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {});
+                html5QrCode.start(constraintsMobile, config, handleScanSuccess).catch(e => {});
             });
 
             // File Upload QR Scanning gamit ang jsQR

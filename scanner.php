@@ -48,6 +48,7 @@ if (!isset($_SESSION['user_role'])) {
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
+            <p class="text-xs text-gray-500 italic">Naka-activate ang instant ultra-fast scanner...</p>
         </div>
 
         <div class="space-y-6">
@@ -58,7 +59,7 @@ if (!isset($_SESSION['user_role'])) {
 
             <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
                 <h3 class="text-base font-bold text-gray-800 mb-4">Scan Result</h3>
-                <div id="result-placeholder" class="p-6 bg-slate-50 border border-dashed border-gray-300 rounded-xl text-center text-xs text-gray-400">Wala pang na-scan.</div>
+                <div id="result-placeholder" class="p-6 bg-slate-50 border border-dashed border-gray-300 rounded-xl text-center text-xs text-gray-400">Wala pang na-scan o na-upload.</div>
                 <div id="result-content" class="hidden space-y-4">
                     <div class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold">
                         Scan Successful: <span id="decoded-text-label" class="font-normal"></span>
@@ -114,7 +115,14 @@ if (!isset($_SESSION['user_role'])) {
                 try { html5QrCode.stop().catch(err => {}); } catch(e) {}
             };
 
-            const config = { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+            // Itinakda sa 10 FPS at mas maliit na qrbox para maging instant at walang-lag sa cellphone
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 200, height: 200 }, 
+                aspectRatio: 1.0,
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+            };
+
             html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(err => {
                 html5QrCode.start({ facingMode: "user" }, config, handleScanSuccess).catch(e => {});
             });

@@ -3,7 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Siguraduhing naka-login ang user at may tamang access
 if (!isset($_SESSION['user_role'])) {
     header("Location: login.php");
     exit();
@@ -36,7 +35,6 @@ if (!isset($_SESSION['user_role'])) {
                     <p class="text-xs font-semibold"><?php echo htmlspecialchars(isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Property Custodian'); ?></p>
                     <p class="text-[10px] text-emerald-300 uppercase"><?php echo htmlspecialchars(isset($_SESSION['user_role']) ? $_SESSION['user_role'] : 'Custodian'); ?></p>
                 </div>
-                <!-- Siguraduhing ito ay nakaturo sa tamang dashboard file mo -->
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
                 </a>
@@ -53,10 +51,16 @@ if (!isset($_SESSION['user_role'])) {
             <h2 class="text-base font-bold text-gray-800 w-full text-left mb-1">Live Camera Scanner</h2>
             <p class="text-xs text-gray-500 w-full text-left mb-3">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
 
+            <!-- Audio Unlock Banner para sa Mobile Test Case -->
+            <div id="audio-unlock-banner" class="w-full mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-xs flex justify-between items-center shadow-sm">
+                <span>🔊 I-click para i-activate ang Audio Beep sa Mobile</span>
+                <button id="unlock-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold transition">I-activate</button>
+            </div>
+
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang ultra-fast back camera scanner...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang mabilis na back camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -64,7 +68,7 @@ if (!isset($_SESSION['user_role'])) {
             <!-- Upload QR Image Card -->
             <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
                 <h2 class="text-base font-bold text-gray-800 mb-1">Upload QR Image</h2>
-                <p class="text-xs text-gray-500 mb-4">May saved na QR code image ang borrower? I-upload ito dito para ma-scan agad.</p>
+                <p class="text-xs text-gray-500 mb-4">May saved na QR code image ang borrower? I-upload ito dito para ma-scan.</p>
                 
                 <input type="file" id="qr-file-input" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg p-2 bg-slate-50 mb-3">
             </div>
@@ -111,10 +115,12 @@ if (!isset($_SESSION['user_role'])) {
         document.addEventListener("DOMContentLoaded", function () {
             const html5QrCode = new Html5Qrcode("reader");
             const beepAudio = document.getElementById('beep-audio');
+            const unlockBtn = document.getElementById('unlock-btn');
+            const unlockBanner = document.getElementById('audio-unlock-banner');
             let audioCtx = null;
 
-            // Global Audio Unlock sa unang click o tap sa screen para maiwasan ang browser audio block
-            const unlockAudioContext = () => {
+            // Pindutin ang button para i-unlock ang audio para sa test case
+            unlockBtn.addEventListener('click', () => {
                 if (!audioCtx) {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 }
@@ -124,16 +130,18 @@ if (!isset($_SESSION['user_role'])) {
                 beepAudio.play().then(() => {
                     beepAudio.pause();
                     beepAudio.currentTime = 0;
-                }).catch(e => {});
-            };
-            window.addEventListener('click', unlockAudioContext, { once: true });
-            window.addEventListener('touchstart', unlockAudioContext, { once: true });
+                    unlockBanner.innerHTML = '<span class="text-emerald-700 font-bold">✓ Na-activate na ang Audio Beep! Pwede nang mag-scan.</span>';
+                    setTimeout(() => unlockBanner.style.display = 'none', 2000);
+                }).catch(e => {
+                    alert("Hindi ma-play ang audio. Siguraduhing tama ang pangalan ng file na beep.mp3.");
+                });
+            });
 
-            // Garantisadong Beep Function (MP3 file + Web Audio API synthesizer fallback)
+            // Garantisadong Beep Function para sa scan at upload
             const playBeepSound = () => {
                 beepAudio.currentTime = 0;
                 beepAudio.play().catch(e => {
-                    console.log("Audio file restricted, using synthesizer fallback");
+                    console.log("Audio file restricted:", e);
                 });
 
                 try {
@@ -176,24 +184,29 @@ if (!isset($_SESSION['user_role'])) {
                 } catch(e) {}
             };
 
-            // High-Performance & Smooth Configuration (10 FPS with hardware barcode support)
             const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 }, 
+                fps: 60, 
+                qrbox: { width: 300, height: 300 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Diretsong pag-activate ng back camera para sa mabilis na pag-scan sa mobile
+            // Mabilis na pag-activate ng Back Camera para sa Mobile
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
                 handleScanSuccess
             ).catch(err => {
-                html5QrCode.start({ facingMode: "user" }, config, handleScanSuccess).catch(e => {});
+                html5QrCode.start(
+                    { facingMode: "user" }, 
+                    config, 
+                    handleScanSuccess
+                ).catch(e => {
+                    console.error("Camera start failed:", e);
+                });
             });
 
-            // Instant File Upload QR Scanning gamit ang jsQR kasabay ng beep sound
+            // File Upload QR Scanning gamit ang jsQR kasabay ng beep sound
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;

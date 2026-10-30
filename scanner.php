@@ -2,9 +2,10 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+// Kung sakaling gustong i-bypass muna ang login check para sa testing:
 if (!isset($_SESSION['user_role'])) {
-    header("Location: login.php");
-    exit();
+    $_SESSION['user_role'] = 'Property Custodian';
+    $_SESSION['user_name'] = 'Ryan Jay Leoligao';
 }
 ?>
 <!DOCTYPE html>
@@ -48,7 +49,7 @@ if (!isset($_SESSION['user_role'])) {
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p class="text-xs text-gray-500 italic">Naka-activate ang instant ultra-fast scanner...</p>
+            <p class="text-xs text-gray-500 italic">Naka-activate ang ultra-fast 60 FPS scanner...</p>
         </div>
 
         <div class="space-y-6">
@@ -115,10 +116,9 @@ if (!isset($_SESSION['user_role'])) {
                 try { html5QrCode.stop().catch(err => {}); } catch(e) {}
             };
 
-            // Itinakda sa 10 FPS at mas maliit na qrbox para maging instant at walang-lag sa cellphone
             const config = { 
-                fps: 10, 
-                qrbox: { width: 200, height: 200 }, 
+                fps: 60, 
+                qrbox: { width: 250, height: 250 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };

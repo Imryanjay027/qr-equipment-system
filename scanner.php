@@ -6,6 +6,8 @@
     <title>QR Scanner Portal - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- JsQR library para sa mas mabilis at siguruong pagbasa ng uploaded QR images -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
@@ -50,7 +52,7 @@
                 <h2 class="text-base font-bold text-gray-800 mb-1">Upload QR Image</h2>
                 <p class="text-xs text-gray-500 mb-4">May saved na QR code image ang borrower? I-upload ito dito para ma-scan.</p>
                 
-                <input type="file" id="qr-file-input" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg p-2 bg-slate-50">
+                <input type="file" id="qr-file-input" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg p-2 bg-slate-50 mb-3">
             </div>
 
             <!-- Scan Result Container -->
@@ -67,7 +69,7 @@
                     </div>
 
                     <div class="flex flex-col sm:flex-row gap-4 items-center bg-slate-50 p-4 rounded-xl border border-gray-200">
-                        <!-- Dito ipapakita ang Profile/Selfie ng Borrower (HINDI ang QR code image) -->
+                        <!-- Profile/Selfie ng Borrower -->
                         <img id="borrower-selfie" src="logo.jpg" alt="Borrower Photo" class="w-20 h-20 rounded-full border-2 border-emerald-600 object-cover shadow-md" onerror="this.src='https://via.placeholder.com/80'">
                         
                         <div class="text-xs space-y-1 w-full">
@@ -89,36 +91,39 @@
         QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
     </footer>
 
+    <!-- Audio element para sa siguruong pagtugtog ng beep -->
+    <audio id="beep-audio" src="beep.mp3" preload="auto"></audio>
+
     <!-- Script para sa Live Camera at File Upload Scanning -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const html5QrCode = new Html5Qrcode("reader");
+            const beepAudio = document.getElementById('beep-audio');
 
-            // Function na magpo-process kapag nagtagumpay ang pag-scan (Live man o File Upload)
+            // Function para i-trigger ang audio at ipakita ang resulta
             const handleScanSuccess = (decodedText) => {
-                // Patugtugin ang beep.mp3 agad
-                const audio = new Audio('beep.mp3');
-                audio.play().catch(e => console.log("Audio play blocked by browser policy:", e));
+                // Patugtugin ang beep.mp3
+                beepAudio.currentTime = 0;
+                beepAudio.play().catch(e => console.log("Audio play restricted:", e));
 
-                // I-update ang UI para ipakita ang resulta at itago ang placeholder
+                // I-update ang UI para ipakita ang resulta
                 document.getElementById('result-placeholder').classList.add('hidden');
                 document.getElementById('result-content').classList.remove('hidden');
                 document.getElementById('decoded-text-label').innerText = decodedText;
 
-                // Halimbawa ng pag-populate ng data mula sa na-scan na QR text
+                // Ilagay ang sample borrower data batay sa na-scan
                 document.getElementById('res-name').innerText = "Pangalan: Ryan Jay Leoligao";
                 document.getElementById('res-id').innerText = "Student ID: " + decodedText;
                 document.getElementById('res-course').innerText = "Course & Year: BSIT 3rd Year";
                 document.getElementById('res-item').innerText = "Equipment to Borrow: Extension Cord / Projector";
                 document.getElementById('res-dates').innerText = "Borrow Date: " + new Date().toLocaleString();
 
-                // Ihinto ang live camera kung sakaling live scan ang ginamit
                 try {
                     html5QrCode.stop().catch(err => {});
                 } catch(e) {}
             };
 
-            // 1. Live Camera Configuration (30 FPS at Back Camera Priority)
+            // 1. Live Camera Configuration
             const config = { 
                 fps: 30, 
                 qrbox: { width: 250, height: 250 }, 
@@ -144,20 +149,34 @@
                 console.error("No camera detected:", err);
             });
 
-            // 2. File Upload QR Scanning (Hindi ipapakita ang QR image, kundi ang Borrower data lamang)
+            // 2. File Upload Scanning gamit ang jsQR para sigurado ang pagbasa
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;
-                const imageFile = e.target.files[0];
+                const file = e.target.files[0];
+                const reader = new FileReader();
 
-                html5QrCode.scanFile(imageFile, true)
-                    .then(decodedText => {
-                        handleScanSuccess(decodedText);
-                    })
-                    .catch(err => {
-                        alert("Hindi mabasa ang QR code mula sa larawan. Subukang mag-upload ng mas malinaw na QR image.");
-                        console.error("Error scanning file:", err);
-                    });
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const canvasContext = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        canvasContext.drawImage(img, 0, 0, img.width, img.height);
+                        
+                        const imgData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imgData.data, imgData.width, imgData.height);
+
+                        if (code) {
+                            handleScanSuccess(code.data);
+                        } else {
+                            alert("Hindi mabasa ang QR code mula sa larawang ito. Subukang mag-upload ng mas malinaw na QR image.");
+                        }
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             });
         });
     </script>

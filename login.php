@@ -4,55 +4,48 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $error_message = "";
-$upload_dir = 'uploads/';
-$db_file = $upload_dir . 'database.sqlite';
+
+if (!isset($_SESSION['cloud_users'])) {
+    $_SESSION['cloud_users'] = [
+        [
+            'student_id' => 'admin',
+            'email' => 'admin@mqcqc.edu.ph',
+            'full_name' => 'Ryan Jay Leoligao',
+            'password' => 'admin123',
+            'role' => 'custodian',
+            'course_year' => 'Administrator',
+            'selfie' => 'logo.jpg'
+        ]
+    ];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
 
-    // Hardcoded fallback para sa Custodian kung sakaling kailanganin ng client ninyo
-    if (strcasecmp($email, 'admin@mqcqc.edu.ph') === 0 && $password === 'admin123') {
-        $_SESSION['user_id'] = 'admin';
-        $_SESSION['user_name'] = 'Ryan Jay Leoligao';
-        $_SESSION['user_role'] = 'custodian';
-        $_SESSION['user_selfie'] = 'logo.jpg';
-        $_SESSION['course_year'] = 'Administrator';
-        
-        header("Location: custodian_dashboard.php");
-        exit();
+    $matched_user = null;
+    foreach ($_SESSION['cloud_users'] as $user) {
+        if (strcasecmp($user['email'], $email) === 0 && $user['password'] === $password) {
+            $matched_user = $user;
+            break;
+        }
     }
 
-    if (file_exists($db_file)) {
-        try {
-            $db = new PDO("sqlite:" . $db_file);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    if ($matched_user) {
+        $_SESSION['user_id'] = $matched_user['student_id'];
+        $_SESSION['user_name'] = $matched_user['full_name'];
+        $_SESSION['user_role'] = $matched_user['role'];
+        $_SESSION['user_selfie'] = $matched_user['selfie'];
+        $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
 
-            $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) AND password = ?");
-            $stmt->execute([$email, $password]);
-            $matched_user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($matched_user) {
-                $_SESSION['user_id'] = $matched_user['student_id'];
-                $_SESSION['user_name'] = $matched_user['full_name'];
-                $_SESSION['user_role'] = $matched_user['role'];
-                $_SESSION['user_selfie'] = $matched_user['selfie'];
-                $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
-
-                if (strtolower($matched_user['role']) === 'custodian') {
-                    header("Location: custodian_dashboard.php");
-                } else {
-                    header("Location: borrower.php");
-                }
-                exit();
-            } else {
-                $error_message = "Invalid email or password. (Sinubukan ang: " . htmlspecialchars($email) . ")";
-            }
-        } catch (PDOException $e) {
-            $error_message = "Database error: " . $e->getMessage();
+        if (strtolower($matched_user['role']) === 'custodian') {
+            header("Location: custodian_dashboard.php");
+        } else {
+            header("Location: borrower.php");
         }
+        exit();
     } else {
-        $error_message = "Wala pang nakitang database. Mangyaring mag-register muna.";
+        $error_message = "Invalid email or password.";
     }
 }
 ?>

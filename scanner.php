@@ -1,3 +1,14 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Siguraduhing naka-login ang user at may tamang access
+if (!isset($_SESSION['user_role'])) {
+    header("Location: login.php");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,9 +33,10 @@
             </div>
             <div class="flex items-center gap-3">
                 <div class="text-right hidden sm:block">
-                    <p class="text-xs font-semibold">Property Custodian</p>
-                    <p class="text-[10px] text-emerald-300 uppercase">Custodian Dashboard</p>
+                    <p class="text-xs font-semibold"><?php echo htmlspecialchars(isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Property Custodian'); ?></p>
+                    <p class="text-[10px] text-emerald-300 uppercase"><?php echo htmlspecialchars(isset($_SESSION['user_role']) ? $_SESSION['user_role'] : 'Custodian'); ?></p>
                 </div>
+                <!-- Siguraduhing ito ay nakaturo sa tamang dashboard file mo -->
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
                 </a>
@@ -44,7 +56,7 @@
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang ultra-fast back camera...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang ultra-fast back camera scanner...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -101,7 +113,7 @@
             const beepAudio = document.getElementById('beep-audio');
             let audioCtx = null;
 
-            // Audio unlock sa unang tap o click sa screen
+            // Global Audio Unlock sa unang click o tap sa screen para maiwasan ang browser audio block
             const unlockAudioContext = () => {
                 if (!audioCtx) {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -117,10 +129,11 @@
             window.addEventListener('click', unlockAudioContext, { once: true });
             window.addEventListener('touchstart', unlockAudioContext, { once: true });
 
+            // Garantisadong Beep Function (MP3 file + Web Audio API synthesizer fallback)
             const playBeepSound = () => {
                 beepAudio.currentTime = 0;
                 beepAudio.play().catch(e => {
-                    console.log("Audio file restricted:", e);
+                    console.log("Audio file restricted, using synthesizer fallback");
                 });
 
                 try {
@@ -163,7 +176,7 @@
                 } catch(e) {}
             };
 
-            // Ibinalik sa 10 FPS na may hardware acceleration para sa pinakamabilis at walang-lag na pag-scan
+            // High-Performance & Smooth Configuration (10 FPS with hardware barcode support)
             const config = { 
                 fps: 10, 
                 qrbox: { width: 250, height: 250 }, 
@@ -171,7 +184,7 @@
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Diretsong pagtawag sa back camera para sa mabilis na pagbukas at pag-scan sa mobile
+            // Diretsong pag-activate ng back camera para sa mabilis na pag-scan sa mobile
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 

@@ -25,7 +25,6 @@
                     <p class="text-xs font-semibold">Property Custodian</p>
                     <p class="text-[10px] text-emerald-300 uppercase">Custodian Dashboard</p>
                 </div>
-                <!-- Ibinalik na Dashboard Button sa Navbar -->
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
                 </a>
@@ -45,7 +44,7 @@
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang camera scanner...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang auto-detect camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -127,17 +126,25 @@
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            Html5Qrcode.getCameras().then(devices => {
-                if (devices && devices.length) {
-                    let selectedCameraId = devices[0].id;
-                    html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
-                        console.error("Unable to start live camera:", err);
-                    });
-                }
-            }).catch(err => {
-                console.error("No camera detected:", err);
+            // Universal Auto-Detect Camera Initialization
+            // Sinusubukan muna ang environment (back camera) para sa mobile, kung hindi ma-support, aabot sa fallback para sa laptop/default camera
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                handleScanSuccess
+            ).catch(err => {
+                console.warn("Environment camera not found, falling back to default user camera...", err);
+                html5QrCode.start(
+                    { facingMode: "user" }, 
+                    config, 
+                    handleScanSuccess
+                ).catch(e => {
+                    console.error("Unable to start any camera:", e);
+                    document.getElementById('scanner-status').innerText = "Hindi ma-access ang camera. Subukang mag-upload ng QR image sa kanan.";
+                });
             });
 
+            // File Upload QR Scanning gamit ang jsQR
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;

@@ -1,244 +1,89 @@
-<?php
-session_start();
-
-$json_file = 'requests.json';
-
-// Kunin ang mga active requests mula sa shared requests.json file
-$active_requests = [];
-if (file_exists($json_file)) {
-    $active_requests = json_decode(file_get_contents($json_file), true);
-}
-
-// Fallback kung walang laman ang JSON
-if (empty($active_requests)) {
-    $active_requests = [
-        [
-            'id' => 1,
-            'student_id' => 'admin',
-            'full_name' => 'Ryan Jay Leoligao',
-            'course_year' => 'BSIT 3rd Year',
-            'item' => 'Extension',
-            'borrow_date' => date('Y-m-d H:i:s'),
-            'return_due' => date('Y-m-d H:i:s', strtotime('+4 hours')),
-            'status' => 'Pending'
-        ]
-    ];
-}
-
-$custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'System Custodian';
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Scanner Portal - Mary the Queen College of Quezon City</title>
+    <title>Fast QR Scanner - MQCQC EMS</title>
+    <!-- Tailwind CSS para sa mabilis at malinis na design -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Html5-qrcode library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
-<body class="bg-slate-100 min-h-screen flex flex-col md:flex-row">
+<body class="bg-slate-900 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <audio id="beep-sound" src="beep.mp3" preload="auto"></audio>
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 text-center">
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Scan Equipment QR Code</h2>
+        <p class="text-xs text-gray-500 mb-4">Itutok ang camera sa QR code ng kagamitan.</p>
 
-    <!-- Mobile Top Navigation Bar with Hamburger -->
-    <div class="md:hidden bg-[#005a2b] text-white p-4 flex justify-between items-center shadow-md w-full">
-        <div class="flex items-center space-x-3">
-            <img src="logo.jpg" alt="Logo" class="w-8 h-8 rounded-full border border-white object-cover bg-white" onerror="this.src='https://via.placeholder.com/30'">
-            <span class="font-bold text-xs tracking-wider">CUSTODIAN PORTAL</span>
-        </div>
-        <button id="menu-btn" class="p-2 rounded-lg bg-[#004822] text-white focus:outline-none hover:bg-[#003b1c]">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
-        </button>
-    </div>
-
-    <!-- Mobile Collapsible Menu -->
-    <div id="mobile-menu" class="hidden md:hidden bg-[#005a2b] text-white p-4 space-y-2 shadow-lg border-t border-emerald-800 w-full">
-        <a href="custodian_dashboard.php" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">Dashboard</a>
-        <a href="borrowing_requests.php" class="block py-2.5 px-4 rounded-lg hover:bg-[#004822] text-gray-200 text-sm transition">Borrowing Requests</a>
-        <a href="scanner.php" class="block py-2.5 px-4 rounded-lg bg-[#007a38] text-white font-medium text-sm">QR Scanner Portal</a>
-        <a href="logout.php" class="block py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-sm text-center transition">Logout</a>
-    </div>
-
-    <!-- Desktop Sidebar -->
-    <div class="hidden md:flex w-72 bg-[#005a2b] text-white flex-col justify-between p-6 shadow-lg min-h-screen">
-        <div>
-            <div class="text-center mb-8">
-                <img src="logo.jpg" alt="School Logo" class="w-20 h-20 mx-auto rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/80'">
-                <h2 class="text-xs font-bold tracking-wider leading-relaxed text-gray-100">MARY THE QUEEN COLLEGE OF QUEZON CITY</h2>
-            </div>
-
-            <nav class="space-y-2">
-                <a href="custodian_dashboard.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                    <span>Dashboard</span>
-                </a>
-                <a href="borrowing_requests.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-[#004822] text-gray-200 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                    <span>Borrowing Requests</span>
-                </a>
-                <a href="scanner.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg bg-[#007a38] text-white font-medium shadow">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h.01M16 16h1m-4-10V4m-4 8H4m12 0h4m-4 8h4m-8-4v4m0-8h4"></path></svg>
-                    <span>QR Scanner Portal</span>
-                </a>
-            </nav>
+        <!-- QR Reader Container -->
+        <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4">
+            <div id="reader" class="w-full"></div>
         </div>
 
-        <div>
-            <div class="mb-6">
-                <a href="logout.php" class="flex items-center space-x-3 py-3 px-4 rounded-lg hover:bg-red-700 text-gray-200 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    <span>Logout</span>
-                </a>
+        <!-- Form para sa pagpasa ng Na-scan na Code patungo sa processing file -->
+        <form id="qr-form" action="process_borrow.php" method="POST" class="space-y-3">
+            <input type="hidden" name="qr_code" id="qr_input">
+            <div id="scan-result-container" class="hidden p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold">
+                Successfully scanned: <span id="scanned-text" class="font-bold"></span>
             </div>
-            <div class="text-center border-t border-emerald-800 pt-4">
-                <p class="text-[11px] italic text-emerald-200">"Discipline today, excellence tomorrow."</p>
-            </div>
+            <button type="submit" id="submit-btn" class="hidden w-full bg-[#005a2b] hover:bg-[#004822] text-white py-2.5 rounded-lg text-xs font-semibold transition shadow-md">
+                Proceed with Scanned Equipment
+            </button>
+        </form>
+
+        <div class="mt-4">
+            <a href="borrower.php" class="text-xs text-gray-500 hover:text-emerald-700 underline">&larr; Back to Dashboard</a>
         </div>
-    </div>
-
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col min-h-screen overflow-y-auto p-4 md:p-8">
-        
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-                <h1 class="text-lg md:text-2xl font-bold text-gray-800">QR SCANNER PORTAL</h1>
-                <p class="text-xs md:text-sm text-gray-500">Scan borrower QR codes or upload QR images for equipment return validation</p>
-            </div>
-            
-            <div class="flex items-center space-x-3">
-                <div class="flex items-center space-x-2 text-xs md:text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-lg border">
-                    <span class="font-medium"><?php echo htmlspecialchars($custodian_name); ?></span>
-                </div>
-                <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm">Logout</a>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col items-center">
-                <h2 class="text-base font-bold text-gray-800 mb-4 self-start">Live Camera Scanner</h2>
-                <div id="reader" class="w-full rounded-lg overflow-hidden border border-gray-300 bg-black min-h-[250px]"></div>
-                <p class="text-xs text-gray-500 mt-3 text-center">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
-            </div>
-
-            <div class="flex flex-col gap-6">
-                
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h2 class="text-base font-bold text-gray-800 mb-2">Upload QR Image</h2>
-                    <p class="text-xs text-gray-500 mb-4">May saved na QR code image ang borrower? I-upload ito dito para ma-scan.</p>
-                    <input type="file" id="qr-input-file" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-gray-200 rounded-lg p-2">
-                </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between flex-1">
-                    <div>
-                        <h2 class="text-base font-bold text-gray-800 mb-4">Scan Result / Borrower Data</h2>
-                        <div id="scan-result-container" class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <p id="scan-result-text" class="text-sm text-gray-500 italic text-center">Wala pang nakaswang QR code.</p>
-                        </div>
-                    </div>
-                    <div class="mt-6">
-                        <button onclick="location.reload();" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-2 rounded-lg text-sm font-semibold transition shadow-sm">I-reset / Mag-scan Muli</button>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-
     </div>
 
     <script>
-        // Ipasa ang requests.json data papuntang JavaScript
-        const borrowRequests = <?php echo json_encode($active_requests); ?>;
-
-        const menuBtn = document.getElementById('menu-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
-        menuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-
-        function playBeepSound() {
-            const beep = document.getElementById('beep-sound');
-            if (beep) {
-                beep.currentTime = 0;
-                beep.play().catch(error => {
-                    console.log("Audio autoplay prevented:", error);
-                });
-            }
-        }
-
-        function onScanSuccess(decodedText) {
-            playBeepSound();
-            
-            // Hanapin kung ang na-scan na QR text ay tumutugma sa student_id o full_name sa shared JSON
-            let matchedBorrower = borrowRequests.find(req => 
-                req.student_id.toLowerCase() === decodedText.toLowerCase() || 
-                req.full_name.toLowerCase().includes(decodedText.toLowerCase())
-            ) || borrowRequests[0];
-
-            document.getElementById('scan-result-container').innerHTML = `
-                <div class="flex flex-col space-y-3">
-                    <div class="flex items-center justify-between border-b pb-2">
-                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-bold rounded text-xs">Scan Successful</span>
-                        <span class="text-gray-500 text-[11px]">QR: ${decodedText}</span>
-                    </div>
-                    
-                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                        <img src="logo.jpg" alt="Live Selfie" class="w-20 h-20 rounded-full object-cover border-2 border-emerald-600 bg-white shadow-sm flex-shrink-0" onerror="this.src='https://via.placeholder.com/80'">
-                        <div class="flex-1 w-full text-left space-y-1 text-xs md:text-sm">
-                            <p><strong class="text-gray-700">Student ID:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.student_id}</span></p>
-                            <p><strong class="text-gray-700">Full Name:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.full_name}</span></p>
-                            <p><strong class="text-gray-700">Course & Year:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.course_year || 'BSIT 3rd Year'}</span></p>
-                            <p><strong class="text-gray-700">Equipment to Borrow:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.item}</span></p>
-                            <p><strong class="text-gray-700">Borrow Date:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.borrow_date}</span></p>
-                            <p><strong class="text-gray-700">Return Due:</strong> <span class="text-gray-900 font-medium">${matchedBorrower.return_due}</span></p>
-                            <p><strong class="text-gray-700">Status / Remarks:</strong> <span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[11px]">${matchedBorrower.status}</span></p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function onScanFailure(error) {}
-
         document.addEventListener("DOMContentLoaded", function () {
             const html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess,
-                onScanFailure
-            ).catch((err) => {
-                html5QrCode.start(
-                    { facingMode: "user" },
-                    config,
-                    onScanSuccess,
-                    onScanFailure
-                ).catch((err2) => {
-                    console.warn("Hindi ma-access ang camera:", err2);
-                });
-            });
 
-            const fileInput = document.getElementById('qr-input-file');
-            fileInput.addEventListener('change', e => {
-                if (e.target.files.length == 0) return;
-                
-                const imageFile = e.target.files[0];
-                const html5QrCodeFile = new Html5Qrcode("reader");
-                
-                html5QrCodeFile.scanFile(imageFile, true)
-                .then(decodedText => {
-                    onScanSuccess(decodedText);
-                })
-                .catch(err => {
-                    document.getElementById('scan-result-container').innerHTML = `
-                        <p class="text-red-600 font-medium text-xs text-center p-4">Hindi mabasa ang QR code mula sa larawan. Siguraduhing malinaw ang QR image.</p>
-                    `;
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                // Agad na tutugtog ang beep.mp3 sa sandaling ma-scan ang QR code
+                const audio = new Audio('beep.mp3');
+                audio.play().catch(e => console.log("Audio play blocked by browser policy:", e));
+
+                // Ilalagay ang na-scan na text sa hidden input at ipapakita ang UI result
+                document.getElementById('qr_input').value = decodedText;
+                document.getElementById('scanned-text').innerText = decodedText;
+                document.getElementById('scan-result-container').classList.remove('hidden');
+                document.getElementById('submit-btn').classList.remove('hidden');
+
+                // Kusang hihinto ang camera scanner para maiwasan ang double scan o looping
+                html5QrCode.stop().then(() => {
+                    console.log("QR Code scanning stopped successfully.");
+                }).catch(err => {
+                    console.error("Failed to stop scanning.", err);
                 });
+            };
+
+            // Pinabilis at naka-optimize na configuration para sa mobile at desktop
+            const config = { 
+                fps: 30, // 30 Frames Per Second para sa super smooth at instant detection
+                qrbox: { width: 250, height: 250 }, // Nakatutok sa gitnang kahon
+                aspectRatio: 1.0,
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true // Gagamitin ang native hardware acceleration ng device kung available
+                }
+            };
+
+            // Pagkuha ng available cameras (Priiority ang back camera / environment para sa phones)
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    const cameraId = devices[devices.length - 1].id;
+                    
+                    html5QrCode.start(
+                        cameraId, 
+                        config, 
+                        qrCodeSuccessCallback
+                    ).catch(err => {
+                        console.error("Unable to start scanning.", err);
+                    });
+                }
+            }).catch(err => {
+                console.error("No camera detected or permission denied.", err);
             });
         });
     </script>

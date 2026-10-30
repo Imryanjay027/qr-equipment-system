@@ -126,11 +126,9 @@
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Smart Camera Detection: Pinipilit ang Back Camera sa mobile, at Default Webcam sa laptop
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length) {
-                    let selectedCameraId = devices[0].id; // Default sa unang camera (laptop webcam)
-
+                    let selectedCameraId = devices[0].id;
                     for (let i = 0; i < devices.length; i++) {
                         const label = devices[i].label.toLowerCase();
                         if (label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('panlikod')) {
@@ -144,17 +142,14 @@
                     }
 
                     html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
-                        console.error("Error starting preferred camera, falling back to facingMode...", err);
-                        html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {
-                            console.error("All camera start methods failed:", e);
-                        });
+                        console.error("Error starting preferred camera:", err);
+                        html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {});
                     });
                 }
             }).catch(err => {
-                console.error("No camera detected or permission denied:", err);
+                console.error("No camera detected:", err);
             });
 
-            // File Upload QR Scanning gamit ang jsQR
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;

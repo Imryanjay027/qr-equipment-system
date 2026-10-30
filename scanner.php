@@ -44,7 +44,7 @@
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang auto-detect camera...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang mabilis na auto-detect camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -100,9 +100,26 @@
             const html5QrCode = new Html5Qrcode("reader");
             const beepAudio = document.getElementById('beep-audio');
 
+            // I-unlock ang audio autoplay restriction sa unang click/tap ng user sa screen
+            let audioUnlocked = false;
+            const unlockAudio = () => {
+                if (!audioUnlocked) {
+                    beepAudio.play().then(() => {
+                        beepAudio.pause();
+                        beepAudio.currentTime = 0;
+                        audioUnlocked = true;
+                    }).catch(e => {});
+                }
+            };
+            document.addEventListener('click', unlockAudio, { once: true });
+            document.addEventListener('touchstart', unlockAudio, { once: true });
+
             const handleScanSuccess = (decodedText) => {
+                // Patugtugin ang beep.mp3 nang may kasiguruhan
                 beepAudio.currentTime = 0;
-                beepAudio.play().catch(e => console.log("Audio play restricted:", e));
+                beepAudio.play().catch(e => {
+                    console.log("Audio play error:", e);
+                });
 
                 document.getElementById('result-placeholder').classList.add('hidden');
                 document.getElementById('result-content').classList.remove('hidden');
@@ -119,6 +136,7 @@
                 } catch(e) {}
             };
 
+            // 60 FPS configuration para sa napakabilis na mabilis na pag-detect
             const config = { 
                 fps: 60, 
                 qrbox: { width: 300, height: 300 }, 
@@ -126,9 +144,11 @@
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
+            // Camera initialization na awtomatikong pipili ng back camera sa mobile at webcam sa laptop
             Html5Qrcode.getCameras().then(devices => {
                 if (devices && devices.length) {
                     let selectedCameraId = devices[0].id;
+
                     for (let i = 0; i < devices.length; i++) {
                         const label = devices[i].label.toLowerCase();
                         if (label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('panlikod')) {
@@ -142,14 +162,14 @@
                     }
 
                     html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
-                        console.error("Error starting preferred camera:", err);
                         html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {});
                     });
                 }
             }).catch(err => {
-                console.error("No camera detected:", err);
+                html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {});
             });
 
+            // File Upload QR Scanning gamit ang jsQR
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;

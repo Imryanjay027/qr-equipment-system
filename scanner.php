@@ -43,14 +43,14 @@
 
             <!-- Audio Unlock Banner para sa Mobile Test Case -->
             <div id="audio-unlock-banner" class="w-full mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-xs flex justify-between items-center shadow-sm">
-                <span>🔊 I-click para paganahin ang Audio Beep sa Mobile</span>
+                <span>🔊 I-click para i-activate ang Audio Beep</span>
                 <button id="unlock-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold transition">I-activate</button>
             </div>
 
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang mabilis na back camera...</p>
+            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang high-speed auto scanner...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -108,26 +108,23 @@
             const unlockBtn = document.getElementById('unlock-btn');
             const unlockBanner = document.getElementById('audio-unlock-banner');
 
-            let isAudioEnabled = false;
-
-            // Pindutin ang button para i-unlock ang audio para sa test case
+            // Pag-unlock ng audio para sa test case sa mobile at laptop
             unlockBtn.addEventListener('click', () => {
                 beepAudio.play().then(() => {
                     beepAudio.pause();
                     beepAudio.currentTime = 0;
-                    isAudioEnabled = true;
                     unlockBanner.innerHTML = '<span class="text-emerald-700 font-bold">✓ Na-activate na ang Audio Beep! Pwede nang mag-scan.</span>';
                     setTimeout(() => unlockBanner.style.display = 'none', 2000);
                 }).catch(e => {
-                    alert("Hindi ma-play ang audio. Siguraduhing tama ang pangalan ng file na beep.mp3.");
+                    alert("Pakisigurong nasa parehong folder ang beep.mp3.");
                 });
             });
 
             const handleScanSuccess = (decodedText) => {
-                // Laging subukang patugtugin ang beep.mp3
+                // Pagpapatugtog ng beep.mp3 nang may kasiguruhan tuwing magtatagumpay ang scan
                 beepAudio.currentTime = 0;
                 beepAudio.play().catch(e => {
-                    console.log("Audio autoplay blocked by mobile browser:", e);
+                    console.log("Audio play restricted:", e);
                 });
 
                 document.getElementById('result-placeholder').classList.add('hidden');
@@ -145,26 +142,37 @@
                 } catch(e) {}
             };
 
+            // High-Performance Configuration (60 FPS + Native Barcode Detector support para sa mabilis na pag-detect)
             const config = { 
                 fps: 60, 
-                qrbox: { width: 300, height: 300 }, 
+                qrbox: { width: 250, height: 250 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Mabilis na pag-activate ng Back Camera para sa Mobile
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                handleScanSuccess
-            ).catch(err => {
-                html5QrCode.start(
-                    { facingMode: "user" }, 
-                    config, 
-                    handleScanSuccess
-                ).catch(e => {
-                    console.error("Camera start failed:", e);
-                });
+            // Smart Camera Detection: Back Camera sa mobile, Default Webcam sa laptop
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    let selectedCameraId = devices[0].id;
+
+                    for (let i = 0; i < devices.length; i++) {
+                        const label = devices[i].label.toLowerCase();
+                        if (label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('panlikod')) {
+                            selectedCameraId = devices[i].id;
+                            break;
+                        }
+                    }
+
+                    if (devices.length > 1 && selectedCameraId === devices[0].id) {
+                        selectedCameraId = devices[devices.length - 1].id;
+                    }
+
+                    html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
+                        html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {});
+                    });
+                }
+            }).catch(err => {
+                html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {});
             });
 
             // File Upload QR Scanning gamit ang jsQR

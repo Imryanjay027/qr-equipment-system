@@ -6,7 +6,6 @@
     <title>QR Scanner Portal - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- JsQR library para sa mas mabilis at siguruong pagbasa ng uploaded QR images -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
@@ -21,12 +20,16 @@
                     <p class="text-[11px] text-emerald-200">Mary the Queen College of Quezon City</p>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
                 <div class="text-right hidden sm:block">
                     <p class="text-xs font-semibold">Property Custodian</p>
                     <p class="text-[10px] text-emerald-300 uppercase">Custodian Dashboard</p>
                 </div>
-                <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow-sm">Logout</a>
+                <!-- Ibinalik na Dashboard Button -->
+                <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
+                    &larr; Dashboard
+                </a>
+                <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm">Logout</a>
             </div>
         </div>
     </header>
@@ -91,7 +94,7 @@
         QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
     </footer>
 
-    <!-- Audio element para sa siguruong pagtugtog ng beep -->
+    <!-- Audio element para sa beep -->
     <audio id="beep-audio" src="beep.mp3" preload="auto"></audio>
 
     <!-- Script para sa Live Camera at File Upload Scanning -->
@@ -100,18 +103,14 @@
             const html5QrCode = new Html5Qrcode("reader");
             const beepAudio = document.getElementById('beep-audio');
 
-            // Function para i-trigger ang audio at ipakita ang resulta
             const handleScanSuccess = (decodedText) => {
-                // Patugtugin ang beep.mp3
                 beepAudio.currentTime = 0;
                 beepAudio.play().catch(e => console.log("Audio play restricted:", e));
 
-                // I-update ang UI para ipakita ang resulta
                 document.getElementById('result-placeholder').classList.add('hidden');
                 document.getElementById('result-content').classList.remove('hidden');
                 document.getElementById('decoded-text-label').innerText = decodedText;
 
-                // Ilagay ang sample borrower data batay sa na-scan
                 document.getElementById('res-name').innerText = "Pangalan: Ryan Jay Leoligao";
                 document.getElementById('res-id').innerText = "Student ID: " + decodedText;
                 document.getElementById('res-course').innerText = "Course & Year: BSIT 3rd Year";
@@ -123,7 +122,6 @@
                 } catch(e) {}
             };
 
-            // 1. Live Camera Configuration
             const config = { 
                 fps: 30, 
                 qrbox: { width: 250, height: 250 }, 
@@ -149,7 +147,6 @@
                 console.error("No camera detected:", err);
             });
 
-            // 2. File Upload Scanning gamit ang jsQR para sigurado ang pagbasa
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;

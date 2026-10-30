@@ -126,22 +126,32 @@
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Universal Auto-Detect Camera Initialization
-            // Sinusubukan muna ang environment (back camera) para sa mobile, kung hindi ma-support, aabot sa fallback para sa laptop/default camera
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                handleScanSuccess
-            ).catch(err => {
-                console.warn("Environment camera not found, falling back to default user camera...", err);
-                html5QrCode.start(
-                    { facingMode: "user" }, 
-                    config, 
-                    handleScanSuccess
-                ).catch(e => {
-                    console.error("Unable to start any camera:", e);
-                    document.getElementById('scanner-status').innerText = "Hindi ma-access ang camera. Subukang mag-upload ng QR image sa kanan.";
-                });
+            // Smart Camera Detection: Pinipilit ang Back Camera sa mobile, at Default Webcam sa laptop
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    let selectedCameraId = devices[0].id; // Default sa unang camera (laptop webcam)
+
+                    for (let i = 0; i < devices.length; i++) {
+                        const label = devices[i].label.toLowerCase();
+                        if (label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('panlikod')) {
+                            selectedCameraId = devices[i].id;
+                            break;
+                        }
+                    }
+
+                    if (devices.length > 1 && selectedCameraId === devices[0].id) {
+                        selectedCameraId = devices[devices.length - 1].id;
+                    }
+
+                    html5QrCode.start(selectedCameraId, config, handleScanSuccess).catch(err => {
+                        console.error("Error starting preferred camera, falling back to facingMode...", err);
+                        html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess).catch(e => {
+                            console.error("All camera start methods failed:", e);
+                        });
+                    });
+                }
+            }).catch(err => {
+                console.error("No camera detected or permission denied:", err);
             });
 
             // File Upload QR Scanning gamit ang jsQR

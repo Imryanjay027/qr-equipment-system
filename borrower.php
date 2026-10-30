@@ -3,13 +3,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Siguraduhing naka-login ang user at hindi custodian
+// Siguraduhing naka-login ang borrower
 if (!isset($_SESSION['user_role']) || strtolower($_SESSION['user_role']) === 'custodian') {
     header("Location: login.php");
     exit();
 }
 
-// Session-based storage para sa equipment requests para iwas 'Permission Denied' error sa cloud
+// Session-based storage para iwas 'Permission Denied' o 'No such file' sa cloud
 if (!isset($_SESSION['equipment_requests'])) {
     $_SESSION['equipment_requests'] = [];
 }
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_name'])) {
         'status' => 'Pending'
     ];
     
-    // Idagdag sa unahan ng listahan
+    // Idagdag sa session array
     array_unshift($_SESSION['equipment_requests'], $new_request);
     $success_msg = "Matagumpay na naisumite ang iyong request sa kagamitan!";
 }

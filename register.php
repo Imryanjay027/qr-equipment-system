@@ -6,7 +6,6 @@ if (session_status() === PHP_SESSION_NONE) {
 $error_message = "";
 $success_message = "";
 
-// Initialize session-based storage kung wala pa para maiwasan ang file permission errors sa cloud
 if (!isset($_SESSION['cloud_users'])) {
     $_SESSION['cloud_users'] = [
         [
@@ -29,47 +28,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $role = isset($_POST['role']) ? $_POST['role'] : 'borrower';
     $course_year = isset($_POST['course_year']) ? trim($_POST['course_year']) : '';
     
-    $selfie_path = 'logo.jpg';
-    if (!empty($_POST['selfie_base64'])) {
-        $data = $_POST['selfie_base64'];
-        $data = str_replace('data:image/jpeg;base64,', '', $data);
-        $data = str_replace(' ', '+', $data);
-        $decoded_data = base64_decode($data);
-        
-        $upload_dir = __DIR__ . '/uploads/';
-        if (!is_dir($upload_dir)) {
-            @mkdir($upload_dir, 0777, true);
+    // I-check muna kung nagre-register bilang custodian at umabot na sa limit
+    if ($role === 'custodian') {
+        $custodianCount = 0;
+        foreach ($_SESSION['cloud_users'] as $u) {
+            if (isset($u['role']) && strtolower($u['role']) === 'custodian') {
+                $custodianCount++;
+            }
         }
-        $file_name = time() . '_selfie.jpg';
-        $selfie_path = 'uploads/' . $file_name;
-        @file_put_contents(__DIR__ . '/' . $selfie_path, $decoded_data);
-    }
-
-    $isDuplicate = false;
-    foreach ($_SESSION['cloud_users'] as $user) {
-        if (strcasecmp($user['email'], $email) === 0) {
-            $isDuplicate = true;
-            $error_message = "This email address is already registered!";
-            break;
-        }
-        if (strcasecmp($user['student_id'], $student_id) === 0) {
-            $isDuplicate = true;
-            $error_message = "This Student/Employee ID is already in use!";
-            break;
+        if ($custodianCount >= 2) {
+            $error_message = "Paumanhin, umabot na sa maximum limit na 2 ang Property Custodian. Hindi na maaaring mag-register ng bagong custodian.";
         }
     }
 
-    if (!$isDuplicate) {
-        $_SESSION['cloud_users'][] = [
-            'student_id' => $student_id,
-            'email' => $email,
-            'full_name' => $full_name,
-            'password' => $password,
-            'role' => $role,
-            'course_year' => $course_year,
-            'selfie' => $selfie_path
-        ];
-        $success_message = "Account successfully registered! You can now login below.";
+    if (empty($error_message)) {
+        $selfie_path = 'logo.jpg';
+        if (!empty($_POST['selfie_base64'])) {
+            $data = $_POST['selfie_base64'];
+            $data = str_replace('data:image/jpeg;base64,', '', $data);
+            $data = str_replace(' ', '+', $data);
+            $decoded_data = base64_decode($data);
+            
+            $upload_dir = __DIR__ . '/uploads/';
+            if (!is_dir($upload_dir)) {
+                @mkdir($upload_dir, 0777, true);
+            }
+            $file_name = time() . '_selfie.jpg';
+            $selfie_path = 'uploads/' . $file_name;
+            @file_put_contents(__DIR__ . '/' . $selfie_path, $decoded_data);
+        }
+
+        $isDuplicate = false;
+        foreach ($_SESSION['cloud_users'] as $user) {
+            if (strcasecmp($user['email'], $email) === 0) {
+                $isDuplicate = true;
+                $error_message = "This email address is already registered!";
+                break;
+            }
+            if (strcasecmp($user['student_id'], $student_id) === 0) {
+                $isDuplicate = true;
+                $error_message = "This Student/Employee ID is already in use!";
+                break;
+            }
+        }
+
+        if (!$isDuplicate) {
+            $_SESSION['cloud_users'][] = [
+                'student_id' => $student_id,
+                'email' => $email,
+                'full_name' => $full_name,
+                'password' => $password,
+                'role' => $role,
+                'course_year' => $course_year,
+                'selfie' => $selfie_path
+            ];
+            $success_message = "Account successfully registered! You can now login below.";
+        }
     }
 }
 ?>

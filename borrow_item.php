@@ -3,26 +3,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$dbFile = __DIR__ . '/database.sqlite';
-$pdo = null;
 $successMsg = '';
 $errorMsg = '';
 
-try {
-    $pdo = new PDO("sqlite:" . $dbFile);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Auto-create table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id TEXT NOT NULL,
-        equipment_name TEXT NOT NULL,
-        borrow_date TEXT NOT NULL,
-        condition_status TEXT DEFAULT 'Needs Replacement',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-} catch (\PDOException $e) {
-    $errorMsg = "Database Connection Error: " . $e->getMessage();
+if (!isset($_SESSION['mock_borrowed'])) {
+    $_SESSION['mock_borrowed'] = [];
 }
 
 // Session Defaults
@@ -39,25 +24,25 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Handle Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($pdo) {
-        $equipmentName = trim($_POST['equipment_name'] ?? '');
-        $returnDate    = trim($_POST['return_date'] ?? '');
-        $returnTime    = trim($_POST['return_time'] ?? '');
+    $equipmentName = trim($_POST['equipment_name'] ?? '');
+    $returnDate    = trim($_POST['return_date'] ?? '');
+    $returnTime    = trim($_POST['return_time'] ?? '');
+    
+    if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
+        $returnDueCombined = $returnDate . ' ' . $returnTime;
         
-        if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
-            $returnDueCombined = $returnDate . ' ' . $returnTime;
-            try {
-                $stmt = $pdo->prepare("INSERT INTO borrowing_requests (student_id, equipment_name, borrow_date, condition_status) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$studentId, $equipmentName, $returnDueCombined, 'Needs Replacement']);
-                $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
-            } catch (Exception $e) {
-                $errorMsg = "Database Insert Error: " . $e->getMessage();
-            }
-        } else {
-            $errorMsg = "Punan ang lahat ng kinakailangang impormasyon.";
-        }
+        // Idagdag agad sa session array para lumitaw sa dashboard
+        array_unshift($_SESSION['mock_borrowed'], [
+            'student_id' => $studentId,
+            'equipment_name' => $equipmentName,
+            'borrow_date' => $returnDueCombined,
+            'condition_status' => 'Needs Replacement'
+        ]);
+        
+        $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
+    } else {
+        $errorMsg = "Punan ang lahat ng kinakailangang impormasyon.";
     }
 }
 ?>
@@ -76,8 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <aside class="w-64 bg-[#00381d] text-white flex flex-col p-6 hidden md:flex">
             <div class="flex flex-col items-center text-center mb-8">
                 <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/64'">
-                <h1 class="text-xs font-bold uppercase tracking-wider">Mary the Queen College</h1>
-                <p class="text-[10px] text-emerald-200">Quezon City</p>
+                <h1 class="text-xs font-bold uppercase tracking-wider">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
             </div>
 
             <nav class="space-y-2 flex-grow">
@@ -167,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
-        QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
+        QR-Based Equipment Monitoring System &copy; 2026 - MARY THE QUEEN COLLEGE OF QUEZON CITY
     </footer>
 
     <script>

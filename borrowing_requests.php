@@ -51,23 +51,23 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-4">
             <h2 class="text-sm font-bold text-gray-800">Active Equipment Borrowing Requests & Monitoring</h2>
             
-            <!-- Responsive Table Container with Horizontal Scroll -->
+            <!-- Responsive Table Container -->
             <div class="overflow-x-auto rounded-xl border border-gray-200">
-                <div class="min-w-[1100px]">
-                    <!-- Table Header -->
-                    <div class="grid grid-cols-[80px_110px_160px_150px_160px_140px_130px_1fr] bg-[#1e293b] text-white text-xs font-bold px-4 py-3.5 text-center items-center">
-                        <div>Selfie</div>
-                        <div>Student ID</div>
-                        <div>Full Name</div>
-                        <div>Course & Year</div>
-                        <div>Item to Borrow</div>
-                        <div>Return Due</div>
-                        <div>Status</div>
-                        <div>Actions / Monitoring</div>
-                    </div>
-
-                    <?php if (!empty($activeRequests)): ?>
-                        <div class="divide-y divide-gray-100">
+                <table class="w-full text-xs text-center border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr class="bg-[#1e293b] text-white font-bold">
+                            <th class="py-3.5 px-3">Selfie</th>
+                            <th class="py-3.5 px-3">Student ID</th>
+                            <th class="py-3.5 px-3">Full Name</th>
+                            <th class="py-3.5 px-3">Course & Year</th>
+                            <th class="py-3.5 px-3">Item to Borrow</th>
+                            <th class="py-3.5 px-3">Return Due</th>
+                            <th class="py-3.5 px-3">Status</th>
+                            <th class="py-3.5 px-4 text-center">Actions / Monitoring</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white text-gray-700">
+                        <?php if (!empty($activeRequests)): ?>
                             <?php foreach ($activeRequests as $req): ?>
                                 <?php 
                                     $photo = htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); 
@@ -75,43 +75,40 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     $dateParts = explode(' / ', $rawDate);
                                     $returnDue = $dateParts[1] ?? $rawDate;
                                 ?>
-                                <div class="grid grid-cols-[80px_110px_160px_150px_160px_140px_130px_1fr] px-4 py-4 text-xs text-gray-700 items-center text-center">
-                                    <!-- Click to Zoom Selfie -->
-                                    <div class="flex justify-center">
-                                        <img src="<?php echo $photo; ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-600 cursor-pointer hover:scale-110 transition shadow-sm" onclick="openSelfieModal('<?php echo $photo; ?>')" onerror="this.src='https://via.placeholder.com/40'" title="Click to zoom">
-                                    </div>
-                                    <div class="font-semibold px-1 truncate"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
-                                    <div class="px-1 truncate"><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
-                                    <div class="px-1 truncate"><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
-                                    <div class="font-medium text-emerald-800 px-1 truncate"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
-                                    
-                                    <!-- Return Due -->
-                                    <div class="flex flex-col items-center justify-center text-[11px] text-gray-600 leading-tight px-1">
-                                        <span class="font-medium"><?php echo htmlspecialchars($returnDue); ?></span>
-                                    </div>
-                                    
-                                    <!-- Status Column -->
-                                    <div class="flex justify-center px-1">
-                                        <span class="px-3 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 shadow-sm inline-block whitespace-nowrap">
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="py-3 px-3">
+                                        <div class="flex justify-center">
+                                            <img src="<?php echo $photo; ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-600 cursor-pointer hover:scale-110 transition shadow-sm" onclick="openSelfieModal('<?php echo $photo; ?>')" onerror="this.src='https://via.placeholder.com/40'" title="Click to zoom">
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3 font-semibold whitespace-nowrap"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></td>
+                                    <td class="py-3 px-3 whitespace-nowrap"><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></td>
+                                    <td class="py-3 px-3 whitespace-nowrap"><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></td>
+                                    <td class="py-3 px-3 font-medium text-emerald-800 whitespace-nowrap"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></td>
+                                    <td class="py-3 px-3 whitespace-nowrap text-[11px] text-gray-600 font-medium"><?php echo htmlspecialchars($returnDue); ?></td>
+                                    <td class="py-3 px-3 whitespace-nowrap">
+                                        <span class="px-3 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
                                             <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
                                         </span>
-                                    </div>
-
-                                    <!-- Actions Column -->
-                                    <div class="flex items-center justify-center gap-2 px-1 flex-nowrap">
-                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition shadow-sm whitespace-nowrap">Good</a>
-                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition shadow-sm whitespace-nowrap">Damaged</a>
-                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-xs font-semibold transition shadow-sm whitespace-nowrap">Replaced</a>
-                                    </div>
-                                </div>
+                                    </td>
+                                    <td class="py-3 px-4 whitespace-nowrap">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition shadow-sm">Good</a>
+                                            <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition shadow-sm">Damaged</a>
+                                            <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-xs font-semibold transition shadow-sm">Replaced</a>
+                                        </div>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="p-8 text-center text-xs text-gray-400">
-                            No active borrowing requests at the moment.
-                        </div>
-                    <?php endif; ?>
-                </div>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="8" class="p-8 text-center text-xs text-gray-400">
+                                    No active borrowing requests at the moment.
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
 

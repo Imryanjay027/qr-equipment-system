@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Connection & Auto-Table Setup
+// Database Connection & Diagnostics
 $host     = getenv('MYSQL_HOST') ?: getenv('DB_HOST') ?: '127.0.0.1';
 $port     = getenv('MYSQL_PORT') ?: getenv('DB_PORT') ?: '3306';
 $db       = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME') ?: 'qr_equipment_db';
@@ -18,18 +18,24 @@ $options = [
     PDO::ATTR_EMULATE_PREPARES   => false,
 ];
 
+$dbStatus = "";
+$borrowedRecords = [];
+
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
+    $dbStatus = "Connected successfully to database: $db on $host";
 } catch (\PDOException $e) {
     try {
         $dsnFallback = "mysql:host=127.0.0.1;port=$port;dbname=$db;charset=$charset";
         $pdo = new PDO($dsnFallback, $user, $pass, $options);
+        $dbStatus = "Connected via Fallback 127.0.0.1";
     } catch (\PDOException $e2) {
         $pdo = null;
+        $dbStatus = "Connection Failed: " . $e2->getMessage();
     }
 }
 
-// Siguraduhing laging may table para sa borrowing requests
+// Siguraduhing laging may table
 if ($pdo) {
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
@@ -40,7 +46,13 @@ if ($pdo) {
             condition_status VARCHAR(100) DEFAULT 'Needs Replacement',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
-    } catch (Exception $e) {}
+
+        // Kunin ang mga records
+        $stmt = $pdo->query("SELECT * FROM borrowing_requests ORDER BY id DESC");
+        $borrowedRecords = $stmt->fetchAll();
+    } catch (Exception $e) {
+        $dbStatus .= " | Table Error: " . $e->getMessage();
+    }
 }
 
 // Session Defaults
@@ -56,18 +68,6 @@ $studentName = $_SESSION['user_name'] ?? 'Ryan Jay Leoligao';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
-
-// Kunin ang mga hiniram na item mula sa database
-$borrowedRecords = [];
-if ($pdo) {
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM borrowing_requests ORDER BY id DESC");
-        $stmt->execute();
-        $borrowedRecords = $stmt->fetchAll();
-    } catch (Exception $e) {
-        $borrowedRecords = [];
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,6 +78,11 @@ if ($pdo) {
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Pansamantalang Status Banner para makita natin ang DB status -->
+    <div class="bg-slate-800 text-white text-[11px] px-4 py-2 text-center font-mono">
+        DB STATUS: <?php echo htmlspecialchars($dbStatus); ?> | Total Records Found: <?php echo count($borrowedRecords); ?>
+    </div>
 
     <div class="flex flex-grow">
         <!-- Sidebar Navigation -->

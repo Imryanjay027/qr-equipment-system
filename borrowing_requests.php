@@ -37,78 +37,81 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
     <!-- Top Header -->
-    <header class="bg-[#1e293b] text-white px-8 py-4 flex justify-between items-center shadow-md">
-        <h1 class="text-sm font-bold uppercase tracking-wider">PROPERTY CUSTODIAN DASHBOARD - MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
-        <div class="flex items-center gap-4">
-            <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Back to Dashboard</a>
-            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Logout</a>
+    <header class="bg-[#1e293b] text-white px-4 sm:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-md">
+        <h1 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-center sm:text-left">PROPERTY CUSTODIAN DASHBOARD - MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
+        <div class="flex items-center gap-3">
+            <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap">Back to Dashboard</a>
+            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap">Logout</a>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow p-8 space-y-6 max-w-7xl mx-auto w-full">
+    <main class="flex-grow p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
         
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-4">
             <h2 class="text-sm font-bold text-gray-800">Active Equipment Borrowing Requests & Monitoring</h2>
             
+            <!-- Responsive Table Container with Horizontal Scroll for Mobile -->
             <div class="overflow-x-auto rounded-xl border border-gray-200">
-                <!-- 8 Columns Grid -->
-                <div class="grid grid-cols-8 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center items-center">
-                    <div>Selfie</div>
-                    <div>Student ID</div>
-                    <div>Full Name</div>
-                    <div>Course & Year</div>
-                    <div>Item to Borrow</div>
-                    <div>Return Due</div>
-                    <div>Status</div>
-                    <div>Actions / Monitoring</div>
+                <div class="min-w-[900px]">
+                    <!-- 8 Columns Grid -->
+                    <div class="grid grid-cols-8 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center items-center">
+                        <div>Selfie</div>
+                        <div>Student ID</div>
+                        <div>Full Name</div>
+                        <div>Course & Year</div>
+                        <div>Item to Borrow</div>
+                        <div>Return Due</div>
+                        <div>Status</div>
+                        <div>Actions / Monitoring</div>
+                    </div>
+
+                    <?php if (!empty($activeRequests)): ?>
+                        <div class="divide-y divide-gray-100">
+                            <?php foreach ($activeRequests as $req): ?>
+                                <?php 
+                                    $photo = htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); 
+                                    $rawDate = $req['borrow_date'] ?? '';
+                                    $dateParts = explode(' / ', $rawDate);
+                                    $returnDue = $dateParts[1] ?? $rawDate;
+                                ?>
+                                <div class="grid grid-cols-8 px-6 py-4 text-xs text-gray-700 items-center text-center">
+                                    <!-- Click to Zoom Selfie -->
+                                    <div class="flex justify-center">
+                                        <img src="<?php echo $photo; ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-600 cursor-pointer hover:scale-110 transition shadow-sm" onclick="openSelfieModal('<?php echo $photo; ?>')" onerror="this.src='https://via.placeholder.com/40'" title="Click to zoom">
+                                    </div>
+                                    <div class="font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
+                                    <div><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
+                                    <div><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
+                                    <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
+                                    
+                                    <!-- Return Due -->
+                                    <div class="flex flex-col items-center justify-center text-[11px] text-gray-600 leading-tight">
+                                        <span class="font-medium"><?php echo htmlspecialchars($returnDue); ?></span>
+                                    </div>
+                                    
+                                    <!-- Status Column -->
+                                    <div class="flex justify-center">
+                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
+                                            <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
+                                        </span>
+                                    </div>
+
+                                    <!-- Actions Column -->
+                                    <div class="flex items-center justify-center gap-1.5 flex-nowrap">
+                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Good</a>
+                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Damaged</a>
+                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Replaced</a>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="p-8 text-center text-xs text-gray-400">
+                            No active borrowing requests at the moment.
+                        </div>
+                    <?php endif; ?>
                 </div>
-
-                <?php if (!empty($activeRequests)): ?>
-                    <div class="divide-y divide-gray-100">
-                        <?php foreach ($activeRequests as $req): ?>
-                            <?php 
-                                $photo = htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); 
-                                $rawDate = $req['borrow_date'] ?? '';
-                                $dateParts = explode(' / ', $rawDate);
-                                $returnDue = $dateParts[1] ?? $rawDate;
-                            ?>
-                            <div class="grid grid-cols-8 px-6 py-4 text-xs text-gray-700 items-center text-center">
-                                <!-- Click to Zoom Selfie -->
-                                <div class="flex justify-center">
-                                    <img src="<?php echo $photo; ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-600 cursor-pointer hover:scale-110 transition shadow-sm" onclick="openSelfieModal('<?php echo $photo; ?>')" onerror="this.src='https://via.placeholder.com/40'" title="Click to zoom">
-                                </div>
-                                <div class="font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
-                                <div><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
-                                <div><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
-                                <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
-                                
-                                <!-- Return Due -->
-                                <div class="flex flex-col items-center justify-center text-[11px] text-gray-600 leading-tight">
-                                    <span class="font-medium"><?php echo htmlspecialchars($returnDue); ?></span>
-                                </div>
-                                
-                                <!-- Status Column -->
-                                <div class="flex justify-center">
-                                    <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
-                                        <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
-                                    </span>
-                                </div>
-
-                                <!-- Actions Column -->
-                                <div class="flex items-center justify-center gap-1.5 flex-nowrap">
-                                    <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Good</a>
-                                    <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Damaged</a>
-                                    <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Replaced</a>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="p-8 text-center text-xs text-gray-400">
-                        No active borrowing requests at the moment.
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
 

@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Connection (Coolify Dynamic Config)
+// Database Connection & Auto-Table Setup
 $host     = getenv('MYSQL_HOST') ?: getenv('DB_HOST') ?: '127.0.0.1';
 $port     = getenv('MYSQL_PORT') ?: getenv('DB_PORT') ?: '3306';
 $db       = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME') ?: 'qr_equipment_db';
@@ -25,8 +25,22 @@ try {
         $dsnFallback = "mysql:host=127.0.0.1;port=$port;dbname=$db;charset=$charset";
         $pdo = new PDO($dsnFallback, $user, $pass, $options);
     } catch (\PDOException $e2) {
-        $db_error = $e2->getMessage();
+        $pdo = null;
     }
+}
+
+// Siguraduhing laging may table para sa borrowing requests
+if ($pdo) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id VARCHAR(50) NOT NULL,
+            equipment_name VARCHAR(255) NOT NULL,
+            borrow_date VARCHAR(100) NOT NULL,
+            condition_status VARCHAR(100) DEFAULT 'Needs Replacement',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $e) {}
 }
 
 // Session Defaults
@@ -43,22 +57,15 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Dynamic Table Fetching para masigurong mahahanap ang data
+// Kunin ang mga hiniram na item mula sa database
 $borrowedRecords = [];
-if (isset($pdo)) {
-    $tablesToTry = ['borrowing_requests', 'borrowed_items', 'transactions', 'requests'];
-    foreach ($tablesToTry as $tbl) {
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM `$tbl` ORDER BY id DESC");
-            $stmt->execute();
-            $fetched = $stmt->fetchAll();
-            if (!empty($fetched)) {
-                $borrowedRecords = $fetched;
-                break;
-            }
-        } catch (Exception $e) {
-            continue;
-        }
+if ($pdo) {
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM borrowing_requests ORDER BY id DESC");
+        $stmt->execute();
+        $borrowedRecords = $stmt->fetchAll();
+    } catch (Exception $e) {
+        $borrowedRecords = [];
     }
 }
 ?>
@@ -146,12 +153,12 @@ if (isset($pdo)) {
                         <div class="divide-y divide-gray-100">
                             <?php foreach ($borrowedRecords as $row): ?>
                                 <div class="grid grid-cols-4 px-6 py-4 text-xs text-gray-700 items-center">
-                                    <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $row['user_id'] ?? $studentId); ?></div>
-                                    <div><?php echo htmlspecialchars($row['equipment_name'] ?? $row['item_name'] ?? 'N/A'); ?></div>
-                                    <div><?php echo htmlspecialchars($row['borrow_date'] ?? $row['created_at'] ?? 'N/A'); ?></div>
+                                    <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
+                                    <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
+                                    <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
                                     <div>
                                         <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                            <?php echo htmlspecialchars($row['condition_status'] ?? $row['status'] ?? 'Needs Replacement'); ?>
+                                            <?php echo htmlspecialchars($row['condition_status'] ?? 'Needs Replacement'); ?>
                                         </span>
                                     </div>
                                 </div>

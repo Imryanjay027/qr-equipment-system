@@ -31,7 +31,7 @@ $requests = $_SESSION['global_borrow_requests'] ?? [];
             <h2 class="text-sm font-bold text-gray-800">Active Equipment Borrowing Requests & Monitoring</h2>
             
             <div class="overflow-hidden rounded-xl border border-gray-200">
-                <div class="grid grid-cols-7 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center">
+                <div class="grid grid-cols-7 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center items-center">
                     <div>Selfie</div>
                     <div>Student ID</div>
                     <div>Full Name</div>
@@ -53,14 +53,14 @@ $requests = $_SESSION['global_borrow_requests'] ?? [];
                                 <div><?php echo htmlspecialchars($req['course_year'] ?? 'BSIT 3rd Year'); ?></div>
                                 <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
                                 <div><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
-                                <div class="flex flex-col gap-1 items-center justify-center">
-                                    <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-400 text-amber-900 shadow-sm">
+                                <div class="flex flex-col items-center justify-center gap-2">
+                                    <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
                                         <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
                                     </span>
-                                    <div class="flex gap-1 mt-1">
-                                        <button onclick="alert('Marked as Good')" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold">Good</button>
-                                        <button onclick="alert('Marked as Damaged')" class="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold">Damaged</button>
-                                        <button onclick="alert('Marked as Replaced')" class="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold">Replaced</button>
+                                    <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                        <button onclick="alert('Marked as Good')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</button>
+                                        <button onclick="alert('Marked as Damaged')" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</button>
+                                        <button onclick="alert('Marked as Replaced')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</button>
                                     </div>
                                 </div>
                             </div>

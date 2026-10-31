@@ -53,7 +53,7 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             <!-- Responsive Table Container with Horizontal Scroll for Mobile -->
             <div class="overflow-x-auto rounded-xl border border-gray-200">
-                <div class="min-w-[900px]">
+                <div class="min-w-[1000px]">
                     <!-- 8 Columns Grid -->
                     <div class="grid grid-cols-8 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center items-center">
                         <div>Selfie</div>
@@ -92,7 +92,7 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     
                                     <!-- Status Column -->
                                     <div class="flex justify-center">
-                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
+                                        <span class="px-3 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 shadow-sm inline-block whitespace-nowrap">
                                             <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
                                         </span>
                                     </div>

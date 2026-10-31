@@ -46,7 +46,7 @@ $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
                         Dashboard
                     </a>
                     <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                         Borrow an Item
                     </a>
                     <a href="borrower_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">
@@ -115,8 +115,15 @@ $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
                                     <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
                                     <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
                                     <div class="flex justify-center">
-                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
-                                            <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
+                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold 
+                                            <?php 
+                                                $st = $row['status'] ?? 'Pending';
+                                                if($st === 'Good') echo 'bg-emerald-100 text-emerald-800';
+                                                elseif($st === 'Damaged') echo 'bg-red-100 text-red-800';
+                                                elseif($st === 'Needs Replacement') echo 'bg-amber-100 text-amber-800';
+                                                else echo 'bg-amber-400 text-amber-900';
+                                            ?> shadow-sm inline-block">
+                                            <?php echo htmlspecialchars($st); ?>
                                         </span>
                                     </div>
                                     <div class="flex justify-center">

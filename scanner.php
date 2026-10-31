@@ -34,7 +34,6 @@ if (!isset($_SESSION['user_role'])) {
                     <p class="text-xs font-semibold"><?php echo htmlspecialchars($_SESSION['user_name']); ?></p>
                     <p class="text-[10px] text-emerald-300 uppercase"><?php echo htmlspecialchars($_SESSION['user_role']); ?></p>
                 </div>
-                <!-- Naibalik na ang Back to Dashboard Button -->
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
                 </a>
@@ -60,7 +59,7 @@ if (!isset($_SESSION['user_role'])) {
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p class="text-xs text-gray-500 italic">Naka-activate ang mabilis na camera scanner...</p>
+            <p id="cam-status" class="text-xs text-gray-500 italic">Binubuksan ang camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -117,6 +116,7 @@ if (!isset($_SESSION['user_role'])) {
             const beepAudio = document.getElementById('beep-audio');
             const unlockBtn = document.getElementById('unlock-btn');
             const unlockBanner = document.getElementById('audio-unlock-banner');
+            const camStatus = document.getElementById('cam-status');
             let audioCtx = null;
 
             unlockBtn.addEventListener('click', () => {
@@ -125,8 +125,7 @@ if (!isset($_SESSION['user_role'])) {
                 beepAudio.play().then(() => {
                     beepAudio.pause();
                     beepAudio.currentTime = 0;
-                    unlockBanner.innerHTML = '<span class="text-emerald-700 font-bold">✓ Na-activate na ang Audio Beep! Pwede nang mag-scan.</span>';
-                    setTimeout(() => unlockBanner.style.display = 'none', 2000);
+                    unlockBanner.style.display = 'none';
                 }).catch(e => {});
             });
 
@@ -166,25 +165,25 @@ if (!isset($_SESSION['user_role'])) {
                 } catch(e) {}
             };
 
-            const config = { 
-                fps: 30, 
-                qrbox: { width: 250, height: 250 }, 
-                aspectRatio: 1.0,
-                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-            };
+            const config = { fps: 30, qrbox: { width: 250, height: 250 } };
 
-            // Mabilis at direktang pag-load ng camera para hindi matagal magbukas
+            // Direktang pag-start gamit ang user-facing/default camera para sa mabilis na pagbubukas sa laptop/PC
             html5QrCode.start(
-                { facingMode: "environment" }, 
+                { facingMode: "user" }, 
                 config, 
                 handleScanSuccess
-            ).catch(err => {
+            ).then(() => {
+                camStatus.innerText = "Aktibo na ang camera. Mag-scan na.";
+            }).catch(err => {
+                // Fallback sa environment camera kung mobile
                 html5QrCode.start(
-                    { facingMode: "user" }, 
+                    { facingMode: "environment" }, 
                     config, 
                     handleScanSuccess
-                ).catch(e => {
-                    console.error("Camera start failed:", e);
+                ).then(() => {
+                    camStatus.innerText = "Aktibo na ang camera. Mag-scan na.";
+                }).catch(e => {
+                    camStatus.innerText = "Hindi ma-access ang camera. Suriin ang permissions.";
                 });
             });
 

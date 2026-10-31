@@ -51,11 +51,11 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-4">
             <h2 class="text-sm font-bold text-gray-800">Active Equipment Borrowing Requests & Monitoring</h2>
             
-            <!-- Responsive Table Container with Horizontal Scroll for Mobile -->
+            <!-- Responsive Table Container with Horizontal Scroll -->
             <div class="overflow-x-auto rounded-xl border border-gray-200">
-                <div class="min-w-[1000px]">
-                    <!-- 8 Columns Grid -->
-                    <div class="grid grid-cols-8 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center items-center">
+                <div class="min-w-[1100px]">
+                    <!-- Table Header -->
+                    <div class="grid grid-cols-[80px_110px_160px_150px_160px_140px_130px_1fr] bg-[#1e293b] text-white text-xs font-bold px-4 py-3.5 text-center items-center">
                         <div>Selfie</div>
                         <div>Student ID</div>
                         <div>Full Name</div>
@@ -75,33 +75,33 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     $dateParts = explode(' / ', $rawDate);
                                     $returnDue = $dateParts[1] ?? $rawDate;
                                 ?>
-                                <div class="grid grid-cols-8 px-6 py-4 text-xs text-gray-700 items-center text-center">
+                                <div class="grid grid-cols-[80px_110px_160px_150px_160px_140px_130px_1fr] px-4 py-4 text-xs text-gray-700 items-center text-center">
                                     <!-- Click to Zoom Selfie -->
                                     <div class="flex justify-center">
                                         <img src="<?php echo $photo; ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-600 cursor-pointer hover:scale-110 transition shadow-sm" onclick="openSelfieModal('<?php echo $photo; ?>')" onerror="this.src='https://via.placeholder.com/40'" title="Click to zoom">
                                     </div>
-                                    <div class="font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
-                                    <div><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
-                                    <div><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
-                                    <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
+                                    <div class="font-semibold px-1 truncate"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
+                                    <div class="px-1 truncate"><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
+                                    <div class="px-1 truncate"><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
+                                    <div class="font-medium text-emerald-800 px-1 truncate"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
                                     
                                     <!-- Return Due -->
-                                    <div class="flex flex-col items-center justify-center text-[11px] text-gray-600 leading-tight">
+                                    <div class="flex flex-col items-center justify-center text-[11px] text-gray-600 leading-tight px-1">
                                         <span class="font-medium"><?php echo htmlspecialchars($returnDue); ?></span>
                                     </div>
                                     
                                     <!-- Status Column -->
-                                    <div class="flex justify-center">
+                                    <div class="flex justify-center px-1">
                                         <span class="px-3 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 shadow-sm inline-block whitespace-nowrap">
                                             <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
                                         </span>
                                     </div>
 
                                     <!-- Actions Column -->
-                                    <div class="flex items-center justify-center gap-1.5 flex-nowrap">
-                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Good</a>
-                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Damaged</a>
-                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Replaced</a>
+                                    <div class="flex items-center justify-center gap-2 px-1 flex-nowrap">
+                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition shadow-sm whitespace-nowrap">Good</a>
+                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition shadow-sm whitespace-nowrap">Damaged</a>
+                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-xs font-semibold transition shadow-sm whitespace-nowrap">Replaced</a>
                                     </div>
                                 </div>
                             <?php endforeach; ?>

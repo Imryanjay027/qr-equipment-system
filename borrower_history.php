@@ -91,7 +91,8 @@ $historyRecords = $_SESSION['mock_borrowed'] ?? [];
 
                 <!-- Table Container -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="grid grid-cols-4 bg-[#008040] text-white text-xs font-bold px-6 py-3.5">
+                    <!-- Naka-center ang headers gamit ang text-center -->
+                    <div class="grid grid-cols-4 bg-[#008040] text-white text-xs font-bold px-6 py-3.5 text-center">
                         <div>Student ID</div>
                         <div>Equipment Name</div>
                         <div>Borrow Date / Due Date</div>
@@ -101,12 +102,13 @@ $historyRecords = $_SESSION['mock_borrowed'] ?? [];
                     <?php if (!empty($historyRecords)): ?>
                         <div class="divide-y divide-gray-100">
                             <?php foreach ($historyRecords as $row): ?>
-                                <div class="grid grid-cols-4 px-6 py-4 text-xs text-gray-700 items-center">
+                                <!-- Naka-center ang bawat row data gamit ang text-center at justify-center -->
+                                <div class="grid grid-cols-4 px-6 py-4 text-xs text-gray-700 items-center text-center">
                                     <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
                                     <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
                                     <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
-                                    <div>
-                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm">
+                                    <div class="flex justify-center">
+                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
                                             <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
                                         </span>
                                     </div>

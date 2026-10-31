@@ -49,12 +49,14 @@ $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'lo
 $successMsg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($pdo)) {
     $equipmentName = $_POST['equipment_name'] ?? '';
-    $returnDue     = $_POST['return_due'] ?? '';
+    $returnDate    = $_POST['return_date'] ?? '';
+    $returnTime    = $_POST['return_time'] ?? '';
     
-    if (!empty($equipmentName) && !empty($returnDue)) {
+    if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
+        $returnDueCombined = $returnDate . ' ' . $returnTime;
         try {
-            $stmt = $pdo->prepare("INSERT INTO borrowing_requests (student_id, equipment_name, borrow_date, condition_status) VALUES (?, ?, NOW(), ?)");
-            $stmt->execute([$studentId, $equipmentName, 'Needs Replacement']);
+            $stmt = $pdo->prepare("INSERT INTO borrowing_requests (student_id, equipment_name, borrow_date, condition_status) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$studentId, $equipmentName, $returnDueCombined, 'Needs Replacement']);
             $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
         } catch (Exception $e) {
             $errorMsg = "May error sa pag-save: " . $e->getMessage();
@@ -106,7 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($pdo)) {
             <!-- Student Profile & Live Selfie Card -->
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="flex items-center gap-4 w-full">
-                    <!-- Live Selfie ng Borrower -->
                     <div class="w-16 h-16 rounded-full border-2 border-emerald-600 overflow-hidden shadow-inner bg-white flex items-center justify-center flex-shrink-0">
                         <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/64'">
                     </div>
@@ -133,14 +134,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($pdo)) {
                 <?php endif; ?>
 
                 <form method="POST" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Pangalan ng Kagamitan / Item</label>
-                            <input type="text" name="equipment_name" required placeholder="Hal. Projector, HDMI, Extension Wire" class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
+                            <input type="text" name="equipment_name" required placeholder="Hal. Projector, HDMI" class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Petsa at Oras ng Pagbabalik (Return Due)</label>
-                            <input type="datetime-local" name="return_due" required class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Petsa ng Pagbabalik (Return Date)</label>
+                            <input type="date" name="return_date" required class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Oras ng Pagbabalik (Return Time)</label>
+                            <input type="time" name="return_time" required class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
                         </div>
                     </div>
                     <div class="flex justify-end pt-2">

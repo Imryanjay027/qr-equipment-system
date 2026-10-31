@@ -5,7 +5,16 @@ if (session_status() === PHP_SESSION_NONE) {
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
     $_SESSION['user_name'] = 'Ryan Jay Leoligao';
+    $_SESSION['student_id'] = '1'; // Student ID ng nagl-login
+    $_SESSION['course_year'] = 'IT - 3rd Year';
 }
+
+$studentId = $_SESSION['student_id'] ?? '1';
+$studentName = $_SESSION['user_name'] ?? 'Ryan Jay Leoligao';
+$courseYear = $_SESSION['course_year'] ?? 'IT - 3rd Year';
+
+// URL para sa automatic QR Code generation gamit ang Student ID
+$qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -55,18 +64,16 @@ if (!isset($_SESSION['user_role'])) {
                         👤
                     </div>
                     <div>
-                        <p class="text-base font-bold text-gray-800"><?php echo htmlspecialchars($_SESSION['user_name']); ?></p>
-                        <p class="text-xs text-gray-500">Student ID: <span class="font-semibold text-gray-700">1</span></p>
-                        <p class="text-xs text-gray-500">Course / Year: <span class="font-semibold text-gray-700">IT - 3rd Year</span></p>
+                        <p class="text-base font-bold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
+                        <p class="text-xs text-gray-500">Student ID: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($studentId); ?></span></p>
+                        <p class="text-xs text-gray-500">Course / Year: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($courseYear); ?></span></p>
                     </div>
                 </div>
 
-                <!-- QR Code Box -->
-                <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center">
-                    <div class="w-24 h-24 bg-gray-900 text-white flex items-center justify-center text-[10px] rounded mb-1">
-                        [QR CODE]
-                    </div>
-                    <span class="text-[10px] text-gray-400">Click to Zoom</span>
+                <!-- QR Code Box na may Click to Zoom -->
+                <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center cursor-pointer group" onclick="openQrModal()">
+                    <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-24 h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
+                    <span class="text-[10px] text-gray-400 group-hover:text-emerald-700 font-semibold">Click to Zoom</span>
                 </div>
             </div>
 
@@ -91,7 +98,7 @@ if (!isset($_SESSION['user_role'])) {
                     </div>
                 </div>
 
-                <!-- Action Button para sa Borrow an Item kung walang hiniram -->
+                <!-- Action Button para sa Borrow an Item -->
                 <div class="flex justify-end pt-2">
                     <a href="borrow_item.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2">
                         + Borrow an Item
@@ -102,10 +109,28 @@ if (!isset($_SESSION['user_role'])) {
         </main>
     </div>
 
+    <!-- QR Zoom Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4" onclick="closeQrModal()">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full flex flex-col items-center relative" onclick="event.stopPropagation()">
+            <h3 class="text-sm font-bold text-gray-800 mb-2">Student QR Code</h3>
+            <p class="text-[11px] text-gray-500 mb-4">Ipakita ito sa Property Custodian para ma-scan.</p>
+            <img src="<?php echo $qrCodeUrl; ?>" alt="Large QR Code" class="w-56 h-56 object-contain border-2 border-emerald-600 rounded-xl p-2 mb-4">
+            <button onclick="closeQrModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-xl text-xs font-semibold transition">Isara (Close)</button>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
         QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
     </footer>
 
+    <script>
+        function openQrModal() {
+            document.getElementById('qrModal').classList.remove('hidden');
+        }
+        function closeQrModal() {
+            document.getElementById('qrModal').classList.add('hidden');
+        }
+    </script>
 </body>
 </html>

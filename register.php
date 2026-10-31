@@ -16,7 +16,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $course_year = trim($_POST['course_year'] ?? '');
     $selfie_base64 = trim($_POST['selfie_base64'] ?? '');
 
-    // I-check kung na-capture ang live selfie
     if (empty($selfie_base64)) {
         $error_message = "Please capture your live selfie before registering!";
     }
@@ -27,12 +26,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($error_message)) {
         try {
-            // I-check muna kung ang email ay nakarehistro na sa database (gamit ang email lang para maiwasan ang column error)
-            $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-            $checkStmt->execute([$email]);
+            $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR student_id = ?");
+            $checkStmt->execute([$email, $student_id]);
             
             if ($checkStmt->rowCount() > 0) {
-                $error_message = "Ang Email na ito ay nakarehistro na sa database!";
+                $error_message = "Ang Email o Student ID na ito ay nakarehistro na sa database!";
             } else {
                 // I-convert ang base64 selfie patungong `.jpg` file at i-save sa uploads/ folder
                 $selfie_path = 'logo.jpg';
@@ -54,9 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-                // I-save nang diretso sa MySQL users table
-                $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$full_name, $email, $hashedPassword, $role, $course_year, $selfie_path]);
+                // I-save kasama ang student_id at profile_picture sa database
+                $stmt = $pdo->prepare("INSERT INTO users (student_id, name, email, password, role, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$student_id, $full_name, $email, $hashedPassword, $role, $course_year, $selfie_path]);
 
                 $success_message = "Account successfully registered! You can now login below.";
             }
@@ -89,17 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
                 <p class="text-xs sm:text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
-                <div class="space-y-3 text-left">
-                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Track Equipment - Seamless borrowing & return logs</span>
-                    </div>
-                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Improve Accountability - Real-time condition monitoring</span>
-                    </div>
-                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Build a Smarter Campus - Automated digital verification</span>
-                    </div>
-                </div>
             </div>
 
             <div class="relative z-10 text-[11px] sm:text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
@@ -124,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <form action="register.php" method="POST" id="register-form" class="space-y-4" onsubmit="return validateForm()">
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Student / Employee ID</label>
-                        <input type="text" name="student_id" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="e.g. MQCQC-12345">
+                        <input type="text" name="student_id" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="e.g. 3">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
@@ -150,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div id="course-container">
                             <label id="course-label" class="block text-xs font-semibold text-gray-700 mb-1">Course & Year / Grade & Section</label>
-                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 3-A" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
+                            <input type="text" name="course_year" id="course_input" placeholder="e.g. BSIT 4-B" class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                     </div>
                     <div id="selfie-section" class="bg-slate-50 border border-gray-200 p-4 rounded-xl">
@@ -230,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             captureBtn.classList.remove('hidden');
         });
 
-        function validateForm() {
+        function validateForm(e) {
             if (!selfieBase64Input.value) {
                 alert("Please capture your live selfie before submitting your registration.");
                 return false;

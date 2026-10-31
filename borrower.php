@@ -2,6 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+require_once 'db.php';
 
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
@@ -16,18 +17,9 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-$jsonFile = __DIR__ . '/requests.json';
-$allRequests = [];
-if (file_exists($jsonFile)) {
-    $allRequests = json_decode(file_get_contents($jsonFile), true) ?? [];
-} else {
-    $allRequests = $_SESSION['global_borrow_requests'] ?? [];
-}
-
-$borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
-    $status = $r['status'] ?? 'Pending';
-    return (($r['student_id'] ?? '') == $studentId) && ($status === 'Pending' || $status === 'Damaged');
-});
+$stmt = $pdo->prepare("SELECT * FROM requests WHERE student_id = ? AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
+$stmt->execute([$studentId]);
+$borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -97,9 +89,7 @@ $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
             <div class="space-y-4">
                 <div class="flex gap-2 border-b border-gray-200 pb-2 justify-between items-center">
                     <div class="flex gap-2">
-                        <!-- Active tab: Kulay Green (#008040) -->
                         <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#008040] text-white shadow-sm">My Borrowed Equipment</button>
-                        <!-- Inactive tab: White with border -->
                         <a href="borrower_history.php" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-gray-600 hover:bg-gray-100 transition border border-gray-200">Returned Items / History & Remarks</a>
                     </div>
                     <a href="borrow_item.php" class="bg-[#008040] hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2">

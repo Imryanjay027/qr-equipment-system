@@ -1,42 +1,13 @@
 <?php
-session_start();
-
-if (!isset($_SESSION['user_role'])) {
-    $_SESSION['user_role'] = 'custodian';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-$custodian_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'System Custodian';
-
-if (!isset($_SESSION['borrow_requests'])) {
-    $_SESSION['borrow_requests'] = [
-        [
-            'id' => 1,
-            'student_id' => 'admin',
-            'full_name' => 'Ryan Jay Leoligao',
-            'course_year' => 'BSIT 3rd Year',
-            'item' => 'Extension',
-            'return_due' => '2026-10-20 12:30:00',
-            'status' => 'Pending'
-        ]
-    ];
-}
-
-if (isset($_GET['action']) && isset($_GET['id'])) {
-    $action_id = $_GET['id'];
-    $action_type = $_GET['action'];
-
-    foreach ($_SESSION['borrow_requests'] as $key => $req) {
-        if ($req['id'] == $action_id) {
-            if ($action_type === 'good' || $action_type === 'replaced') {
-                unset($_SESSION['borrow_requests'][$key]);
-            } elseif ($action_type === 'damaged') {
-                $_SESSION['borrow_requests'][$key]['status'] = 'Damaged / Needs Replacement';
-            }
-        }
-    }
-    $_SESSION['borrow_requests'] = array_values($_SESSION['borrow_requests']);
-    header("Location: borrowing_requests.php");
-    exit();
+// Basahin ang parehong shared JSON file para makita ng Custodian ang isinumite ng Borrower
+$dbFile = __DIR__ . '/shared_requests.json';
+$requests = [];
+if (file_exists($dbFile)) {
+    $requests = json_decode(file_get_contents($dbFile), true) ?? [];
 }
 ?>
 <!DOCTYPE html>
@@ -44,77 +15,74 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Property Custodian Dashboard - Mary the Queen College of Quezon City</title>
+    <title>Property Custodian Dashboard - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Top Navigation Bar -->
-    <div class="bg-[#0f172a] text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-center shadow-md gap-3">
-        <h1 class="text-xs md:text-sm font-bold tracking-wide text-center sm:text-left">PROPERTY CUSTODIAN DASHBOARD</h1>
-        <div class="flex items-center space-x-3">
-            <a href="custodian_dashboard.php" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-xs font-semibold transition shadow-sm">Back to Dashboard</a>
-            <a href="logout.php" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-xs font-semibold transition shadow-sm">Logout</a>
+    <!-- Top Header -->
+    <header class="bg-[#1e293b] text-white px-8 py-4 flex justify-between items-center shadow-md">
+        <h1 class="text-sm font-bold uppercase tracking-wider">PROPERTY CUSTODIAN DASHBOARD</h1>
+        <div class="flex items-center gap-4">
+            <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Back to Dashboard</a>
+            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Logout</a>
         </div>
-    </div>
+    </header>
 
-    <!-- Main Content Area -->
-    <div class="flex-1 p-4 md:p-10 max-w-7xl mx-auto w-full">
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-8">
-            <h2 class="text-base md:text-lg font-semibold text-slate-800 mb-6">Active Equipment Borrowing Requests & Monitoring</h2>
+    <!-- Main Content -->
+    <main class="flex-grow p-8 space-y-6 max-w-7xl mx-auto w-full">
+        
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+            <h2 class="text-sm font-bold text-gray-800">Active Equipment Borrowing Requests & Monitoring</h2>
             
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-[950px]">
-                    <thead>
-                        <tr class="bg-[#0f172a] text-white text-xs uppercase tracking-wider">
-                            <th class="p-3.5 rounded-l-lg">Selfie</th>
-                            <th class="p-3.5">Student ID</th>
-                            <th class="p-3.5">Full Name</th>
-                            <th class="p-3.5">Course & Year</th>
-                            <th class="p-3.5">Item to Borrow</th>
-                            <th class="p-3.5">Return Due</th>
-                            <th class="p-3.5">Status</th>
-                            <th class="p-3.5 rounded-r-lg text-right">Actions / Condition Monitoring</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-sm divide-y divide-slate-100">
-                        <?php if (empty($_SESSION['borrow_requests'])): ?>
-                            <tr>
-                                <td colspan="8" class="p-6 text-center text-slate-500 italic">Walang aktibong borrowing requests sa ngayon.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($_SESSION['borrow_requests'] as $row): ?>
-                            <tr class="hover:bg-slate-50 transition">
-                                <td class="p-3.5">
-                                    <img src="logo.jpg" alt="Selfie" class="w-10 h-10 rounded-full object-cover border border-slate-300" onerror="this.src='https://via.placeholder.com/40'">
-                                </td>
-                                <td class="p-3.5 font-medium text-slate-700"><?php echo htmlspecialchars($row['student_id']); ?></td>
-                                <td class="p-3.5 font-medium text-slate-800"><?php echo htmlspecialchars($row['full_name']); ?></td>
-                                <td class="p-3.5 text-slate-600"><?php echo htmlspecialchars($row['course_year']); ?></td>
-                                <td class="p-3.5 text-slate-600"><?php echo htmlspecialchars($row['item']); ?></td>
-                                <td class="p-3.5 text-slate-600"><?php echo htmlspecialchars($row['return_due']); ?></td>
-                                <td class="p-3.5">
-                                    <?php if ($row['status'] === 'Pending'): ?>
-                                        <span class="px-3 py-1 bg-amber-100 text-amber-800 rounded-md text-xs font-bold">Pending</span>
-                                    <?php else: ?>
-                                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-md text-xs font-bold"><?php echo htmlspecialchars($row['status']); ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="p-3.5 text-right">
-                                    <div class="inline-flex items-center gap-1">
-                                        <a href="borrowing_requests.php?action=good&id=<?php echo $row['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold transition shadow-sm whitespace-nowrap">Mark Good</a>
-                                        <a href="borrowing_requests.php?action=damaged&id=<?php echo $row['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold transition shadow-sm whitespace-nowrap">Mark Damaged</a>
-                                        <a href="borrowing_requests.php?action=replaced&id=<?php echo $row['id']; ?>" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded text-xs font-bold transition shadow-sm whitespace-nowrap">Mark Replaced</a>
+            <div class="overflow-hidden rounded-xl border border-gray-200">
+                <div class="grid grid-cols-7 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center">
+                    <div>Selfie</div>
+                    <div>Student ID</div>
+                    <div>Full Name</div>
+                    <div>Course & Year</div>
+                    <div>Item to Borrow</div>
+                    <div>Return Due</div>
+                    <div>Status / Actions</div>
+                </div>
+
+                <?php if (!empty($requests)): ?>
+                    <div class="divide-y divide-gray-100">
+                        <?php foreach ($requests as $req): ?>
+                            <div class="grid grid-cols-7 px-6 py-4 text-xs text-gray-700 items-center text-center">
+                                <div class="flex justify-center">
+                                    <img src="<?php echo htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border border-gray-300" onerror="this.src='https://via.placeholder.com/40'">
+                                </div>
+                                <div class="font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
+                                <div><?php echo htmlspecialchars($req['full_name'] ?? 'Ryan Jay Leoligao'); ?></div>
+                                <div><?php echo htmlspecialchars($req['course_year'] ?? 'BSIT 3rd Year'); ?></div>
+                                <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
+                                <div><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
+                                <div class="flex flex-col gap-1 items-center justify-center">
+                                    <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-400 text-amber-900 shadow-sm">
+                                        <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
+                                    </span>
+                                    <div class="flex gap-1 mt-1">
+                                        <button onclick="alert('Marked as Good')" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold">Good</button>
+                                        <button onclick="alert('Marked as Damaged')" class="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold">Damaged</button>
+                                        <button onclick="alert('Marked as Replaced')" class="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold">Replaced</button>
                                     </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="p-8 text-center text-xs text-gray-400">
+                        No active borrowing requests at the moment.
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
-    </div>
 
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
+        QR-Based Equipment Monitoring System &copy; 2026 - MARY THE QUEEN COLLEGE OF QUEZON CITY
+    </footer>
 </body>
 </html>

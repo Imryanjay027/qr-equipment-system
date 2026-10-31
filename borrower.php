@@ -16,12 +16,16 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-if (!isset($_SESSION['mock_borrowed'])) {
-    $_SESSION['mock_borrowed'] = [
-        ['student_id' => '1', 'equipment_name' => 'LAPIS', 'borrow_date' => '2026-10-26 13:49:10 / 2026-10-28 10:30', 'status' => 'Pending']
-    ];
+// Basahin mula sa shared JSON file para mag-sync
+$dbFile = __DIR__ . '/shared_requests.json';
+$borrowedRecords = [];
+if (file_exists($dbFile)) {
+    $requests = json_decode(file_get_contents($dbFile), true) ?? [];
+    // I-filter para sa kasalukuyang student kung kinakailangan, o ipakita lahat
+    $borrowedRecords = array_filter($requests, function($r) use ($studentId) {
+        return ($r['student_id'] ?? '') == $studentId;
+    });
 }
-$borrowedRecords = $_SESSION['mock_borrowed'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -101,7 +105,6 @@ $borrowedRecords = $_SESSION['mock_borrowed'];
 
                 <!-- Table Container -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <!-- Naka-center ang headers gamit ang text-center -->
                     <div class="grid grid-cols-5 bg-[#008040] text-white text-xs font-bold px-6 py-3.5 text-center">
                         <div>Student ID</div>
                         <div>Equipment Name</div>
@@ -112,8 +115,7 @@ $borrowedRecords = $_SESSION['mock_borrowed'];
 
                     <?php if (!empty($borrowedRecords)): ?>
                         <div class="divide-y divide-gray-100">
-                            <?php foreach ($borrowedRecords as $index => $row): ?>
-                                <!-- Naka-center ang bawat row data gamit ang text-center at justify-center -->
+                            <?php foreach ($borrowedRecords as $row): ?>
                                 <div class="grid grid-cols-5 px-6 py-4 text-xs text-gray-700 items-center text-center">
                                     <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
                                     <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>

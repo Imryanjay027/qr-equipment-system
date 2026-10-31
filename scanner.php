@@ -89,10 +89,10 @@ if (!isset($_SESSION['user_role'])) {
                         <img id="borrower-selfie" src="logo.jpg" alt="Borrower Photo" class="w-20 h-20 rounded-full border-2 border-emerald-600 object-cover shadow-md" onerror="this.src='https://via.placeholder.com/80'">
                         
                         <div class="text-xs space-y-1 w-full">
-                            <p class="font-bold text-gray-800 text-sm" id="res-name">Pangalan: Ryan Jay Leoligao</p>
+                            <p class="font-bold text-gray-800 text-sm" id="res-name">Pangalan: --</p>
                             <p class="text-gray-600" id="res-id">Student ID: --</p>
-                            <p class="text-gray-600" id="res-course">Course & Year: BSIT 3rd Year</p>
-                            <p class="text-gray-600" id="res-item">Equipment to Borrow: Extension Cord / Projector</p>
+                            <p class="text-gray-600" id="res-course">Course & Year: --</p>
+                            <p class="text-gray-600" id="res-item">Equipment to Borrow: --</p>
                             <p class="text-gray-500 text-[11px]" id="res-dates">Borrow Date: --</p>
                         </div>
                     </div>
@@ -151,14 +151,43 @@ if (!isset($_SESSION['user_role'])) {
                 } catch (err) {}
             };
 
+            const fetchBorrowerData = (qrCodeValue) => {
+                fetch('get_borrower_data.php?qr_code=' + encodeURIComponent(qrCodeValue))
+                    .then(response => response.json())
+                    .then(res => {
+                        if (res.success && res.data) {
+                            const data = res.data;
+                            document.getElementById('res-name').innerText = "Pangalan: " + data.name;
+                            document.getElementById('res-id').innerText = "Student ID: " + data.student_id;
+                            document.getElementById('res-course').innerText = "Course & Year: " + data.course_year;
+                            document.getElementById('res-item').innerText = "Equipment to Borrow: " + data.equipment;
+                            document.getElementById('res-dates').innerText = "Borrow Date: " + data.borrow_date;
+                            
+                            if (data.photo) {
+                                document.getElementById('borrower-selfie').src = data.photo;
+                            }
+                        } else {
+                            document.getElementById('res-name').innerText = "Pangalan: Hindi natagpuan";
+                            document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
+                            document.getElementById('res-course').innerText = "Course & Year: --";
+                            document.getElementById('res-item').innerText = "Equipment to Borrow: --";
+                            document.getElementById('res-dates').innerText = "Borrow Date: --";
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error fetching borrower details:', err);
+                    });
+            };
+
             const handleScanSuccess = (decodedText) => {
                 playBeepSound();
 
                 document.getElementById('result-placeholder').classList.add('hidden');
                 document.getElementById('result-content').classList.remove('hidden');
                 document.getElementById('decoded-text-label').innerText = decodedText;
-                document.getElementById('res-id').innerText = "Student ID: " + decodedText;
-                document.getElementById('res-dates').innerText = "Borrow Date: " + new Date().toLocaleString();
+
+                // Kunin ang totoong impormasyon mula sa database gamit ang na-scan na QR text
+                fetchBorrowerData(decodedText);
 
                 try {
                     html5QrCode.stop().catch(err => {});

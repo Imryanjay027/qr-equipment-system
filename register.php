@@ -2,31 +2,18 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+require_once 'db_connection.php';
 
 $error_message = "";
 $success_message = "";
 
-if (!isset($_SESSION['cloud_users'])) {
-    $_SESSION['cloud_users'] = [
-        [
-            'student_id' => 'admin',
-            'email' => 'admin@mqcqc.edu.ph',
-            'full_name' => 'Ryan Jay Leoligao',
-            'password' => 'admin123',
-            'role' => 'custodian',
-            'course_year' => 'Administrator',
-            'selfie' => 'logo.jpg'
-        ]
-    ];
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $student_id = trim($_POST['student_id']);
-    $full_name = trim($_POST['full_name']);
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $role = isset($_POST['role']) ? $_POST['role'] : 'borrower';
-    $course_year = isset($_POST['course_year']) ? trim($_POST['course_year']) : '';
+    $student_id = trim($_POST['student_id'] ?? '');
+    $full_name = trim($_POST['full_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $role = trim($_POST['role'] ?? 'borrower');
+    $course_year = trim($_POST['course_year'] ?? '');
     $selfie_base64 = trim($_POST['selfie_base64'] ?? '');
 
     // I-check kung na-capture ang live selfie
@@ -34,62 +21,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Please capture your live selfie before registering!";
     }
 
-    // I-check muna kung nagre-register bilang custodian at umabot na sa limit
-    if (empty($error_message) && $role === 'custodian') {
-        $custodianCount = 0;
-        foreach ($_SESSION['cloud_users'] as $u) {
-            if (isset($u['role']) && strtolower($u['role']) === 'custodian') {
-                $custodianCount++;
-            }
-        }
-        if ($custodianCount >= 2) {
-            $error_message = "Paumanhin, umabot na sa maximum limit na 2 ang Property Custodian. Hindi na maaaring mag-register ng bagong custodian.";
-        }
+    if (empty($error_message) && (empty($student_id) || empty($full_name) || empty($email) || empty($password))) {
+        $error_message = "Lahat ng mandatory fields ay kinakailangan!";
     }
 
     if (empty($error_message)) {
-        $selfie_path = 'logo.jpg';
-        if (!empty($selfie_base64)) {
-            $data = $selfie_base64;
-            $data = str_replace('data:image/jpeg;base64,', '', $data);
-            $data = str_replace('data:image/png;base64,', '', $data);
-            $data = str_replace(' ', '+', $data);
-            $decoded_data = base64_decode($data);
+        try {
+            // I-check muna kung ang email o student_id ay nakarehistro na sa database
+            $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR student_id = ?");
+            $checkStmt->execute([$email, $student_id]);
             
-            $upload_dir = __DIR__ . '/uploads/';
-            if (!is_dir($upload_dir)) {
-                @mkdir($upload_dir, 0777, true);
-            }
-            $file_name = time() . '_selfie.jpg';
-            $selfie_path = 'uploads/' . $file_name;
-            @file_put_contents(__DIR__ . '/' . $selfie_path, $decoded_data);
-        }
+            if ($checkStmt->rowCount() > 0) {
+                $error_message = "Ang Email o Student ID na ito ay nakarehistro na sa database!";
+            } else {
+                // I-convert ang base64 selfie patungong `.jpg` file at i-save sa uploads/ folder
+                $selfie_path = 'logo.jpg';
+                if (!empty($selfie_base64)) {
+                    $data = $selfie_base64;
+                    $data = str_replace('data:image/jpeg;base64,', '', $data);
+                    $data = str_replace('data:image/png;base64,', '', $data);
+                    $data = str_replace(' ', '+', $data);
+                    $decoded_data = base64_decode($data);
+                    
+                    $upload_dir = __DIR__ . '/uploads/';
+                    if (!is_dir($upload_dir)) {
+                        @mkdir($upload_dir, 0777, true);
+                    }
+                    $file_name = time() . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $student_id) . '_selfie.jpg';
+                    $selfie_path = 'uploads/' . $file_name;
+                    @file_put_contents(__DIR__ . '/' . $selfie_path, $decoded_data);
+                }
 
-        $isDuplicate = false;
-        foreach ($_SESSION['cloud_users'] as $user) {
-            if (strcasecmp($user['email'], $email) === 0) {
-                $isDuplicate = true;
-                $error_message = "This email address is already registered!";
-                break;
-            }
-            if (strcasecmp($user['student_id'], $student_id) === 0) {
-                $isDuplicate = true;
-                $error_message = "This Student/Employee ID is already in use!";
-                break;
-            }
-        }
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        if (!$isDuplicate) {
-            $_SESSION['cloud_users'][] = [
-                'student_id' => $student_id,
-                'email' => $email,
-                'full_name' => $full_name,
-                'password' => $password,
-                'role' => $role,
-                'course_year' => $course_year,
-                'selfie' => $selfie_path
-            ];
-            $success_message = "Account successfully registered! You can now login below.";
+                // I-save nang diretso sa MySQL users table
+                $stmt = $pdo->prepare("INSERT INTO users (student_id, name, email, password, role, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$student_id, $full_name, $email, $hashedPassword, $role, $course_year, $selfie_path]);
+
+                $success_message = "Account successfully registered! You can now login below.";
+            }
+        } catch (PDOException $e) {
+            $error_message = "Database Error: " . $e->getMessage();
         }
     }
 }

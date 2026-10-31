@@ -6,7 +6,10 @@ if (session_status() === PHP_SESSION_NONE) {
 $successMsg = '';
 $errorMsg = '';
 
-// Session Defaults
+if (!isset($_SESSION['global_borrow_requests'])) {
+    $_SESSION['global_borrow_requests'] = [];
+}
+
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
     $_SESSION['user_name'] = 'Ryan Jay Leoligao';
@@ -20,9 +23,6 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Shared JSON database file para mag-sync ang Borrower at Custodian nang walang permission error
-$dbFile = __DIR__ . '/shared_requests.json';
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $equipmentName = trim($_POST['equipment_name'] ?? '');
     $returnDate    = trim($_POST['return_date'] ?? '');
@@ -31,13 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
         $returnDueCombined = $returnDate . ' ' . $returnTime;
         
-        $requests = [];
-        if (file_exists($dbFile)) {
-            $jsonContent = file_get_contents($dbFile);
-            $requests = json_decode($jsonContent, true) ?? [];
-        }
-        
-        $newRequest = [
+        $newReq = [
             'id' => time(),
             'student_id' => $studentId,
             'full_name' => $studentName,
@@ -48,11 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'profile_photo' => $profilePhoto
         ];
         
-        array_unshift($requests, $newRequest);
-        file_put_contents($dbFile, json_encode($requests, JSON_PRETTY_PRINT));
-        
-        // I-sync din sa session para mabilis basahin
-        $_SESSION['mock_borrowed'] = $requests;
+        array_unshift($_SESSION['global_borrow_requests'], $newReq);
+        $_SESSION['mock_borrowed'] = $_SESSION['global_borrow_requests'];
         
         $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
     } else {

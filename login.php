@@ -20,32 +20,33 @@ if (!isset($_SESSION['cloud_users'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
+    $identifier = trim($_POST['identifier']);
+    $password = $_POST['password'];
 
-    $matched_user = null;
+    $found_user = null;
     foreach ($_SESSION['cloud_users'] as $user) {
-        if (strcasecmp($user['email'], $email) === 0 && $user['password'] === $password) {
-            $matched_user = $user;
+        if ((strcasecmp($user['student_id'], $identifier) === 0 || strcasecmp($user['email'], $identifier) === 0) && $user['password'] === $password) {
+            $found_user = $user;
             break;
         }
     }
 
-    if ($matched_user) {
-        $_SESSION['user_id'] = $matched_user['student_id'];
-        $_SESSION['user_name'] = $matched_user['full_name'];
-        $_SESSION['user_role'] = $matched_user['role'];
-        $_SESSION['user_selfie'] = $matched_user['selfie'];
-        $_SESSION['course_year'] = isset($matched_user['course_year']) ? $matched_user['course_year'] : '';
+    if ($found_user) {
+        // I-set ang session variables para sa aktibong borrower o custodian
+        $_SESSION['student_id'] = $found_user['student_id'];
+        $_SESSION['user_name'] = $found_user['full_name'];
+        $_SESSION['user_role'] = $found_user['role'] === 'custodian' ? 'Property Custodian' : 'Borrower';
+        $_SESSION['course_year'] = $found_user['course_year'];
+        $_SESSION['profile_photo'] = $found_user['selfie'];
 
-        if (strtolower($matched_user['role']) === 'custodian') {
+        if ($found_user['role'] === 'custodian') {
             header("Location: custodian_dashboard.php");
         } else {
             header("Location: borrower.php");
         }
-        exit();
+        exit;
     } else {
-        $error_message = "Invalid email or password.";
+        $error_message = "Invalid Student/Employee ID, Email, or Password!";
     }
 }
 ?>
@@ -59,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-0 m-0 font-sans">
     <div class="w-full min-h-screen flex flex-col lg:flex-row">
-        <!-- Kaliwang Bahagi: School Branding -->
+        <!-- Left Side: School Branding -->
         <div class="lg:w-7/12 relative bg-[#00381d] flex flex-col justify-between p-6 sm:p-8 lg:p-12 text-white overflow-hidden min-h-[350px] lg:min-h-screen">
             <div class="absolute inset-0 bg-cover bg-center opacity-65" style="background-image: url('school_bg.jpg');"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#002613]/80 via-[#004822]/40 to-transparent"></div>
@@ -72,36 +73,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
                 <p class="text-xs sm:text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
-                <div class="space-y-3 text-left">
-                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Track Equipment - Seamless borrowing & return logs</span>
-                    </div>
-                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Improve Accountability - Real-time condition monitoring</span>
-                    </div>
-                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
-                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Build a Smarter Campus - Automated digital verification</span>
-                    </div>
-                </div>
             </div>
 
             <div class="relative z-10 text-[11px] sm:text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
         </div>
 
-        <!-- Kanang Bahagi: Login Form -->
+        <!-- Right Side: Login Form -->
         <div class="lg:w-5/12 bg-white flex flex-col justify-center p-6 sm:p-8 lg:p-10 overflow-y-auto">
             <div class="max-w-md w-full mx-auto">
                 <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Welcome Back!</h2>
-                    <p class="text-xs text-gray-500 mt-1">Login to your account to continue</p>
+                    <h2 class="text-xl font-bold text-gray-800">Welcome Back</h2>
+                    <p class="text-xs text-gray-500">Please enter your credentials to login.</p>
                 </div>
                 <?php if (!empty($error_message)): ?>
                     <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-medium"><?php echo htmlspecialchars($error_message); ?></div>
                 <?php endif; ?>
                 <form action="login.php" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
-                        <input type="email" name="email" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your email address">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Student / Employee ID or Email</label>
+                        <input type="text" name="identifier" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your ID or Email">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
@@ -111,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="submit" class="w-full bg-[#005a2b] hover:bg-[#004822] text-white py-3 rounded-lg text-sm font-semibold transition shadow-md">Login</button>
                     </div>
                 </form>
-                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">Don't have an account yet? <a href="register.php" class="text-emerald-700 font-semibold underline">Register here</a></div>
+                <div class="mt-6 text-center text-xs text-gray-500 border-t pt-4">Don't have an account? <a href="register.php" class="text-emerald-700 font-semibold underline">Register here</a></div>
             </div>
         </div>
     </div>

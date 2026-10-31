@@ -4,7 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once 'db_connection.php';
 
-// Kung walang nakaselyong session, i-redirect sa login
 if (!isset($_SESSION['student_id'])) {
     header("Location: login.php");
     exit;
@@ -15,24 +14,27 @@ $studentName = $_SESSION['user_name'] ?? 'User';
 $courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
-// Kunin ang live selfie mula sa session o direktang i-query sa database para sigurado
+// Kunin nang direkta ang live selfie mula sa database para sigurado
 $profilePhoto = 'logo.jpg';
-if (!empty($_SESSION['profile_photo'])) {
-    $profilePhoto = $_SESSION['profile_photo'];
-} else {
-    try {
-        $stmtPhoto = $pdo->prepare("SELECT profile_picture, selfie FROM users WHERE student_id = ? OR email = ?");
-        $stmtPhoto->execute([$studentId, $_SESSION['email'] ?? '']);
-        $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
-        if ($usrData) {
-            $profilePhoto = !empty($usrData['profile_picture']) ? $usrData['profile_picture'] : (!empty($usrData['selfie']) ? $usrData['selfie'] : 'logo.jpg');
+try {
+    $stmtPhoto = $pdo->prepare("SELECT profile_picture, selfie FROM users WHERE student_id = ? OR email = ?");
+    $stmtPhoto->execute([$studentId, $_SESSION['email'] ?? '']);
+    $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
+    if ($usrData) {
+        if (!empty($usrData['profile_picture']) && file_exists(__DIR__ . '/' . $usrData['profile_picture'])) {
+            $profilePhoto = $usrData['profile_picture'];
+        } elseif (!empty($usrData['selfie']) && file_exists(__DIR__ . '/' . $usrData['selfie'])) {
+            $profilePhoto = $usrData['selfie'];
         }
-    } catch (PDOException $e) {
-        // Fallback kung sakaling magka-error
+    }
+} catch (PDOException $e) {
+    // Fallback sa session kung sakali
+    if (!empty($_SESSION['profile_photo'])) {
+        $profilePhoto = $_SESSION['profile_photo'];
     }
 }
 
-// Kunin ang mga borrowed items ng user mula sa database
+// Kunin ang mga borrowed items ng user
 $stmt = $pdo->prepare("SELECT * FROM requests WHERE student_id = ? AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
 $stmt->execute([$studentId]);
 $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -47,8 +49,43 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
+    <!-- Mobile Header with Hamburger Menu -->
+    <header class="bg-[#001f12] text-white p-4 flex justify-between items-center md:hidden shadow-md">
+        <div class="flex items-center gap-3">
+            <img src="logo.jpg" alt="Logo" class="w-9 h-9 rounded-full border border-white object-cover bg-white">
+            <span class="text-xs font-bold tracking-wider">MQCQC EMS</span>
+        </div>
+        <button onclick="toggleMobileMenu()" class="p-2 focus:outline-none text-emerald-200 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Mobile Sidebar Drawer -->
+    <div id="mobile-menu" class="fixed inset-0 bg-black/60 z-50 hidden flex">
+        <div class="w-64 bg-[#001f12] text-white flex flex-col justify-between p-6 h-full shadow-2xl relative">
+            <button onclick="toggleMobileMenu()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg font-bold">&times;</button>
+            <div>
+                <div class="flex flex-col items-center text-center mb-8 pt-2">
+                    <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3">
+                    <h1 class="text-xs font-bold uppercase tracking-wider text-center leading-tight">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
+                </div>
+                <nav class="space-y-2">
+                    <a href="borrower.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#008040] text-white text-xs font-semibold shadow-sm">Dashboard</a>
+                    <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">Borrow an Item</a>
+                    <a href="borrower_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">Returned Items / History</a>
+                </nav>
+            </div>
+            <div class="pt-4 border-t border-emerald-900">
+                <a href="logout.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-600/20 text-red-400 text-xs font-medium transition">Logout</a>
+            </div>
+        </div>
+        <div class="flex-grow" onclick="toggleMobileMenu()"></div>
+    </div>
+
     <div class="flex flex-grow">
-        <!-- Sidebar Navigation -->
+        <!-- Desktop Sidebar Navigation -->
         <aside class="w-64 bg-[#001f12] text-white flex flex-col justify-between p-6 hidden md:flex">
             <div>
                 <div class="flex flex-col items-center text-center mb-8">
@@ -81,75 +118,77 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-grow p-6 lg:p-10 space-y-6">
+        <main class="flex-grow p-4 sm:p-6 lg:p-10 space-y-6 overflow-x-auto">
             
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div class="flex items-center gap-5 w-full">
+            <div class="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-4 sm:gap-5 w-full">
                     <!-- Live Selfie Profile Picture -->
-                    <div class="w-28 h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
+                    <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
                         <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='logo.jpg'">
                     </div>
                     <div>
-                        <p class="text-lg font-extrabold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
+                        <p class="text-base sm:text-lg font-extrabold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
                         <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Student ID: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($studentId); ?></span></p>
                         <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Course / Year: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($courseYear); ?></span></p>
                     </div>
                 </div>
 
                 <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center cursor-pointer group" onclick="openQrModal()">
-                    <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-24 h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
+                    <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
                     <span class="text-[10px] text-gray-400 group-hover:text-emerald-700 font-semibold">Click to Zoom</span>
                 </div>
             </div>
 
             <!-- Tabs Section -->
             <div class="space-y-4">
-                <div class="flex gap-2 border-b border-gray-200 pb-2 justify-between items-center">
-                    <div class="flex gap-2">
-                        <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#008040] text-white shadow-sm">My Borrowed Equipment</button>
-                        <a href="borrower_history.php" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-gray-600 hover:bg-gray-100 transition border border-gray-200">Returned Items / History & Remarks</a>
+                <div class="flex flex-col sm:flex-row gap-2 border-b border-gray-200 pb-2 justify-between items-stretch sm:items-center">
+                    <div class="flex gap-2 overflow-x-auto pb-1">
+                        <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#008040] text-white shadow-sm whitespace-nowrap">My Borrowed Equipment</button>
+                        <a href="borrower_history.php" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-gray-600 hover:bg-gray-100 transition border border-gray-200 whitespace-nowrap">Returned Items / History & Remarks</a>
                     </div>
-                    <a href="borrow_item.php" class="bg-[#008040] hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2">
+                    <a href="borrow_item.php" class="bg-[#008040] hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
                         + Borrow an Item
                     </a>
                 </div>
 
                 <!-- Table Container -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="grid grid-cols-5 bg-[#008040] text-white text-xs font-bold px-6 py-3.5 text-center">
-                        <div>Student ID</div>
-                        <div>Equipment Name</div>
-                        <div>Borrow Date / Due Date</div>
-                        <div>Status / Action</div>
-                        <div>Action</div>
-                    </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <div class="min-w-[600px]">
+                        <div class="grid grid-cols-5 bg-[#008040] text-white text-xs font-bold px-6 py-3.5 text-center">
+                            <div>Student ID</div>
+                            <div>Equipment Name</div>
+                            <div>Borrow Date / Due Date</div>
+                            <div>Status / Action</div>
+                            <div>Action</div>
+                        </div>
 
-                    <?php if (!empty($borrowedRecords)): ?>
-                        <div class="divide-y divide-gray-100">
-                            <?php foreach ($borrowedRecords as $row): ?>
-                                <div class="grid grid-cols-5 px-6 py-4 text-xs text-gray-700 items-center text-center">
-                                    <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
-                                    <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
-                                    <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
-                                    <div class="flex justify-center">
-                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold 
-                                            <?php echo ($row['status'] ?? 'Pending') === 'Damaged' ? 'bg-red-100 text-red-800' : 'bg-amber-400 text-amber-900'; ?> shadow-sm inline-block">
-                                            <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
-                                        </span>
+                        <?php if (!empty($borrowedRecords)): ?>
+                            <div class="divide-y divide-gray-100">
+                                <?php foreach ($borrowedRecords as $row): ?>
+                                    <div class="grid grid-cols-5 px-6 py-4 text-xs text-gray-700 items-center text-center">
+                                        <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
+                                        <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
+                                        <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
+                                        <div class="flex justify-center">
+                                            <span class="px-3 py-1 rounded-md text-[11px] font-bold 
+                                                <?php echo ($row['status'] ?? 'Pending') === 'Damaged' ? 'bg-red-100 text-red-800' : 'bg-amber-400 text-amber-900'; ?> shadow-sm inline-block">
+                                                <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-center">
+                                            <button onclick="alert('Cancel request feature')" class="px-3 py-1 rounded-md text-[11px] font-semibold text-red-600 border border-red-300 hover:bg-red-50 transition">
+                                                &times; Cancel
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="flex justify-center">
-                                        <button onclick="alert('Cancel request feature')" class="px-3 py-1 rounded-md text-[11px] font-semibold text-red-600 border border-red-300 hover:bg-red-50 transition">
-                                            &times; Cancel
-                                        </button>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="p-8 text-center text-xs text-gray-400">
-                            No active borrowed items yet.
-                        </div>
-                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="p-8 text-center text-xs text-gray-400">
+                                No active borrowed items yet.
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
@@ -173,6 +212,10 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script>
         function openQrModal() { document.getElementById('qrModal').classList.remove('hidden'); }
         function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
     </script>
 </body>
 </html>

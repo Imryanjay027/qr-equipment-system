@@ -32,12 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($found_user) {
-        // I-set ang session variables para sa aktibong borrower o custodian
+        // I-set ang session variables kasama ang eksaktong live selfie mula sa rehistro
         $_SESSION['student_id'] = $found_user['student_id'];
         $_SESSION['user_name'] = $found_user['full_name'];
         $_SESSION['user_role'] = $found_user['role'] === 'custodian' ? 'Property Custodian' : 'Borrower';
         $_SESSION['course_year'] = $found_user['course_year'];
-        $_SESSION['profile_photo'] = $found_user['selfie'];
+        $_SESSION['profile_photo'] = !empty($found_user['selfie']) ? $found_user['selfie'] : 'logo.jpg';
 
         if ($found_user['role'] === 'custodian') {
             header("Location: custodian_dashboard.php");

@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Connection (Coolify Dynamic Config)
+// Database Connection & Auto-Table Setup
 $host     = getenv('MYSQL_HOST') ?: getenv('DB_HOST') ?: '127.0.0.1';
 $port     = getenv('MYSQL_PORT') ?: getenv('DB_PORT') ?: '3306';
 $db       = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME') ?: 'qr_equipment_db';
@@ -25,8 +25,22 @@ try {
         $dsnFallback = "mysql:host=127.0.0.1;port=$port;dbname=$db;charset=$charset";
         $pdo = new PDO($dsnFallback, $user, $pass, $options);
     } catch (\PDOException $e2) {
-        $db_error = $e2->getMessage();
+        $pdo = null;
     }
+}
+
+// Siguraduhing laging may table para sa borrowing requests
+if ($pdo) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id VARCHAR(50) NOT NULL,
+            equipment_name VARCHAR(255) NOT NULL,
+            borrow_date VARCHAR(100) NOT NULL,
+            condition_status VARCHAR(100) DEFAULT 'Needs Replacement',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $e) {}
 }
 
 // Session Defaults
@@ -43,17 +57,17 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Handle Form Submission para sa pag-request ng item at pagpapakita ng error kung meron
+// Handle Form Submission
 $successMsg = '';
 $errorMsg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($pdo)) {
+    if ($pdo) {
         $equipmentName = trim($_POST['equipment_name'] ?? '');
         $returnDate    = trim($_POST['return_date'] ?? '');
         $returnTime    = trim($_POST['return_time'] ?? '');
         
         if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
-            $returnDueCombined = $returnDate . ' ' . $returnTime . ':00';
+            $returnDueCombined = $returnDate . ' ' . $returnTime;
             try {
                 $stmt = $pdo->prepare("INSERT INTO borrowing_requests (student_id, equipment_name, borrow_date, condition_status) VALUES (?, ?, ?, ?)");
                 $stmt->execute([$studentId, $equipmentName, $returnDueCombined, 'Needs Replacement']);
@@ -65,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errorMsg = "Punan ang lahat ng kinakailangang impormasyon.";
         }
     } else {
-        $errorMsg = "Walang koneksyon sa Database: " . ($db_error ?? 'Unknown connection error');
+        $errorMsg = "Walang koneksyon sa Database.";
     }
 }
 ?>

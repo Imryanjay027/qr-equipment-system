@@ -48,18 +48,18 @@ if (!isset($_SESSION['user_role'])) {
         <!-- Left Column: Live Camera Scanner -->
         <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 flex flex-col items-center">
             <h2 class="text-base font-bold text-gray-800 w-full text-left mb-1">Live Camera Scanner</h2>
-            <p class="text-xs text-gray-500 w-full text-left mb-3">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
+            <p class="text-xs text-gray-500 w-full text-left mb-3">Point the camera at the borrower's QR code to scan.</p>
 
             <!-- Audio Unlock Banner -->
             <div id="audio-unlock-banner" class="w-full mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-xs flex justify-between items-center shadow-sm">
-                <span>🔊 I-click para i-activate ang Audio Beep</span>
-                <button id="unlock-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold transition">I-activate</button>
+                <span>🔊 Click to activate audio beep</span>
+                <button id="unlock-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold transition">Activate</button>
             </div>
 
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="cam-status" class="text-xs text-gray-500 italic">Binubuksan ang back camera...</p>
+            <p id="cam-status" class="text-xs text-gray-500 italic">Initializing back camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -67,7 +67,7 @@ if (!isset($_SESSION['user_role'])) {
             <!-- Upload QR Image Card -->
             <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
                 <h2 class="text-base font-bold text-gray-800 mb-1">Upload QR Image</h2>
-                <p class="text-xs text-gray-500 mb-4">May saved na QR code image ang borrower? I-upload ito dito para ma-scan.</p>
+                <p class="text-xs text-gray-500 mb-4">Does the borrower have a saved QR code image? Upload it here to scan.</p>
                 
                 <input type="file" id="qr-file-input" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg p-2 bg-slate-50 mb-3">
             </div>
@@ -77,7 +77,7 @@ if (!isset($_SESSION['user_role'])) {
                 <h3 class="text-base font-bold text-gray-800 mb-4">Scan Result / Borrower Data</h3>
                 
                 <div id="result-placeholder" class="p-6 bg-slate-50 border border-dashed border-gray-300 rounded-xl text-center text-xs text-gray-400">
-                    Wala pang na-scan o na-upload na QR code.
+                    No QR code scanned or uploaded yet.
                 </div>
 
                 <div id="result-content" class="hidden space-y-4">
@@ -89,11 +89,11 @@ if (!isset($_SESSION['user_role'])) {
                         <img id="borrower-selfie" src="logo.jpg" alt="Borrower Photo" class="w-20 h-20 rounded-full border-2 border-emerald-600 object-cover shadow-md" onerror="this.src='https://via.placeholder.com/80'">
                         
                         <div class="text-xs space-y-1 w-full">
-                            <p class="font-bold text-gray-800 text-sm" id="res-name">Pangalan: --</p>
+                            <p class="font-bold text-gray-800 text-sm" id="res-name">Name: --</p>
                             <p class="text-gray-600" id="res-id">Student ID: --</p>
                             <p class="text-gray-600" id="res-course">Course & Year: --</p>
                             <p class="text-gray-600" id="res-item">Equipment to Borrow: --</p>
-                            <p class="text-gray-500 text-[11px]" id="res-dates">Borrow Date: --</p>
+                            <p class="text-gray-500 text-[11px]" id="res-dates">Borrow Date / Due: --</p>
                         </div>
                     </div>
                 </div>
@@ -157,17 +157,17 @@ if (!isset($_SESSION['user_role'])) {
                     .then(res => {
                         if (res.success && res.data) {
                             const data = res.data;
-                            document.getElementById('res-name').innerText = "Pangalan: " + data.name;
+                            document.getElementById('res-name').innerText = "Name: " + data.name;
                             document.getElementById('res-id').innerText = "Student ID: " + data.student_id;
                             document.getElementById('res-course').innerText = "Course & Year: " + data.course_year;
                             document.getElementById('res-item').innerText = "Equipment to Borrow: " + data.equipment;
-                            document.getElementById('res-dates').innerText = "Borrow Date: " + data.borrow_date;
+                            document.getElementById('res-dates').innerText = "Borrow Date / Due: " + data.borrow_date;
                             
                             if (data.photo) {
                                 document.getElementById('borrower-selfie').src = data.photo;
                             }
                         } else {
-                            document.getElementById('res-name').innerText = "Pangalan: Hindi natagpuan";
+                            document.getElementById('res-name').innerText = "Name: Borrower not found";
                             document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
                             document.getElementById('res-course').innerText = "Course & Year: --";
                             document.getElementById('res-item').innerText = "Equipment to Borrow: --";
@@ -186,7 +186,7 @@ if (!isset($_SESSION['user_role'])) {
                 document.getElementById('result-content').classList.remove('hidden');
                 document.getElementById('decoded-text-label').innerText = decodedText;
 
-                // Kunin ang totoong impormasyon mula sa database gamit ang na-scan na QR text
+                // Fetch borrower details from the database
                 fetchBorrowerData(decodedText);
 
                 try {
@@ -196,27 +196,24 @@ if (!isset($_SESSION['user_role'])) {
 
             const config = { fps: 15, qrbox: { width: 250, height: 250 } };
 
-            // UNANG SUSBUKAN: Back Camera (Environment) para sa Cellphone
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
                 handleScanSuccess
             ).then(() => {
-                camStatus.innerText = "Aktibo na ang back camera. Mag-scan na.";
+                camStatus.innerText = "Back camera is active. Ready to scan.";
             }).catch(err => {
-                // FALLBACK: Kung walang back camera (hal. Laptop/PC webcam), gagamitin ang Front Camera (User)
                 html5QrCode.start(
                     { facingMode: "user" }, 
                     config, 
                     handleScanSuccess
                 ).then(() => {
-                    camStatus.innerText = "Aktibo na ang webcam. Mag-scan na.";
+                    camStatus.innerText = "Webcam is active. Ready to scan.";
                 }).catch(e => {
-                    camStatus.innerText = "Hindi ma-access ang camera. I-check ang browser permissions.";
+                    camStatus.innerText = "Unable to access camera. Please check browser permissions.";
                 });
             });
 
-            // File Upload QR Scanning gamit ang jsQR
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;
@@ -238,7 +235,7 @@ if (!isset($_SESSION['user_role'])) {
                         if (code) {
                             handleScanSuccess(code.data);
                         } else {
-                            alert("Hindi mabasa ang QR code mula sa larawang ito.");
+                            alert("Unable to read QR code from this image.");
                         }
                     };
                     img.src = event.target.result;

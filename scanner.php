@@ -34,6 +34,7 @@ if (!isset($_SESSION['user_role'])) {
                     <p class="text-xs font-semibold"><?php echo htmlspecialchars($_SESSION['user_name']); ?></p>
                     <p class="text-[10px] text-emerald-300 uppercase"><?php echo htmlspecialchars($_SESSION['user_role']); ?></p>
                 </div>
+                <!-- Naibalik na ang Back to Dashboard Button -->
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
                 </a>
@@ -59,7 +60,7 @@ if (!isset($_SESSION['user_role'])) {
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p class="text-xs text-gray-500 italic">Naka-activate ang mabilis na scanner...</p>
+            <p class="text-xs text-gray-500 italic">Naka-activate ang mabilis na camera scanner...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -166,12 +167,13 @@ if (!isset($_SESSION['user_role'])) {
             };
 
             const config = { 
-                fps: 60, 
+                fps: 30, 
                 qrbox: { width: 250, height: 250 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
+            // Mabilis at direktang pag-load ng camera para hindi matagal magbukas
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
@@ -181,9 +183,12 @@ if (!isset($_SESSION['user_role'])) {
                     { facingMode: "user" }, 
                     config, 
                     handleScanSuccess
-                ).catch(e => {});
+                ).catch(e => {
+                    console.error("Camera start failed:", e);
+                });
             });
 
+            // File Upload QR Scanning gamit ang jsQR
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;

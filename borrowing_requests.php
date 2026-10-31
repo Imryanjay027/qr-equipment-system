@@ -3,12 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Basahin ang parehong shared JSON file para makita ng Custodian ang isinumite ng Borrower
-$dbFile = __DIR__ . '/shared_requests.json';
-$requests = [];
-if (file_exists($dbFile)) {
-    $requests = json_decode(file_get_contents($dbFile), true) ?? [];
-}
+$requests = $_SESSION['global_borrow_requests'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">

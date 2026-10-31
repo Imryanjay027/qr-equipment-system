@@ -2,21 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-$jsonFile = __DIR__ . '/requests.json';
-
-function getRequests($file) {
-    if (file_exists($file)) {
-        $data = json_decode(file_get_contents($file), true);
-        return is_array($data) ? $data : [];
-    }
-    return $_SESSION['global_borrow_requests'] ?? [];
-}
-
-function saveRequests($file, $data) {
-    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
-    $_SESSION['global_borrow_requests'] = $data;
-}
+require_once 'db.php';
 
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
@@ -40,24 +26,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
         $returnDueCombined = $returnDate . ' ' . $returnTime;
+        $borrowDateFormatted = date('Y-m-d H:i:s') . ' / ' . $returnDueCombined;
         
-        $requests = getRequests($jsonFile);
+        $stmt = $pdo->prepare("INSERT INTO requests (student_id, full_name, course_year, equipment_name, borrow_date, status, profile_photo, hidden_for_custodian) VALUES (?, ?, ?, ?, ?, 'Pending', ?, 0)");
+        $stmt->execute([$studentId, $studentName, $courseYear, $equipmentName, $borrowDateFormatted, $profilePhoto]);
         
-        $newReq = [
-            'id' => time(),
-            'student_id' => $studentId,
-            'full_name' => $studentName,
-            'course_year' => $courseYear,
-            'equipment_name' => $equipmentName,
-            'borrow_date' => date('Y-m-d H:i:s') . ' / ' . $returnDueCombined,
-            'status' => 'Pending',
-            'profile_photo' => $profilePhoto
-        ];
-        
-        array_unshift($requests, $newReq);
-        saveRequests($jsonFile, $requests);
-        
-        // Awtomatikong ididiretso sa dashboard pagka-submit
         header("Location: borrower.php");
         exit;
     } else {

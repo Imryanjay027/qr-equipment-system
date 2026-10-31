@@ -14,13 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Mangyaring punan ang lahat ng field.";
     } else {
         try {
-            // Subukan nating hanapin ang user gamit ang email o id columns na karaniwang ginagamit
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? OR student_id = ? OR id = ?");
-            $stmt->execute([$identifier, $identifier, $identifier]);
+            // Hanapin ang user gamit ang email o id sa database
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? OR id = ?");
+            $stmt->execute([$identifier, $identifier]);
             $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($found_user && password_verify($password, $found_user['password'])) {
-                // I-set ang session variables kasama ang live selfie mula sa database
+                // I-set ang session variables gamit ang eksaktong mga column mula sa iyong database
                 $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id'] ?? $identifier;
                 $_SESSION['user_name'] = $found_user['name'] ?? $found_user['full_name'] ?? 'User';
                 $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';
@@ -34,30 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit;
             } else {
-                $error_message = "Invalid Student/Employee ID, Email, or Password!";
+                $error_message = "Invalid Email or Password!";
             }
         } catch (PDOException $e) {
-            // Fallback sakaling email lang ang column sa database table mo
-            try {
-                $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-                $stmt->execute([$identifier]);
-                $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($found_user && password_verify($password, $found_user['password'])) {
-                    $_SESSION['student_id'] = $found_user['id'] ?? $identifier;
-                    $_SESSION['user_name'] = $found_user['name'] ?? 'User';
-                    $_SESSION['user_role'] = 'Borrower';
-                    $_SESSION['course_year'] = $found_user['course_year_section'] ?? '';
-                    $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : 'logo.jpg';
-
-                    header("Location: borrower.php");
-                    exit;
-                } else {
-                    $error_message = "Invalid Student/Employee ID, Email, or Password!";
-                }
-            } catch (Exception $ex) {
-                $error_message = "Database Error: " . $e->getMessage();
-            }
+            $error_message = "Database Error: " . $e->getMessage();
         }
     }
 }
@@ -102,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
                 <form action="login.php" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Student / Employee ID or Email</label>
-                        <input type="text" name="identifier" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your ID or Email">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                        <input type="text" name="identifier" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your email address">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>

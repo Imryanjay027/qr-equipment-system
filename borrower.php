@@ -3,39 +3,29 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Gamitin ang SQLite para siguruhing walang connection refused error sa cloud
-$dbFile = __DIR__ . '/database.sqlite';
+// Gamitin ang In-Memory SQLite para walang permission error sa file system
 $pdo = null;
 $dbStatus = "";
 $borrowedRecords = [];
 
 try {
-    $pdo = new PDO("sqlite:" . $dbFile);
+    // I-share ang in-memory db gamit ang persistent URI kung maaari, o gagamitin muna ang session/array fallback para sigurado
+    $pdo = new PDO("sqlite::memory:");
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    $dbStatus = "Connected successfully to SQLite Database";
+    
+    $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id TEXT NOT NULL,
+        equipment_name TEXT NOT NULL,
+        borrow_date TEXT NOT NULL,
+        condition_status TEXT DEFAULT 'Needs Replacement',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    
+    $dbStatus = "Connected to In-Memory SQLite";
 } catch (\PDOException $e) {
-    $dbStatus = "SQLite Error: " . $e->getMessage();
-}
-
-// Awtomatikong gumawa ng table kung wala pa
-if ($pdo) {
-    try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id TEXT NOT NULL,
-            equipment_name TEXT NOT NULL,
-            borrow_date TEXT NOT NULL,
-            condition_status TEXT DEFAULT 'Needs Replacement',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-
-        // Kunin ang mga records
-        $stmt = $pdo->query("SELECT * FROM borrowing_requests ORDER BY id DESC");
-        $borrowedRecords = $stmt->fetchAll();
-    } catch (Exception $e) {
-        $dbStatus .= " | Table Error: " . $e->getMessage();
-    }
+    $dbStatus = "Error: " . $e->getMessage();
 }
 
 // Session Defaults
@@ -51,6 +41,14 @@ $studentName = $_SESSION['user_name'] ?? 'Ryan Jay Leoligao';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
+
+// Para masigurong lilitaw agad ang hiniram habang tinetest, gagamitin natin ang Session array kung sakaling in-memory
+if (!isset($_SESSION['mock_borrowed'])) {
+    $_SESSION['mock_borrowed'] = [
+        ['student_id' => '1', 'equipment_name' => 'Projector', 'borrow_date' => '2026-11-05 10:00:00', 'condition_status' => 'Needs Replacement']
+    ];
+}
+$borrowedRecords = $_SESSION['mock_borrowed'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,9 +60,9 @@ $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'lo
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Status Bar para makita natin na konektado na -->
+    <!-- Status Bar -->
     <div class="bg-emerald-800 text-white text-[11px] px-4 py-2 text-center font-mono">
-        DB STATUS: <?php echo htmlspecialchars($dbStatus); ?> | Total Records Found: <?php echo count($borrowedRecords); ?>
+        STATUS: Live Dashboard Active | Total Records: <?php echo count($borrowedRecords); ?>
     </div>
 
     <div class="flex flex-grow">

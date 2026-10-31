@@ -25,8 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';
                 $_SESSION['course_year'] = $found_user['course_year_section'] ?? $found_user['course_year'] ?? '';
                 
-                // Kunin ang profile_picture galing sa database at ilagay sa session
-                $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : 'logo.jpg';
+                // Siguraduhing ang profile_picture galing sa database ang nakalagay sa session
+                $_SESSION['profile_photo'] = (!empty($found_user['profile_picture']) && $found_user['profile_picture'] !== 'logo.jpg') ? $found_user['profile_picture'] : 'logo.jpg';
 
                 if (strtolower($found_user['role'] ?? '') === 'custodian') {
                     header("Location: custodian_dashboard.php");

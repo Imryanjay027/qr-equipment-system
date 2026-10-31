@@ -40,8 +40,8 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <header class="bg-[#1e293b] text-white px-8 py-4 flex justify-between items-center shadow-md">
         <h1 class="text-sm font-bold uppercase tracking-wider">PROPERTY CUSTODIAN DASHBOARD - MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
         <div class="flex items-center gap-4">
-            <a href="qr_scanner.php" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">QR Scanner Portal</a>
-            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Logout (<?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Ryan Jay Leoligao'); ?>)</a>
+            <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Back to Dashboard</a>
+            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Logout</a>
         </div>
     </header>
 
@@ -69,10 +69,8 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php foreach ($activeRequests as $req): ?>
                             <?php 
                                 $photo = htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); 
-                                // Ihiwalay ang borrow date at return due kung sakaling naka-format na may slash "/"
                                 $rawDate = $req['borrow_date'] ?? '';
                                 $dateParts = explode(' / ', $rawDate);
-                                $borrowTimestamp = $dateParts[0] ?? 'N/A';
                                 $returnDue = $dateParts[1] ?? $rawDate;
                             ?>
                             <div class="grid grid-cols-8 px-6 py-4 text-xs text-gray-700 items-center text-center">
@@ -85,7 +83,7 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
                                 <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
                                 
-                                <!-- Return Due: Vertical (Date sa taas, Time sa baba) -->
+                                <!-- Return Due -->
                                 <div class="flex flex-col items-center justify-center text-[11px] text-gray-600 leading-tight">
                                     <span class="font-medium"><?php echo htmlspecialchars($returnDue); ?></span>
                                 </div>
@@ -97,7 +95,7 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </span>
                                 </div>
 
-                                <!-- Actions Column (Pahalang na nakahanay nang sabay-sabay) -->
+                                <!-- Actions Column -->
                                 <div class="flex items-center justify-center gap-1.5 flex-nowrap">
                                     <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Good</a>
                                     <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Damaged</a>

@@ -59,7 +59,7 @@ if (!isset($_SESSION['user_role'])) {
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="cam-status" class="text-xs text-gray-500 italic">Handa na ang camera...</p>
+            <p id="cam-status" class="text-xs text-gray-500 italic">Binubuksan ang back camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -165,23 +165,23 @@ if (!isset($_SESSION['user_role'])) {
                 } catch(e) {}
             };
 
-            // Stable configuration para mawala ang flickering at maging smooth ang scan
             const config = { fps: 15, qrbox: { width: 250, height: 250 } };
 
-            // Isang diretsong tawag gamit ang facingMode user/environment nang walang cascading catch loops
+            // UNANG SUSBUKAN: Back Camera (Environment) para sa Cellphone
             html5QrCode.start(
-                { facingMode: "user" }, 
+                { facingMode: "environment" }, 
                 config, 
                 handleScanSuccess
             ).then(() => {
-                camStatus.innerText = "Aktibo na ang camera. I-scan ang QR code.";
+                camStatus.innerText = "Aktibo na ang back camera. Mag-scan na.";
             }).catch(err => {
+                // FALLBACK: Kung walang back camera (hal. Laptop/PC webcam), gagamitin ang Front Camera (User)
                 html5QrCode.start(
-                    { facingMode: "environment" }, 
+                    { facingMode: "user" }, 
                     config, 
                     handleScanSuccess
                 ).then(() => {
-                    camStatus.innerText = "Aktibo na ang camera. I-scan ang QR code.";
+                    camStatus.innerText = "Aktibo na ang webcam. Mag-scan na.";
                 }).catch(e => {
                     camStatus.innerText = "Hindi ma-access ang camera. I-check ang browser permissions.";
                 });

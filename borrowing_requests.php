@@ -46,51 +46,62 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow p-8 space-y-6 max-w-[95%] mx-auto w-full">
+    <main class="flex-grow p-8 space-y-6 max-w-7xl mx-auto w-full">
         
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
             <h2 class="text-sm font-bold text-gray-800">Active Equipment Borrowing Requests & Monitoring</h2>
             
             <div class="overflow-x-auto rounded-xl border border-gray-200">
-                <!-- 9 Columns Grid para sa tamang distribution ng space -->
-                <div class="grid grid-cols-12 bg-[#1e293b] text-white text-xs font-bold px-4 py-3.5 text-center items-center min-w-[900px]">
-                    <div class="col-span-1">Selfie</div>
-                    <div class="col-span-1">Student ID</div>
-                    <div class="col-span-2">Full Name</div>
-                    <div class="col-span-2">Course & Year</div>
-                    <div class="col-span-2">Item to Borrow</div>
-                    <div class="col-span-2">Return Due</div>
-                    <div class="col-span-1">Status</div>
-                    <div class="col-span-1">Actions</div>
+                <!-- 8 Columns Grid -->
+                <div class="grid grid-cols-8 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center items-center">
+                    <div>Selfie</div>
+                    <div>Student ID</div>
+                    <div>Full Name</div>
+                    <div>Course & Year</div>
+                    <div>Item to Borrow</div>
+                    <div>Return Due</div>
+                    <div>Status</div>
+                    <div>Actions / Monitoring</div>
                 </div>
 
                 <?php if (!empty($activeRequests)): ?>
-                    <div class="divide-y divide-gray-100 min-w-[900px]">
+                    <div class="divide-y divide-gray-100">
                         <?php foreach ($activeRequests as $req): ?>
-                            <?php $photo = htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); ?>
-                            <div class="grid grid-cols-12 px-4 py-4 text-xs text-gray-700 items-center text-center">
+                            <?php 
+                                $photo = htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); 
+                                // Ihiwalay ang borrow date at return due kung sakaling naka-format na may slash "/"
+                                $rawDate = $req['borrow_date'] ?? '';
+                                $dateParts = explode(' / ', $rawDate);
+                                $borrowTimestamp = $dateParts[0] ?? 'N/A';
+                                $returnDue = $dateParts[1] ?? $rawDate;
+                            ?>
+                            <div class="grid grid-cols-8 px-6 py-4 text-xs text-gray-700 items-center text-center">
                                 <!-- Click to Zoom Selfie -->
-                                <div class="col-span-1 flex justify-center">
+                                <div class="flex justify-center">
                                     <img src="<?php echo $photo; ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-600 cursor-pointer hover:scale-110 transition shadow-sm" onclick="openSelfieModal('<?php echo $photo; ?>')" onerror="this.src='https://via.placeholder.com/40'" title="Click to zoom">
                                 </div>
-                                <div class="col-span-1 font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
-                                <div class="col-span-2"><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
-                                <div class="col-span-2"><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
-                                <div class="col-span-2 font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
-                                <div class="col-span-2 text-[11px]"><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
+                                <div class="font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
+                                <div><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
+                                <div><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
+                                <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
+                                
+                                <!-- Return Due: Vertical (Date sa taas, Time sa baba) -->
+                                <div class="flex flex-col items-center justify-center text-[11px] text-gray-600 leading-tight">
+                                    <span class="font-medium"><?php echo htmlspecialchars($returnDue); ?></span>
+                                </div>
                                 
                                 <!-- Status Column -->
-                                <div class="col-span-1 flex justify-center">
-                                    <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
+                                <div class="flex justify-center">
+                                    <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
                                         <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
                                     </span>
                                 </div>
 
-                                <!-- Actions Column (Malinis at hindi na mag-aoverlap) -->
-                                <div class="col-span-1 flex items-center justify-center gap-1">
-                                    <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm" title="Mark Good">Good</a>
-                                    <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm" title="Mark Damaged">Damaged</a>
-                                    <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-[10px] font-semibold transition shadow-sm" title="Mark Replaced">Replaced</a>
+                                <!-- Actions Column (Pahalang na nakahanay nang sabay-sabay) -->
+                                <div class="flex items-center justify-center gap-1.5 flex-nowrap">
+                                    <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Good</a>
+                                    <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Damaged</a>
+                                    <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-[10px] font-semibold transition shadow-sm whitespace-nowrap">Replaced</a>
                                 </div>
                             </div>
                         <?php endforeach; ?>

@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once 'db_connection.php';
 
 $error_message = "";
+$debug_output = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $identifier = trim($_POST['identifier'] ?? '');
@@ -14,27 +15,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Mangyaring punan ang lahat ng field.";
     } else {
         try {
-            // Hanapin ang user gamit ang email lang sa database para maiwasan ang column error
+            // Kunin ang lahat ng user mula sa database para matingnan natin kung nandoon ang email mo
             $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
             $stmt->execute([$identifier]);
             $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($found_user && password_verify($password, $found_user['password'])) {
-                // I-set ang mga session variables gamit ang tamang database columns
-                $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id'] ?? $identifier;
-                $_SESSION['user_name'] = $found_user['name'] ?? $found_user['full_name'] ?? 'User';
-                $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';
-                $_SESSION['course_year'] = $found_user['course_year_section'] ?? $found_user['course_year'] ?? '';
-                $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : (!empty($found_user['selfie']) ? $found_user['selfie'] : 'logo.jpg');
+            if ($found_user) {
+                // DEBUG: Ipakita kung nahanap ang user at i-check ang password
+                $debug_output = "Nahanap ang user! Hash sa DB: " . $found_user['password'];
+                
+                if (password_verify($password, $found_user['password'])) {
+                    $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id'] ?? $identifier;
+                    $_SESSION['user_name'] = $found_user['name'] ?? $found_user['full_name'] ?? 'User';
+                    $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';
+                    $_SESSION['course_year'] = $found_user['course_year_section'] ?? $found_user['course_year'] ?? '';
+                    $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : (!empty($found_user['selfie']) ? $found_user['selfie'] : 'logo.jpg');
 
-                if (strtolower($found_user['role'] ?? '') === 'custodian') {
-                    header("Location: custodian_dashboard.php");
+                    if (strtolower($found_user['role'] ?? '') === 'custodian') {
+                        header("Location: custodian_dashboard.php");
+                    } else {
+                        header("Location: borrower.php");
+                    }
+                    exit;
                 } else {
-                    header("Location: borrower.php");
+                    $error_message = "Mali ang password (Hindi nag-match ang password_verify).";
                 }
-                exit;
             } else {
-                $error_message = "Invalid Email or Password!";
+                $error_message = "Walang nakitang user na may ganitong email sa database.";
             }
         } catch (PDOException $e) {
             $error_message = "Database Error: " . $e->getMessage();
@@ -79,6 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <?php if (!empty($error_message)): ?>
                     <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-medium"><?php echo htmlspecialchars($error_message); ?></div>
+                <?php endif; ?>
+                <?php if (!empty($debug_output)): ?>
+                    <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs font-mono"><?php echo htmlspecialchars($debug_output); ?></div>
                 <?php endif; ?>
                 <form action="login.php" method="POST" class="space-y-4">
                     <div>

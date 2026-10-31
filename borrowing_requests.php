@@ -38,10 +38,10 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Top Header -->
     <header class="bg-[#1e293b] text-white px-8 py-4 flex justify-between items-center shadow-md">
-        <h1 class="text-sm font-bold uppercase tracking-wider">PROPERTY CUSTODIAN DASHBOARD</h1>
+        <h1 class="text-sm font-bold uppercase tracking-wider">PROPERTY CUSTODIAN DASHBOARD - MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
         <div class="flex items-center gap-4">
-            <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Back to Dashboard</a>
-            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Logout</a>
+            <a href="qr_scanner.php" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">QR Scanner Portal</a>
+            <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Logout (<?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Ryan Jay Leoligao'); ?>)</a>
         </div>
     </header>
 
@@ -52,40 +52,43 @@ $activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <h2 class="text-sm font-bold text-gray-800">Active Equipment Borrowing Requests & Monitoring</h2>
             
             <div class="overflow-hidden rounded-xl border border-gray-200">
-                <!-- Binigyan ng mas malawak na espasyo ang huling kolum para magkasya nang maayos ang mga button -->
-                <div class="grid grid-cols-12 bg-[#1e293b] text-white text-xs font-bold px-4 py-3.5 text-center items-center">
-                    <div class="col-span-1">Selfie</div>
-                    <div class="col-span-1">Student ID</div>
-                    <div class="col-span-2">Full Name</div>
-                    <div class="col-span-2">Course & Year</div>
-                    <div class="col-span-2">Item to Borrow</div>
-                    <div class="col-span-2">Return Due</div>
-                    <div class="col-span-2">Status / Actions</div>
+                <!-- 8 Columns: Hiwalay ang Status at Actions/Condition Monitoring -->
+                <div class="grid grid-cols-8 bg-[#1e293b] text-white text-xs font-bold px-6 py-3.5 text-center items-center">
+                    <div>Selfie</div>
+                    <div>Student ID</div>
+                    <div>Full Name</div>
+                    <div>Course & Year</div>
+                    <div>Item to Borrow</div>
+                    <div>Return Due</div>
+                    <div>Status</div>
+                    <div>Actions / Condition Monitoring</div>
                 </div>
 
                 <?php if (!empty($activeRequests)): ?>
                     <div class="divide-y divide-gray-100">
                         <?php foreach ($activeRequests as $req): ?>
-                            <div class="grid grid-cols-12 px-4 py-4 text-xs text-gray-700 items-center text-center">
-                                <div class="col-span-1 flex justify-center">
+                            <div class="grid grid-cols-8 px-6 py-4 text-xs text-gray-700 items-center text-center">
+                                <div class="flex justify-center">
                                     <img src="<?php echo htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border border-gray-300" onerror="this.src='https://via.placeholder.com/40'">
                                 </div>
-                                <div class="col-span-1 font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
-                                <div class="col-span-2"><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
-                                <div class="col-span-2"><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
-                                <div class="col-span-2 font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
-                                <div class="col-span-2 text-[11px]"><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
+                                <div class="font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? 'admin'); ?></div>
+                                <div><?php echo htmlspecialchars($req['full_name'] ?? 'Ryan Jay Leoligao'); ?></div>
+                                <div><?php echo htmlspecialchars($req['course_year'] ?? 'BSIT 3rd Year'); ?></div>
+                                <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'Extension'); ?></div>
+                                <div class="text-[11px]"><?php echo htmlspecialchars($req['borrow_date'] ?? '2026-10-20 12:30:00'); ?></div>
                                 
-                                <!-- Inayos ang flex container para magkatabi nang malinis ang Good, Damaged, at Replaced buttons -->
-                                <div class="col-span-2 flex flex-col items-center justify-center gap-2 py-1 w-full">
-                                    <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
+                                <!-- Status Column -->
+                                <div class="flex justify-center">
+                                    <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
                                         <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
                                     </span>
-                                    <div class="flex items-center justify-center gap-1 w-full">
-                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</a>
-                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</a>
-                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</a>
-                                    </div>
+                                </div>
+
+                                <!-- Actions / Condition Monitoring Column (Magkakatabi nang pahalang) -->
+                                <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                    <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Mark Good</a>
+                                    <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Mark Damaged</a>
+                                    <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 rounded text-[10px] font-semibold transition shadow-sm">Mark Replaced</a>
                                 </div>
                             </div>
                         <?php endforeach; ?>

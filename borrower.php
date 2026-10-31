@@ -68,14 +68,15 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <main class="flex-grow p-6 lg:p-10 space-y-6">
             
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div class="flex items-center gap-4 w-full">
-                    <div class="w-16 h-16 rounded-full border-2 border-emerald-600 overflow-hidden shadow-inner bg-white flex items-center justify-center flex-shrink-0">
-                        <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/64'">
+                <div class="flex items-center gap-5 w-full">
+                    <!-- Pinalaki ang profile picture container mula w-16 h-16 patungong w-28 h-28 -->
+                    <div class="w-28 h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
+                        <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='logo.jpg'">
                     </div>
                     <div>
-                        <p class="text-base font-bold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
-                        <p class="text-xs text-gray-500">Student ID: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($studentId); ?></span></p>
-                        <p class="text-xs text-gray-500">Course / Year: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($courseYear); ?></span></p>
+                        <p class="text-lg font-extrabold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Student ID: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($studentId); ?></span></p>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Course / Year: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($courseYear); ?></span></p>
                     </div>
                 </div>
 

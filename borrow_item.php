@@ -41,26 +41,31 @@ $studentId   = $_SESSION['student_id'] ?? '1';
 $studentName = $_SESSION['user_name'] ?? 'Ryan Jay Leoligao';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
-
-// Kunin ang live selfie photo mula sa session o database kung nakaimbak
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Handle Form Submission para sa pag-request ng item
+// Handle Form Submission para sa pag-request ng item at pagpapakita ng error kung meron
 $successMsg = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($pdo)) {
-    $equipmentName = $_POST['equipment_name'] ?? '';
-    $returnDate    = $_POST['return_date'] ?? '';
-    $returnTime    = $_POST['return_time'] ?? '';
-    
-    if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
-        $returnDueCombined = $returnDate . ' ' . $returnTime;
-        try {
-            $stmt = $pdo->prepare("INSERT INTO borrowing_requests (student_id, equipment_name, borrow_date, condition_status) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$studentId, $equipmentName, $returnDueCombined, 'Needs Replacement']);
-            $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
-        } catch (Exception $e) {
-            $errorMsg = "May error sa pag-save: " . $e->getMessage();
+$errorMsg = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($pdo)) {
+        $equipmentName = trim($_POST['equipment_name'] ?? '');
+        $returnDate    = trim($_POST['return_date'] ?? '');
+        $returnTime    = trim($_POST['return_time'] ?? '');
+        
+        if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
+            $returnDueCombined = $returnDate . ' ' . $returnTime . ':00';
+            try {
+                $stmt = $pdo->prepare("INSERT INTO borrowing_requests (student_id, equipment_name, borrow_date, condition_status) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$studentId, $equipmentName, $returnDueCombined, 'Needs Replacement']);
+                $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
+            } catch (Exception $e) {
+                $errorMsg = "Database Error: " . $e->getMessage();
+            }
+        } else {
+            $errorMsg = "Punan ang lahat ng kinakailangang impormasyon.";
         }
+    } else {
+        $errorMsg = "Walang koneksyon sa Database: " . ($db_error ?? 'Unknown connection error');
     }
 }
 ?>
@@ -105,7 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($pdo)) {
         <!-- Main Content Area -->
         <main class="flex-grow p-6 lg:p-10 space-y-6">
             
-            <!-- Student Profile & Live Selfie Card -->
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="flex items-center gap-4 w-full">
                     <div class="w-16 h-16 rounded-full border-2 border-emerald-600 overflow-hidden shadow-inner bg-white flex items-center justify-center flex-shrink-0">
@@ -118,19 +122,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($pdo)) {
                     </div>
                 </div>
 
-                <!-- QR Code Box na may Click to Zoom -->
                 <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center cursor-pointer group" onclick="openQrModal()">
                     <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-24 h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
                     <span class="text-[10px] text-gray-400 group-hover:text-emerald-700 font-semibold">Click to Zoom</span>
                 </div>
             </div>
 
-            <!-- Form para sa Mag-request ng Kagamitan -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
                 <h2 class="text-sm font-bold text-gray-800 border-b pb-2">Mag-request ng Kagamitan (Borrow Equipment)</h2>
                 
                 <?php if (!empty($successMsg)): ?>
                     <div class="p-3 bg-emerald-50 text-emerald-700 text-xs rounded-xl font-medium"><?php echo $successMsg; ?></div>
+                <?php endif; ?>
+                <?php if (!empty($errorMsg)): ?>
+                    <div class="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium border border-red-200"><?php echo $errorMsg; ?></div>
                 <?php endif; ?>
 
                 <form method="POST" class="space-y-4">
@@ -169,7 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($pdo)) {
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
         QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
     </footer>

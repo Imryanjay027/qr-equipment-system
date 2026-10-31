@@ -59,7 +59,7 @@ if (!isset($_SESSION['user_role'])) {
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="cam-status" class="text-xs text-gray-500 italic">Binubuksan ang camera...</p>
+            <p id="cam-status" class="text-xs text-gray-500 italic">Humihingi ng pahintulot sa camera...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -167,24 +167,35 @@ if (!isset($_SESSION['user_role'])) {
 
             const config = { fps: 30, qrbox: { width: 250, height: 250 } };
 
-            // Direktang pag-start gamit ang user-facing/default camera para sa mabilis na pagbubukas sa laptop/PC
-            html5QrCode.start(
-                { facingMode: "user" }, 
-                config, 
-                handleScanSuccess
-            ).then(() => {
-                camStatus.innerText = "Aktibo na ang camera. Mag-scan na.";
+            // Sinusubukan munang Kunin ang mga available cameras sa device
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    // Gamitin ang unang camera (default webcam sa laptop o front camera)
+                    const cameraId = devices[0].id;
+                    html5QrCode.start(
+                        cameraId, 
+                        config, 
+                        handleScanSuccess
+                    ).then(() => {
+                        camStatus.innerText = "Aktibo na ang camera. Mag-scan na.";
+                    }).catch(err => {
+                        camStatus.innerText = "Nabigo sa pag-start ng camera: " + err;
+                    });
+                } else {
+                    // Fallback kung walang makuha sa getCameras
+                    html5QrCode.start(
+                        { facingMode: "user" }, 
+                        config, 
+                        handleScanSuccess
+                    ).then(() => {
+                        camStatus.innerText = "Aktibo na ang camera.";
+                    }).catch(e => {
+                        camStatus.innerText = "Walang nakitang camera o naka-block ang permission.";
+                    });
+                }
             }).catch(err => {
-                // Fallback sa environment camera kung mobile
-                html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    config, 
-                    handleScanSuccess
-                ).then(() => {
-                    camStatus.innerText = "Aktibo na ang camera. Mag-scan na.";
-                }).catch(e => {
-                    camStatus.innerText = "Hindi ma-access ang camera. Suriin ang permissions.";
-                });
+                // Kung hinarangan ang permission o walang HTTPS
+                camStatus.innerText = "Error: I-check ang camera permission sa browser bar (kaliwa ng URL).";
             });
 
             // File Upload QR Scanning gamit ang jsQR

@@ -6,6 +6,10 @@ if (session_status() === PHP_SESSION_NONE) {
 $successMsg = '';
 $errorMsg = '';
 
+if (!isset($_SESSION['global_borrow_requests'])) {
+    $_SESSION['global_borrow_requests'] = [];
+}
+
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
     $_SESSION['user_name'] = 'Rjay Cabasag';
@@ -19,8 +23,6 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-$jsonFile = __DIR__ . '/requests.json';
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $equipmentName = trim($_POST['equipment_name'] ?? '');
     $returnDate    = trim($_POST['return_date'] ?? '');
@@ -28,11 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
         $returnDueCombined = $returnDate . ' ' . $returnTime;
-        
-        $requests = [];
-        if (file_exists($jsonFile)) {
-            $requests = json_decode(file_get_contents($jsonFile), true) ?? [];
-        }
         
         $newReq = [
             'id' => time(),
@@ -45,9 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'profile_photo' => $profilePhoto
         ];
         
-        array_unshift($requests, $newReq);
-        file_put_contents($jsonFile, json_encode($requests, JSON_PRETTY_PRINT));
-        
+        array_unshift($_SESSION['global_borrow_requests'], $newReq);
         $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
     } else {
         $errorMsg = "Punan ang lahat ng kinakailangang impormasyon.";

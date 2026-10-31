@@ -16,9 +16,17 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-$allRequests = $_SESSION['global_borrow_requests'] ?? [];
+$jsonFile = __DIR__ . '/requests.json';
+$allRequests = [];
+if (file_exists($jsonFile)) {
+    $allRequests = json_decode(file_get_contents($jsonFile), true) ?? [];
+} else {
+    $allRequests = $_SESSION['global_borrow_requests'] ?? [];
+}
+
 $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
-    return ($r['student_id'] ?? '') == $studentId;
+    $status = $r['status'] ?? 'Pending';
+    return (($r['student_id'] ?? '') == $studentId) && ($status === 'Pending' || $status === 'Damaged');
 });
 ?>
 <!DOCTYPE html>
@@ -46,7 +54,7 @@ $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
                         Dashboard
                     </a>
                     <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                         Borrow an Item
                     </a>
                     <a href="borrower_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">
@@ -89,7 +97,9 @@ $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
             <div class="space-y-4">
                 <div class="flex gap-2 border-b border-gray-200 pb-2 justify-between items-center">
                     <div class="flex gap-2">
+                        <!-- Active tab: Kulay Green (#008040) -->
                         <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#008040] text-white shadow-sm">My Borrowed Equipment</button>
+                        <!-- Inactive tab: White with border -->
                         <a href="borrower_history.php" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-gray-600 hover:bg-gray-100 transition border border-gray-200">Returned Items / History & Remarks</a>
                     </div>
                     <a href="borrow_item.php" class="bg-[#008040] hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2">
@@ -116,14 +126,8 @@ $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
                                     <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
                                     <div class="flex justify-center">
                                         <span class="px-3 py-1 rounded-md text-[11px] font-bold 
-                                            <?php 
-                                                $st = $row['status'] ?? 'Pending';
-                                                if($st === 'Good') echo 'bg-emerald-100 text-emerald-800';
-                                                elseif($st === 'Damaged') echo 'bg-red-100 text-red-800';
-                                                elseif($st === 'Needs Replacement') echo 'bg-amber-100 text-amber-800';
-                                                else echo 'bg-amber-400 text-amber-900';
-                                            ?> shadow-sm inline-block">
-                                            <?php echo htmlspecialchars($st); ?>
+                                            <?php echo ($row['status'] ?? 'Pending') === 'Damaged' ? 'bg-red-100 text-red-800' : 'bg-amber-400 text-amber-900'; ?> shadow-sm inline-block">
+                                            <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
                                         </span>
                                     </div>
                                     <div class="flex justify-center">
@@ -136,7 +140,7 @@ $borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
                         </div>
                     <?php else: ?>
                         <div class="p-8 text-center text-xs text-gray-400">
-                            No borrowed items yet.
+                            No active borrowed items yet.
                         </div>
                     <?php endif; ?>
                 </div>

@@ -1,3 +1,12 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['user_role'])) {
+    $_SESSION['user_role'] = 'Property Custodian';
+    $_SESSION['user_name'] = 'Ryan Jay Leoligao';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,8 +31,8 @@
             </div>
             <div class="flex items-center gap-3">
                 <div class="text-right hidden sm:block">
-                    <p class="text-xs font-semibold">Property Custodian</p>
-                    <p class="text-[10px] text-emerald-300 uppercase">Custodian Dashboard</p>
+                    <p class="text-xs font-semibold"><?php echo htmlspecialchars($_SESSION['user_name']); ?></p>
+                    <p class="text-[10px] text-emerald-300 uppercase"><?php echo htmlspecialchars($_SESSION['user_role']); ?></p>
                 </div>
                 <a href="custodian_dashboard.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
                     &larr; Dashboard
@@ -39,12 +48,18 @@
         <!-- Left Column: Live Camera Scanner -->
         <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 flex flex-col items-center">
             <h2 class="text-base font-bold text-gray-800 w-full text-left mb-1">Live Camera Scanner</h2>
-            <p class="text-xs text-gray-500 w-full text-left mb-4">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
+            <p class="text-xs text-gray-500 w-full text-left mb-3">Ituro ang camera sa QR Code ng Borrower para i-scan.</p>
+
+            <!-- Audio Unlock Banner -->
+            <div id="audio-unlock-banner" class="w-full mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-xs flex justify-between items-center shadow-sm">
+                <span>🔊 I-click para i-activate ang Audio Beep</span>
+                <button id="unlock-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold transition">I-activate</button>
+            </div>
 
             <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-emerald-600 mb-4 max-w-md">
                 <div id="reader" class="w-full"></div>
             </div>
-            <p id="scanner-status" class="text-xs text-gray-500 italic">Naka-activate ang mabilis na back camera...</p>
+            <p class="text-xs text-gray-500 italic">Naka-activate ang mabilis na scanner...</p>
         </div>
 
         <!-- Right Column: Upload QR Image & Result -->
@@ -74,10 +89,10 @@
                         <img id="borrower-selfie" src="logo.jpg" alt="Borrower Photo" class="w-20 h-20 rounded-full border-2 border-emerald-600 object-cover shadow-md" onerror="this.src='https://via.placeholder.com/80'">
                         
                         <div class="text-xs space-y-1 w-full">
-                            <p class="font-bold text-gray-800 text-sm" id="res-name">Pangalan: --</p>
+                            <p class="font-bold text-gray-800 text-sm" id="res-name">Pangalan: Ryan Jay Leoligao</p>
                             <p class="text-gray-600" id="res-id">Student ID: --</p>
-                            <p class="text-gray-600" id="res-course">Course & Year: --</p>
-                            <p class="text-gray-600" id="res-item">Equipment to Borrow: --</p>
+                            <p class="text-gray-600" id="res-course">Course & Year: BSIT 3rd Year</p>
+                            <p class="text-gray-600" id="res-item">Equipment to Borrow: Extension Cord / Projector</p>
                             <p class="text-gray-500 text-[11px]" id="res-dates">Borrow Date: --</p>
                         </div>
                     </div>
@@ -99,59 +114,50 @@
         document.addEventListener("DOMContentLoaded", function () {
             const html5QrCode = new Html5Qrcode("reader");
             const beepAudio = document.getElementById('beep-audio');
-
-            // Web Audio API generator para sa garantisadong tunog sa kahit anong mobile browser
+            const unlockBtn = document.getElementById('unlock-btn');
+            const unlockBanner = document.getElementById('audio-unlock-banner');
             let audioCtx = null;
-            const playGuaranteedBeep = () => {
-                // 1. Subukang patugtugin ang beep.mp3 file
+
+            unlockBtn.addEventListener('click', () => {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                beepAudio.play().then(() => {
+                    beepAudio.pause();
+                    beepAudio.currentTime = 0;
+                    unlockBanner.innerHTML = '<span class="text-emerald-700 font-bold">✓ Na-activate na ang Audio Beep! Pwede nang mag-scan.</span>';
+                    setTimeout(() => unlockBanner.style.display = 'none', 2000);
+                }).catch(e => {});
+            });
+
+            const playBeepSound = () => {
                 beepAudio.currentTime = 0;
-                beepAudio.play().catch(e => {
-                    console.log("Audio file blocked, using Web Audio API fallback");
-                });
+                beepAudio.play().catch(e => {});
 
-                // 2. Web Audio API Beep Generator (100% gumagana sa mobile kahit i-block ang mp3)
                 try {
-                    if (!audioCtx) {
-                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    }
-                    if (audioCtx.state === 'suspended') {
-                        audioCtx.resume();
-                    }
-                    const oscillator = audioCtx.createOscillator();
-                    const gainNode = audioCtx.createGain();
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
                     
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // Frequency ng beep
-                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
                     
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
                     
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.15); // Haba ng tunog (150ms)
-                } catch (err) {
-                    console.log("Web Audio API error:", err);
-                }
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                } catch (err) {}
             };
-
-            // I-unlock ang audio context sa unang tap o click sa screen
-            const unlockAudio = () => {
-                playGuaranteedBeep();
-            };
-            window.addEventListener('click', unlockAudio, { once: true });
-            window.addEventListener('touchstart', unlockAudio, { once: true });
 
             const handleScanSuccess = (decodedText) => {
-                playGuaranteedBeep();
+                playBeepSound();
 
                 document.getElementById('result-placeholder').classList.add('hidden');
                 document.getElementById('result-content').classList.remove('hidden');
                 document.getElementById('decoded-text-label').innerText = decodedText;
-
-                document.getElementById('res-name').innerText = "Pangalan: Ryan Jay Leoligao";
                 document.getElementById('res-id').innerText = "Student ID: " + decodedText;
-                document.getElementById('res-course').innerText = "Course & Year: BSIT 3rd Year";
-                document.getElementById('res-item').innerText = "Equipment to Borrow: Extension Cord / Projector";
                 document.getElementById('res-dates').innerText = "Borrow Date: " + new Date().toLocaleString();
 
                 try {
@@ -161,12 +167,11 @@
 
             const config = { 
                 fps: 60, 
-                qrbox: { width: 300, height: 300 }, 
+                qrbox: { width: 250, height: 250 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true }
             };
 
-            // Mabilis na pag-activate ng Back Camera para sa Mobile
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 config, 
@@ -176,12 +181,9 @@
                     { facingMode: "user" }, 
                     config, 
                     handleScanSuccess
-                ).catch(e => {
-                    console.error("Camera start failed:", e);
-                });
+                ).catch(e => {});
             });
 
-            // File Upload QR Scanning gamit ang jsQR
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;
@@ -203,7 +205,7 @@
                         if (code) {
                             handleScanSuccess(code.data);
                         } else {
-                            alert("Hindi mabasa ang QR code mula sa larawang ito. Subukang mag-upload ng mas malinaw na QR image.");
+                            alert("Hindi mabasa ang QR code mula sa larawang ito.");
                         }
                     };
                     img.src = event.target.result;

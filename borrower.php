@@ -14,21 +14,18 @@ $studentName = $_SESSION['user_name'] ?? 'User';
 $courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
-// Kunin nang direkta ang live selfie mula sa database para sigurado
+// Kunin nang direkta ang profile_picture mula sa database o session
 $profilePhoto = 'logo.jpg';
 try {
-    $stmtPhoto = $pdo->prepare("SELECT profile_picture, selfie FROM users WHERE student_id = ? OR email = ?");
+    $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE student_id = ? OR email = ?");
     $stmtPhoto->execute([$studentId, $_SESSION['email'] ?? '']);
     $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
-    if ($usrData) {
-        if (!empty($usrData['profile_picture']) && file_exists(__DIR__ . '/' . $usrData['profile_picture'])) {
-            $profilePhoto = $usrData['profile_picture'];
-        } elseif (!empty($usrData['selfie']) && file_exists(__DIR__ . '/' . $usrData['selfie'])) {
-            $profilePhoto = $usrData['selfie'];
-        }
+    if ($usrData && !empty($usrData['profile_picture'])) {
+        $profilePhoto = $usrData['profile_picture'];
+    } elseif (!empty($_SESSION['profile_photo'])) {
+        $profilePhoto = $_SESSION['profile_photo'];
     }
 } catch (PDOException $e) {
-    // Fallback sa session kung sakali
     if (!empty($_SESSION['profile_photo'])) {
         $profilePhoto = $_SESSION['profile_photo'];
     }

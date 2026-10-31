@@ -4,24 +4,35 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once 'db_connection.php';
 
-if (!isset($_SESSION['user_role'])) {
-    $_SESSION['user_role'] = 'Borrower';
-    $_SESSION['user_name'] = 'Rjay Cabasag';
-    $_SESSION['student_id'] = '1';
-    $_SESSION['course_year'] = 'IT - 3rd Year';
+// Kung walang nakaselyong session, i-redirect sa login
+if (!isset($_SESSION['student_id'])) {
+    header("Location: login.php");
+    exit;
 }
 
-$studentId   = $_SESSION['student_id'] ?? '1';
-$studentName = $_SESSION['user_name'] ?? 'Rjay Cabasag';
-$courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
+$studentId   = $_SESSION['student_id'] ?? '';
+$studentName = $_SESSION['user_name'] ?? 'User';
+$courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
-// Kunin ang live selfie mula sa database session nang direkta
+// Kunin ang live selfie mula sa session o direktang i-query sa database para sigurado
 $profilePhoto = 'logo.jpg';
 if (!empty($_SESSION['profile_photo'])) {
     $profilePhoto = $_SESSION['profile_photo'];
+} else {
+    try {
+        $stmtPhoto = $pdo->prepare("SELECT profile_picture, selfie FROM users WHERE student_id = ? OR email = ?");
+        $stmtPhoto->execute([$studentId, $_SESSION['email'] ?? '']);
+        $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
+        if ($usrData) {
+            $profilePhoto = !empty($usrData['profile_picture']) ? $usrData['profile_picture'] : (!empty($usrData['selfie']) ? $usrData['selfie'] : 'logo.jpg');
+        }
+    } catch (PDOException $e) {
+        // Fallback kung sakaling magka-error
+    }
 }
 
+// Kunin ang mga borrowed items ng user mula sa database
 $stmt = $pdo->prepare("SELECT * FROM requests WHERE student_id = ? AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
 $stmt->execute([$studentId]);
 $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -74,7 +85,7 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="flex items-center gap-5 w-full">
-                    <!-- Profile Picture / Live Selfie Container -->
+                    <!-- Live Selfie Profile Picture -->
                     <div class="w-28 h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
                         <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='logo.jpg'">
                     </div>

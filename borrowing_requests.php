@@ -2,50 +2,29 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-$jsonFile = __DIR__ . '/requests.json';
-
-function getRequests($file) {
-    if (file_exists($file)) {
-        $data = json_decode(file_get_contents($file), true);
-        return is_array($data) ? $data : [];
-    }
-    return $_SESSION['global_borrow_requests'] ?? [];
-}
-
-function saveRequests($file, $data) {
-    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
-    $_SESSION['global_borrow_requests'] = $data;
-}
-
-$requests = getRequests($jsonFile);
+require_once 'db.php';
 
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $actionId = $_GET['id'];
     $selectedAction = $_GET['action'];
 
-    foreach ($requests as $key => $req) {
-        if (($req['id'] ?? '') == $actionId) {
-            if ($selectedAction === 'Good') {
-                $requests[$key]['status'] = 'Good';
-                $requests[$key]['hidden_for_custodian'] = true;
-            } elseif ($selectedAction === 'Replaced') {
-                $requests[$key]['status'] = 'Needs Replacement';
-                $requests[$key]['hidden_for_custodian'] = true;
-            } elseif ($selectedAction === 'Damaged') {
-                $requests[$key]['status'] = 'Damaged';
-            }
-            break;
-        }
+    if ($selectedAction === 'Good') {
+        $stmt = $pdo->prepare("UPDATE requests SET status = 'Good', hidden_for_custodian = 1 WHERE id = ?");
+        $stmt->execute([$actionId]);
+    } elseif ($selectedAction === 'Replaced') {
+        $stmt = $pdo->prepare("UPDATE requests SET status = 'Needs Replacement', hidden_for_custodian = 1 WHERE id = ?");
+        $stmt->execute([$actionId]);
+    } elseif ($selectedAction === 'Damaged') {
+        $stmt = $pdo->prepare("UPDATE requests SET status = 'Damaged' WHERE id = ?");
+        $stmt->execute([$actionId]);
     }
-    saveRequests($jsonFile, $requests);
+    
     header("Location: borrowing_requests.php");
     exit;
 }
 
-$activeRequests = array_filter($requests, function($r) {
-    return empty($r['hidden_for_custodian']);
-});
+$stmt = $pdo->query("SELECT * FROM requests WHERE hidden_for_custodian = 0 ORDER BY id DESC");
+$activeRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -96,7 +75,7 @@ $activeRequests = array_filter($requests, function($r) {
                                 <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
                                 <div><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
                                 
-                                <!-- Inayos na flex container para maging maayos ang spacing at alignment ng status at mga action buttons -->
+                                <!-- Maayos at malinis na flex container para sa status badge at action buttons -->
                                 <div class="flex flex-col items-center justify-center gap-2.5 py-2 w-full">
                                     <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
                                         <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>

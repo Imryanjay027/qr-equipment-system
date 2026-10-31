@@ -1,4 +1,5 @@
 <?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -14,15 +15,16 @@ $studentName = $_SESSION['user_name'] ?? 'User';
 $courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
-// Kunin nang direkta ang profile_picture mula sa database o session
+// Kunin nang direktang tinitiyak na umiiral ang file ng profile picture galing sa database o session
 $profilePhoto = 'logo.jpg';
 try {
-    $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE student_id = ? OR email = ?");
-    $stmtPhoto->execute([$studentId, $_SESSION['email'] ?? '']);
+    $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE email = ? OR id = ?");
+    $stmtPhoto->execute([$_SESSION['email'] ?? '', $studentId]);
     $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
-    if ($usrData && !empty($usrData['profile_picture'])) {
+    
+    if ($usrData && !empty($usrData['profile_picture']) && $usrData['profile_picture'] !== 'logo.jpg') {
         $profilePhoto = $usrData['profile_picture'];
-    } elseif (!empty($_SESSION['profile_photo'])) {
+    } elseif (!empty($_SESSION['profile_photo']) && $_SESSION['profile_photo'] !== 'logo.jpg') {
         $profilePhoto = $_SESSION['profile_photo'];
     }
 } catch (PDOException $e) {
@@ -32,8 +34,8 @@ try {
 }
 
 // Kunin ang mga borrowed items ng user
-$stmt = $pdo->prepare("SELECT * FROM requests WHERE student_id = ? AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
-$stmt->execute([$studentId]);
+$stmt = $pdo->prepare("SELECT * FROM requests WHERE (student_id = ? OR student_id = ?) AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
+$stmt->execute([$studentId, $_SESSION['email'] ?? '']);
 $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>

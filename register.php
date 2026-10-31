@@ -27,9 +27,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $role = isset($_POST['role']) ? $_POST['role'] : 'borrower';
     $course_year = isset($_POST['course_year']) ? trim($_POST['course_year']) : '';
-    
+    $selfie_base64 = trim($_POST['selfie_base64'] ?? '');
+
+    // I-check kung na-capture ang live selfie
+    if (empty($selfie_base64)) {
+        $error_message = "Please capture your live selfie before registering!";
+    }
+
     // I-check muna kung nagre-register bilang custodian at umabot na sa limit
-    if ($role === 'custodian') {
+    if (empty($error_message) && $role === 'custodian') {
         $custodianCount = 0;
         foreach ($_SESSION['cloud_users'] as $u) {
             if (isset($u['role']) && strtolower($u['role']) === 'custodian') {
@@ -43,9 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($error_message)) {
         $selfie_path = 'logo.jpg';
-        if (!empty($_POST['selfie_base64'])) {
-            $data = $_POST['selfie_base64'];
+        if (!empty($selfie_base64)) {
+            $data = $selfie_base64;
             $data = str_replace('data:image/jpeg;base64,', '', $data);
+            $data = str_replace('data:image/png;base64,', '', $data);
             $data = str_replace(' ', '+', $data);
             $decoded_data = base64_decode($data);
             
@@ -131,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="max-w-md w-full mx-auto">
                 <div class="mb-6">
                     <h2 class="text-xl font-bold text-gray-800">Create Account</h2>
-                    <p class="text-xs text-gray-500">Please fill out the details to register.</p>
+                    <p class="text-xs text-gray-500">Please fill out the details and capture your selfie to register.</p>
                 </div>
                 <?php if (!empty($error_message)): ?>
                     <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-medium"><?php echo htmlspecialchars($error_message); ?></div>
@@ -142,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="mt-2"><a href="login.php" class="text-emerald-900 font-bold underline">Login here &rarr;</a></div>
                     </div>
                 <?php endif; ?>
-                <form action="register.php" method="POST" id="register-form" class="space-y-4">
+                <form action="register.php" method="POST" id="register-form" class="space-y-4" onsubmit="return validateForm()">
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Student / Employee ID</label>
                         <input type="text" name="student_id" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="e.g. MQCQC-12345">
@@ -175,13 +182,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     <div id="selfie-section" class="bg-slate-50 border border-gray-200 p-4 rounded-xl">
-                        <label class="block text-xs font-semibold text-gray-700 mb-2">Live Selfie Capture</label>
+                        <label class="block text-xs font-semibold text-gray-700 mb-2">Live Selfie Capture <span class="text-red-500">*Required</span></label>
                         <div class="relative w-full bg-black rounded-lg overflow-hidden border border-gray-300 mb-3 flex items-center justify-center min-h-[180px]">
                             <video id="webcam" autoplay playsinline class="w-full h-[180px] object-cover"></video>
                             <canvas id="canvas" class="hidden"></canvas>
                             <img id="captured-preview" src="" alt="Captured Selfie" class="hidden w-full h-[180px] object-cover">
                         </div>
-                        <input type="hidden" name="selfie_base64" id="selfie_base64">
+                        <input type="hidden" name="selfie_base64" id="selfie_base64" required>
                         <div class="flex gap-2">
                             <button type="button" id="capture-btn" class="flex-1 bg-[#005a2b] hover:bg-[#004822] text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">Capture Selfie</button>
                             <button type="button" id="retake-btn" class="hidden flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg text-xs font-semibold transition shadow-sm">Retake Photo</button>
@@ -215,6 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         toggleCourseField();
+
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const captureBtn = document.getElementById('capture-btn');
@@ -222,9 +230,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const capturedPreview = document.getElementById('captured-preview');
         const selfieBase64Input = document.getElementById('selfie_base64');
         let streamInstance = null;
+
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
             .then(stream => { streamInstance = stream; video.srcObject = stream; })
-            .catch(err => { console.warn("Webcam error:", err); });
+            .catch(err => { console.warn("Webcam error:", err); alert("Unable to access camera. Please allow camera permissions."); });
+
         captureBtn.addEventListener('click', () => {
             if (!streamInstance) { alert("Camera not available."); return; }
             canvas.width = video.videoWidth || 320;
@@ -239,6 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             captureBtn.classList.add('hidden');
             retakeBtn.classList.remove('hidden');
         });
+
         retakeBtn.addEventListener('click', () => {
             selfieBase64Input.value = '';
             capturedPreview.classList.add('hidden');
@@ -246,6 +257,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             retakeBtn.classList.add('hidden');
             captureBtn.classList.remove('hidden');
         });
+
+        function validateForm() {
+            if (!selfieBase64Input.value) {
+                alert("Please capture your live selfie before submitting your registration.");
+                return false;
+            }
+            return true;
+        }
     </script>
 </body>
 </html>

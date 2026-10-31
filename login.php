@@ -14,18 +14,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Mangyaring punan ang lahat ng field.";
     } else {
         try {
-            // Hanapin ang user gamit ang student_id o email sa database
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE student_id = ? OR email = ?");
+            // Hanapin ang user gamit ang email o id sa database para maiwasan ang unknown column error
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? OR id = ?");
             $stmt->execute([$identifier, $identifier]);
             $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($found_user && password_verify($password, $found_user['password'])) {
-                // I-set ang session variables mula sa database columns
-                $_SESSION['student_id'] = $found_user['student_id'] ?? $identifier;
-                $_SESSION['user_name'] = $found_user['name'] ?? 'User';
+                // I-set ang session variables gamit ang mga available na data mula sa database
+                $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id'] ?? $identifier;
+                $_SESSION['user_name'] = $found_user['name'] ?? $found_user['full_name'] ?? 'User';
                 $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';
-                $_SESSION['course_year'] = $found_user['course_year_section'] ?? '';
-                $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : 'logo.jpg';
+                $_SESSION['course_year'] = $found_user['course_year_section'] ?? $found_user['course_year'] ?? '';
+                $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : (!empty($found_user['selfie']) ? $found_user['selfie'] : 'logo.jpg');
 
                 if (strtolower($found_user['role'] ?? '') === 'custodian') {
                     header("Location: custodian_dashboard.php");
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit;
             } else {
-                $error_message = "Invalid Student ID, Email, or Password!";
+                $error_message = "Invalid Email or Password!";
             }
         } catch (PDOException $e) {
             $error_message = "Database Error: " . $e->getMessage();
@@ -82,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
                 <form action="login.php" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Student ID or Email Address</label>
-                        <input type="text" name="identifier" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your Student ID or Email">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                        <input type="text" name="identifier" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Enter your email address">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>

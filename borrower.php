@@ -3,48 +3,31 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Connection & Diagnostics
-$host     = getenv('MYSQL_HOST') ?: getenv('DB_HOST') ?: '127.0.0.1';
-$port     = getenv('MYSQL_PORT') ?: getenv('DB_PORT') ?: '3306';
-$db       = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME') ?: 'qr_equipment_db';
-$user     = getenv('MYSQL_USER') ?: getenv('DB_USER') ?: 'root';
-$pass     = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$charset  = 'utf8mb4';
-
-$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
-
+// Gamitin ang SQLite para siguruhing walang connection refused error sa cloud
+$dbFile = __DIR__ . '/database.sqlite';
+$pdo = null;
 $dbStatus = "";
 $borrowedRecords = [];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-    $dbStatus = "Connected successfully to database: $db on $host";
+    $pdo = new PDO("sqlite:" . $dbFile);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $dbStatus = "Connected successfully to SQLite Database";
 } catch (\PDOException $e) {
-    try {
-        $dsnFallback = "mysql:host=127.0.0.1;port=$port;dbname=$db;charset=$charset";
-        $pdo = new PDO($dsnFallback, $user, $pass, $options);
-        $dbStatus = "Connected via Fallback 127.0.0.1";
-    } catch (\PDOException $e2) {
-        $pdo = null;
-        $dbStatus = "Connection Failed: " . $e2->getMessage();
-    }
+    $dbStatus = "SQLite Error: " . $e->getMessage();
 }
 
-// Siguraduhing laging may table
+// Awtomatikong gumawa ng table kung wala pa
 if ($pdo) {
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            student_id VARCHAR(50) NOT NULL,
-            equipment_name VARCHAR(255) NOT NULL,
-            borrow_date VARCHAR(100) NOT NULL,
-            condition_status VARCHAR(100) DEFAULT 'Needs Replacement',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            equipment_name TEXT NOT NULL,
+            borrow_date TEXT NOT NULL,
+            condition_status TEXT DEFAULT 'Needs Replacement',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
         // Kunin ang mga records
@@ -79,8 +62,8 @@ $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'lo
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Pansamantalang Status Banner para makita natin ang DB status -->
-    <div class="bg-slate-800 text-white text-[11px] px-4 py-2 text-center font-mono">
+    <!-- Status Bar para makita natin na konektado na -->
+    <div class="bg-emerald-800 text-white text-[11px] px-4 py-2 text-center font-mono">
         DB STATUS: <?php echo htmlspecialchars($dbStatus); ?> | Total Records Found: <?php echo count($borrowedRecords); ?>
     </div>
 

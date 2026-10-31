@@ -43,21 +43,22 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Fetch Borrowed Records para sa Student na ito (o lahat kung walang exact match)
+// Dynamic Table Fetching para masigurong mahahanap ang data
 $borrowedRecords = [];
 if (isset($pdo)) {
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM borrowing_requests WHERE student_id = ? ORDER BY id DESC");
-        $stmt->execute([$studentId]);
-        $borrowedRecords = $stmt->fetchAll();
-        
-        // Fallback: Kung walang nahanap gamit ang student_id, kunin lahat para sigurado
-        if (empty($borrowedRecords)) {
-            $stmtAll = $pdo->query("SELECT * FROM borrowing_requests ORDER BY id DESC");
-            $borrowedRecords = $stmtAll->fetchAll();
+    $tablesToTry = ['borrowing_requests', 'borrowed_items', 'transactions', 'requests'];
+    foreach ($tablesToTry as $tbl) {
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM `$tbl` ORDER BY id DESC");
+            $stmt->execute();
+            $fetched = $stmt->fetchAll();
+            if (!empty($fetched)) {
+                $borrowedRecords = $fetched;
+                break;
+            }
+        } catch (Exception $e) {
+            continue;
         }
-    } catch (Exception $e) {
-        $borrowedRecords = [];
     }
 }
 ?>
@@ -102,7 +103,6 @@ if (isset($pdo)) {
         <!-- Main Content Area -->
         <main class="flex-grow p-6 lg:p-10 space-y-6">
             
-            <!-- Student Profile & Live Selfie Card -->
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="flex items-center gap-4 w-full">
                     <div class="w-16 h-16 rounded-full border-2 border-emerald-600 overflow-hidden shadow-inner bg-white flex items-center justify-center flex-shrink-0">
@@ -146,12 +146,12 @@ if (isset($pdo)) {
                         <div class="divide-y divide-gray-100">
                             <?php foreach ($borrowedRecords as $row): ?>
                                 <div class="grid grid-cols-4 px-6 py-4 text-xs text-gray-700 items-center">
-                                    <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
-                                    <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
-                                    <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
+                                    <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $row['user_id'] ?? $studentId); ?></div>
+                                    <div><?php echo htmlspecialchars($row['equipment_name'] ?? $row['item_name'] ?? 'N/A'); ?></div>
+                                    <div><?php echo htmlspecialchars($row['borrow_date'] ?? $row['created_at'] ?? 'N/A'); ?></div>
                                     <div>
                                         <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                            <?php echo htmlspecialchars($row['condition_status'] ?? 'Needs Replacement'); ?>
+                                            <?php echo htmlspecialchars($row['condition_status'] ?? $row['status'] ?? 'Needs Replacement'); ?>
                                         </span>
                                     </div>
                                 </div>
@@ -178,7 +178,6 @@ if (isset($pdo)) {
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
         QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
     </footer>

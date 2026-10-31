@@ -3,11 +3,19 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$successMsg = '';
-$errorMsg = '';
+$jsonFile = __DIR__ . '/requests.json';
 
-if (!isset($_SESSION['global_borrow_requests'])) {
-    $_SESSION['global_borrow_requests'] = [];
+function getRequests($file) {
+    if (file_exists($file)) {
+        $data = json_decode(file_get_contents($file), true);
+        return is_array($data) ? $data : [];
+    }
+    return $_SESSION['global_borrow_requests'] ?? [];
+}
+
+function saveRequests($file, $data) {
+    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
+    $_SESSION['global_borrow_requests'] = $data;
 }
 
 if (!isset($_SESSION['user_role'])) {
@@ -23,6 +31,8 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
+$errorMsg = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $equipmentName = trim($_POST['equipment_name'] ?? '');
     $returnDate    = trim($_POST['return_date'] ?? '');
@@ -30,6 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
         $returnDueCombined = $returnDate . ' ' . $returnTime;
+        
+        $requests = getRequests($jsonFile);
         
         $newReq = [
             'id' => time(),
@@ -42,8 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'profile_photo' => $profilePhoto
         ];
         
-        array_unshift($_SESSION['global_borrow_requests'], $newReq);
-        $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
+        array_unshift($requests, $newReq);
+        saveRequests($jsonFile, $requests);
+        
+        // Awtomatikong ididiretso sa dashboard pagka-submit
+        header("Location: borrower.php");
+        exit;
     } else {
         $errorMsg = "Punan ang lahat ng kinakailangang impormasyon.";
     }
@@ -116,9 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
                 <h2 class="text-sm font-bold text-gray-800 border-b pb-2">Mag-request ng Kagamitan (Borrow Equipment)</h2>
                 
-                <?php if (!empty($successMsg)): ?>
-                    <div class="p-3 bg-emerald-50 text-emerald-700 text-xs rounded-xl font-medium"><?php echo $successMsg; ?></div>
-                <?php endif; ?>
                 <?php if (!empty($errorMsg)): ?>
                     <div class="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium border border-red-200"><?php echo $errorMsg; ?></div>
                 <?php endif; ?>

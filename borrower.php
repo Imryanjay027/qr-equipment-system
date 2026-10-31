@@ -17,7 +17,9 @@ $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" 
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
 if (!isset($_SESSION['mock_borrowed'])) {
-    $_SESSION['mock_borrowed'] = [];
+    $_SESSION['mock_borrowed'] = [
+        ['student_id' => '1', 'equipment_name' => 'LAPIS', 'borrow_date' => '2026-10-26 13:49:10 / 2026-10-28 10:30', 'status' => 'Pending']
+    ];
 }
 $borrowedRecords = $_SESSION['mock_borrowed'];
 ?>
@@ -33,27 +35,32 @@ $borrowedRecords = $_SESSION['mock_borrowed'];
 
     <div class="flex flex-grow">
         <!-- Sidebar Navigation -->
-        <aside class="w-64 bg-[#00381d] text-white flex flex-col p-6 hidden md:flex">
-            <div class="flex flex-col items-center text-center mb-8">
-                <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/64'">
-                <!-- Naka-center na ang teksto gamit ang text-center at leading-tight para sa mas magandang porma -->
-                <h1 class="text-xs font-bold uppercase tracking-wider text-center leading-tight">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
+        <aside class="w-64 bg-[#001f12] text-white flex flex-col justify-between p-6 hidden md:flex">
+            <div>
+                <div class="flex flex-col items-center text-center mb-8">
+                    <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/64'">
+                    <h1 class="text-xs font-bold uppercase tracking-wider text-center leading-tight">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
+                </div>
+
+                <nav class="space-y-2">
+                    <a href="borrower.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#008040] text-white text-xs font-semibold shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                        Dashboard
+                    </a>
+                    <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        Borrow an Item
+                    </a>
+                    <a href="borrower_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Returned Items / History
+                    </a>
+                </nav>
             </div>
 
-            <nav class="space-y-2 flex-grow">
-                <a href="borrower.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-xs font-semibold shadow-sm">
-                    Dashboard
-                </a>
-                <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-emerald-800/50 text-emerald-100 text-xs font-medium transition">
-                    Borrow an Item
-                </a>
-                <a href="borrower_history.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-emerald-800/50 text-emerald-100 text-xs font-medium transition">
-                    Returned Items / History
-                </a>
-            </nav>
-
-            <div class="pt-4 border-t border-emerald-800/60">
-                <a href="logout.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-red-600/20 text-red-300 text-xs font-medium transition">
+            <div class="pt-4 border-t border-emerald-900">
+                <a href="logout.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-600/20 text-red-400 text-xs font-medium transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     Logout
                 </a>
             </div>
@@ -84,41 +91,47 @@ $borrowedRecords = $_SESSION['mock_borrowed'];
             <div class="space-y-4">
                 <div class="flex gap-2 border-b border-gray-200 pb-2 justify-between items-center">
                     <div class="flex gap-2">
-                        <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#00381d] text-white shadow-sm">My Borrowed Equipment</button>
+                        <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#008040] text-white shadow-sm">My Borrowed Equipment</button>
                         <a href="borrower_history.php" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-gray-600 hover:bg-gray-100 transition border border-gray-200">Returned Items / History & Remarks</a>
                     </div>
-                    <a href="borrow_item.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2">
+                    <a href="borrow_item.php" class="bg-[#008040] hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2">
                         + Borrow an Item
                     </a>
                 </div>
 
                 <!-- Table Container -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="grid grid-cols-4 bg-[#00381d] text-white text-xs font-bold px-6 py-3.5">
+                    <div class="grid grid-cols-5 bg-[#008040] text-white text-xs font-bold px-6 py-3.5">
                         <div>Student ID</div>
                         <div>Equipment Name</div>
                         <div>Borrow Date / Due Date</div>
-                        <div>Custodian Remark / Status</div>
+                        <div>Status / Action</div>
+                        <div>Action</div>
                     </div>
 
                     <?php if (!empty($borrowedRecords)): ?>
                         <div class="divide-y divide-gray-100">
-                            <?php foreach ($borrowedRecords as $row): ?>
-                                <div class="grid grid-cols-4 px-6 py-4 text-xs text-gray-700 items-center">
+                            <?php foreach ($borrowedRecords as $index => $row): ?>
+                                <div class="grid grid-cols-5 px-6 py-4 text-xs text-gray-700 items-center">
                                     <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
                                     <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
                                     <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
                                     <div>
-                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                            <?php echo htmlspecialchars($row['condition_status'] ?? 'Needs Replacement'); ?>
+                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm">
+                                            <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
                                         </span>
+                                    </div>
+                                    <div>
+                                        <button onclick="alert('Cancel request feature')" class="px-3 py-1 rounded-md text-[11px] font-semibold text-red-600 border border-red-300 hover:bg-red-50 transition">
+                                            &times; Cancel
+                                        </button>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
                         <div class="p-8 text-center text-xs text-gray-400">
-                            No history or remarks from the custodian yet.
+                            No borrowed items yet.
                         </div>
                     <?php endif; ?>
                 </div>
@@ -142,12 +155,8 @@ $borrowedRecords = $_SESSION['mock_borrowed'];
     </footer>
 
     <script>
-        function openQrModal() {
-            document.getElementById('qrModal').classList.remove('hidden');
-        }
-        function closeQrModal() {
-            document.getElementById('qrModal').classList.add('hidden');
-        }
+        function openQrModal() { document.getElementById('qrModal').classList.remove('hidden'); }
+        function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
     </script>
 </body>
 </html>

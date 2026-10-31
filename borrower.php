@@ -15,7 +15,22 @@ $studentId   = $_SESSION['student_id'] ?? '1';
 $studentName = $_SESSION['user_name'] ?? 'Rjay Cabasag';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
-$profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
+
+// Kunin ang mismong live selfie na kinuhanan habang nagrehistro base sa student_id
+$profilePhoto = 'logo.jpg';
+if (isset($_SESSION['cloud_users']) && is_array($_SESSION['cloud_users'])) {
+    foreach ($_SESSION['cloud_users'] as $u) {
+        if (isset($u['student_id']) && strcasecmp($u['student_id'], $studentId) === 0) {
+            if (!empty($u['selfie'])) {
+                $profilePhoto = $u['selfie'];
+            }
+            break;
+        }
+    }
+}
+if ($profilePhoto === 'logo.jpg' && !empty($_SESSION['profile_photo'])) {
+    $profilePhoto = $_SESSION['profile_photo'];
+}
 
 $stmt = $pdo->prepare("SELECT * FROM requests WHERE student_id = ? AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
 $stmt->execute([$studentId]);
@@ -69,7 +84,7 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="flex items-center gap-5 w-full">
-                    <!-- Pinalaki ang profile picture container mula w-16 h-16 patungong w-28 h-28 -->
+                    <!-- Mas malaking profile picture container (w-28 h-28) -->
                     <div class="w-28 h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
                         <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='logo.jpg'">
                     </div>

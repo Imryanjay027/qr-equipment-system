@@ -14,20 +14,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Mangyaring punan ang lahat ng field.";
     } else {
         try {
-            // Hanapin ang user gamit ang email sa database
             $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
             $stmt->execute([$identifier]);
             $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($found_user && password_verify($password, $found_user['password'])) {
-                // I-set ang session variables mula sa mismong database record ng user
                 $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id'] ?? $identifier;
                 $_SESSION['user_name'] = $found_user['name'] ?? $found_user['full_name'] ?? 'User';
+                $_SESSION['email'] = $found_user['email'] ?? $identifier;
                 $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';
                 $_SESSION['course_year'] = $found_user['course_year_section'] ?? $found_user['course_year'] ?? '';
                 
-                // Kunin nang tama ang live selfie mula sa database column (profile_picture o selfie)
-                $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : (!empty($found_user['selfie']) ? $found_user['selfie'] : 'logo.jpg');
+                // Kunin ang profile_picture galing sa database at ilagay sa session
+                $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : 'logo.jpg';
 
                 if (strtolower($found_user['role'] ?? '') === 'custodian') {
                     header("Location: custodian_dashboard.php");

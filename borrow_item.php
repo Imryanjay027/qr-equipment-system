@@ -6,10 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $successMsg = '';
 $errorMsg = '';
 
-if (!isset($_SESSION['mock_borrowed'])) {
-    $_SESSION['mock_borrowed'] = [];
-}
-
+// Session Defaults
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
     $_SESSION['user_name'] = 'Ryan Jay Leoligao';
@@ -23,20 +20,39 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
+// Shared JSON database file para mag-sync ang Borrower at Custodian nang walang permission error
+$dbFile = __DIR__ . '/shared_requests.json';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $equipmentName = trim($_POST['equipment_name'] ?? '');
     $returnDate    = trim($_POST['return_date'] ?? '');
     $returnTime    = trim($_POST['return_time'] ?? '');
     
     if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
-        $returnDueCombined = date('Y-m-d H:i:s') . ' / ' . $returnDate . ' ' . $returnTime;
+        $returnDueCombined = $returnDate . ' ' . $returnTime;
         
-        array_unshift($_SESSION['mock_borrowed'], [
+        $requests = [];
+        if (file_exists($dbFile)) {
+            $jsonContent = file_get_contents($dbFile);
+            $requests = json_decode($jsonContent, true) ?? [];
+        }
+        
+        $newRequest = [
+            'id' => time(),
             'student_id' => $studentId,
+            'full_name' => $studentName,
+            'course_year' => $courseYear,
             'equipment_name' => $equipmentName,
-            'borrow_date' => $returnDueCombined,
-            'status' => 'Pending'
-        ]);
+            'borrow_date' => date('Y-m-d H:i:s') . ' / ' . $returnDueCombined,
+            'status' => 'Pending',
+            'profile_photo' => $profilePhoto
+        ];
+        
+        array_unshift($requests, $newRequest);
+        file_put_contents($dbFile, json_encode($requests, JSON_PRETTY_PRINT));
+        
+        // I-sync din sa session para mabilis basahin
+        $_SESSION['mock_borrowed'] = $requests;
         
         $successMsg = "Matagumpay na naisumite ang request para sa kagamitan!";
     } else {

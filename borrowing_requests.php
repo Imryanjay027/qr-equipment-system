@@ -7,17 +7,14 @@ if (!isset($_SESSION['global_borrow_requests'])) {
     $_SESSION['global_borrow_requests'] = [];
 }
 
-// Handle action clicks mula sa Custodian
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $actionId = $_GET['id'];
-    $selectedAction = $_GET['action']; // 'Good', 'Damaged', o 'Replaced'
+    $selectedAction = $_GET['action'];
 
     foreach ($_SESSION['global_borrow_requests'] as $key => $req) {
         if (($req['id'] ?? '') == $actionId) {
             if ($selectedAction === 'Good') {
                 $_SESSION['global_borrow_requests'][$key]['status'] = 'Good';
-                // Alisin sa listahan ng custodian ngunit ilipat sa history/returned kung kinakailangan
-                // Para tuluyang mawala sa active list ng custodian habang nandoon sa borrower:
                 $_SESSION['global_borrow_requests'][$key]['hidden_for_custodian'] = true;
             } elseif ($selectedAction === 'Replaced') {
                 $_SESSION['global_borrow_requests'][$key]['status'] = 'Needs Replacement';
@@ -32,7 +29,6 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     exit;
 }
 
-// Salain ang mga request para sa Custodian (itago ang mga naka-Good o Replaced na)
 $activeRequests = array_filter($_SESSION['global_borrow_requests'], function($r) {
     return empty($r['hidden_for_custodian']);
 });
@@ -85,14 +81,16 @@ $activeRequests = array_filter($_SESSION['global_borrow_requests'], function($r)
                                 <div><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
                                 <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
                                 <div><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
-                                <div class="flex flex-col items-center justify-center gap-2">
+                                
+                                <!-- Inayos at nilagyan ng maayos na flex container para hindi magpatong-patong -->
+                                <div class="flex flex-col items-center justify-center gap-2.5 py-1">
                                     <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
                                         <?php echo htmlspecialchars($req['status'] === 'Pending' ? 'Pending' : $req['status']); ?>
                                     </span>
-                                    <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</a>
-                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</a>
-                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</a>
+                                    <div class="flex items-center justify-center gap-1">
+                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</a>
+                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</a>
+                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</a>
                                     </div>
                                 </div>
                             </div>

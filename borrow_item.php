@@ -10,7 +10,6 @@ if (!isset($_SESSION['mock_borrowed'])) {
     $_SESSION['mock_borrowed'] = [];
 }
 
-// Session Defaults
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
     $_SESSION['user_name'] = 'Ryan Jay Leoligao';
@@ -32,7 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
         $returnDueCombined = $returnDate . ' ' . $returnTime;
         
-        // Idagdag agad sa session array para lumitaw sa dashboard
         array_unshift($_SESSION['mock_borrowed'], [
             'student_id' => $studentId,
             'equipment_name' => $equipmentName,
@@ -61,7 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <aside class="w-64 bg-[#00381d] text-white flex flex-col p-6 hidden md:flex">
             <div class="flex flex-col items-center text-center mb-8">
                 <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/64'">
-                <h1 class="text-xs font-bold uppercase tracking-wider">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
+                <!-- Naka-center na ang teksto gamit ang text-center at leading-tight -->
+                <h1 class="text-xs font-bold uppercase tracking-wider text-center leading-tight">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
             </div>
 
             <nav class="space-y-2 flex-grow">

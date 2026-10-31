@@ -10,7 +10,7 @@ try {
     $pdo = new PDO($dsn, $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // 1. Awtomatikong gagawin ang requests table para sa Equipment Monitoring System
+    // Awtomatikong gagawin ang requests table para sa Equipment Monitoring System
     $pdo->exec("CREATE TABLE IF NOT EXISTS requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
         student_id VARCHAR(255),
@@ -23,7 +23,7 @@ try {
         hidden_for_custodian INT DEFAULT 0
     )");
 
-    // 2. Awtomatikong gagawin ang otp_table kapag wala pa ito
+    // Awtomatikong gagawin ang otp_table kapag wala pa ito
     $pdo->exec("CREATE TABLE IF NOT EXISTS otp_table (
         id INT AUTO_INCREMENT PRIMARY KEY,
         email VARCHAR(255) NOT NULL,

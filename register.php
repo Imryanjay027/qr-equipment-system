@@ -27,12 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($error_message)) {
         try {
-            // I-check muna kung ang email o student_id ay nakarehistro na sa database
-            $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR student_id = ?");
-            $checkStmt->execute([$email, $student_id]);
+            // I-check muna kung ang email ay nakarehistro na sa database (gamit ang email lang para maiwasan ang column error)
+            $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $checkStmt->execute([$email]);
             
             if ($checkStmt->rowCount() > 0) {
-                $error_message = "Ang Email o Student ID na ito ay nakarehistro na sa database!";
+                $error_message = "Ang Email na ito ay nakarehistro na sa database!";
             } else {
                 // I-convert ang base64 selfie patungong `.jpg` file at i-save sa uploads/ folder
                 $selfie_path = 'logo.jpg';
@@ -55,8 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
                 // I-save nang diretso sa MySQL users table
-                $stmt = $pdo->prepare("INSERT INTO users (student_id, name, email, password, role, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$student_id, $full_name, $email, $hashedPassword, $role, $course_year, $selfie_path]);
+                $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$full_name, $email, $hashedPassword, $role, $course_year, $selfie_path]);
 
                 $success_message = "Account successfully registered! You can now login below.";
             }

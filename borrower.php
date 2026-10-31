@@ -2,139 +2,108 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-// Siguraduhing naka-login ang borrower
-if (!isset($_SESSION['user_role']) || strtolower($_SESSION['user_role']) === 'custodian') {
-    header("Location: login.php");
-    exit();
+if (!isset($_SESSION['user_role'])) {
+    $_SESSION['user_role'] = 'Borrower';
+    $_SESSION['user_name'] = 'Ryan Jay Leoligao';
 }
-
-// Session-based storage para iwas 'Permission Denied' o 'No such file' sa cloud
-if (!isset($_SESSION['equipment_requests'])) {
-    $_SESSION['equipment_requests'] = [];
-}
-
-$success_msg = "";
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_name'])) {
-    $new_request = [
-        'borrower' => isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Guest Borrower',
-        'item_name' => trim($_POST['item_name']),
-        'return_due' => trim($_POST['return_due']),
-        'date' => date('Y-m-d H:i:s'),
-        'status' => 'Pending'
-    ];
-    
-    // Idagdag sa session array
-    array_unshift($_SESSION['equipment_requests'], $new_request);
-    $success_msg = "Matagumpay na naisumite ang iyong request sa kagamitan!";
-}
-
-$requests = $_SESSION['equipment_requests'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borrower Dashboard - QR Equipment Monitoring System</title>
+    <title>Borrower Dashboard - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Header Navigation -->
-    <header class="bg-[#00381d] text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <img src="logo.jpg" alt="Logo" class="w-10 h-10 rounded-full border border-white object-cover bg-white" onerror="this.src='https://via.placeholder.com/40'">
-                <div>
-                    <h1 class="text-sm sm:text-base font-bold tracking-tight">BORROWER PORTAL</h1>
-                    <p class="text-[11px] text-emerald-200">Mary the Queen College of Quezon City</p>
+    <div class="flex flex-grow">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-[#00381d] text-white flex flex-col p-6 hidden md:flex">
+            <div class="flex flex-col items-center text-center mb-8">
+                <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/64'">
+                <h1 class="text-xs font-bold uppercase tracking-wider">Mary the Queen College</h1>
+                <p class="text-[10px] text-emerald-200">Quezon City</p>
+            </div>
+
+            <nav class="space-y-2 flex-grow">
+                <a href="borrower.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-xs font-semibold shadow-sm">
+                    Dashboard
+                </a>
+                <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-emerald-800/50 text-emerald-100 text-xs font-medium transition">
+                    Borrow an Item
+                </a>
+                <a href="returned_history.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-emerald-800/50 text-emerald-100 text-xs font-medium transition">
+                    Returned Items / History
+                </a>
+            </nav>
+
+            <div class="pt-4 border-t border-emerald-800/60">
+                <a href="logout.php" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-red-600/20 text-red-300 text-xs font-medium transition">
+                    Logout
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow p-6 lg:p-10 space-y-6">
+            
+            <!-- Student Profile & QR Card -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-4 w-full">
+                    <div class="w-16 h-16 rounded-full bg-emerald-700 flex items-center justify-center text-white text-2xl font-bold shadow-inner">
+                        👤
+                    </div>
+                    <div>
+                        <p class="text-base font-bold text-gray-800"><?php echo htmlspecialchars($_SESSION['user_name']); ?></p>
+                        <p class="text-xs text-gray-500">Student ID: <span class="font-semibold text-gray-700">1</span></p>
+                        <p class="text-xs text-gray-500">Course / Year: <span class="font-semibold text-gray-700">IT - 3rd Year</span></p>
+                    </div>
+                </div>
+
+                <!-- QR Code Box -->
+                <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center">
+                    <div class="w-24 h-24 bg-gray-900 text-white flex items-center justify-center text-[10px] rounded mb-1">
+                        [QR CODE]
+                    </div>
+                    <span class="text-[10px] text-gray-400">Click to Zoom</span>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="text-right hidden sm:block">
-                    <p class="text-xs font-semibold"><?php echo htmlspecialchars(isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'User'); ?></p>
-                    <p class="text-[10px] text-emerald-300 uppercase"><?php echo htmlspecialchars(isset($_SESSION['user_role']) ? $_SESSION['user_role'] : 'Borrower'); ?></p>
+
+            <!-- Tabs Section -->
+            <div class="space-y-4">
+                <div class="flex gap-2 border-b border-gray-200 pb-2">
+                    <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#00381d] text-white shadow-sm">My Borrowed Equipment</button>
+                    <a href="returned_history.php" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-gray-600 hover:bg-gray-100 transition border border-gray-200">Returned Items / History & Remarks</a>
                 </div>
-                <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow-sm">Logout</a>
+
+                <!-- Table Container -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="grid grid-cols-4 bg-[#00381d] text-white text-xs font-bold px-6 py-3.5">
+                        <div>Student ID</div>
+                        <div>Equipment Name</div>
+                        <div>Borrow Date / Due Date</div>
+                        <div>Custodian Remark / Status</div>
+                    </div>
+
+                    <div class="p-8 text-center text-xs text-gray-400">
+                        No history or remarks from the custodian yet.
+                    </div>
+                </div>
+
+                <!-- Action Button para sa Borrow an Item kung walang hiniram -->
+                <div class="flex justify-end pt-2">
+                    <a href="borrow_item.php" class="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2">
+                        + Borrow an Item
+                    </a>
+                </div>
             </div>
-        </div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 py-8 w-full flex-grow space-y-6">
-
-        <?php if (!empty($success_msg)): ?>
-            <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold shadow-sm">
-                <?php echo htmlspecialchars($success_msg); ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- Borrow Request Form Card -->
-        <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-            <h2 class="text-base font-bold text-gray-800 mb-1">Mag-request ng Kagamitan (Borrow Equipment)</h2>
-            <p class="text-xs text-gray-500 mb-6">Punan ang detalye sa ibaba para humiram ng kagamitan sa paaralan.</p>
-
-            <form action="borrower.php" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Pangalan ng Kagamitan / Item</label>
-                    <input type="text" name="item_name" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="Hal. Projector, HDMI, Extension Wire">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Petsa at Oras ng Pagbabalik (Return Due)</label>
-                    <input type="datetime-local" name="return_due" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
-                </div>
-                <div class="md:col-span-2 pt-2">
-                    <button type="submit" class="w-full sm:w-auto bg-[#005a2b] hover:bg-[#004822] text-white px-6 py-2.5 rounded-lg text-xs font-semibold transition shadow-md">
-                        Isumite ang Request
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Requests History Table -->
-        <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 overflow-hidden">
-            <h3 class="text-base font-bold text-gray-800 mb-4">Kasaysayan ng mga Request (My Borrow Requests)</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 border-b border-gray-200 text-xs font-semibold text-gray-600">
-                            <th class="p-3">Pangalan ng Humiram</th>
-                            <th class="p-3">Kagamitan</th>
-                            <th class="p-3">Petsa ng Request</th>
-                            <th class="p-3">Return Due</th>
-                            <th class="p-3">Katayuan (Status)</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
-                        <?php if (empty($requests)): ?>
-                            <tr>
-                                <td colspan="5" class="p-4 text-center text-gray-400 italic">Wala pang naisumiteng request sa ngayon.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($requests as $req): ?>
-                                <tr>
-                                    <td class="p-3 font-medium"><?php echo htmlspecialchars($req['borrower']); ?></td>
-                                    <td class="p-3"><?php echo htmlspecialchars($req['item_name']); ?></td>
-                                    <td class="p-3 text-gray-500"><?php echo htmlspecialchars($req['date']); ?></td>
-                                    <td class="p-3 text-gray-500"><?php echo htmlspecialchars($req['return_due']); ?></td>
-                                    <td class="p-3">
-                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                            <?php echo htmlspecialchars($req['status']); ?>
-                                        </span>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </main>
+        </main>
+    </div>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500">
+    <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
         QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
     </footer>
 

@@ -3,7 +3,39 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$requests = $_SESSION['global_borrow_requests'] ?? [];
+if (!isset($_SESSION['global_borrow_requests'])) {
+    $_SESSION['global_borrow_requests'] = [];
+}
+
+// Handle action clicks mula sa Custodian
+if (isset($_GET['action']) && isset($_GET['id'])) {
+    $actionId = $_GET['id'];
+    $selectedAction = $_GET['action']; // 'Good', 'Damaged', o 'Replaced'
+
+    foreach ($_SESSION['global_borrow_requests'] as $key => $req) {
+        if (($req['id'] ?? '') == $actionId) {
+            if ($selectedAction === 'Good') {
+                $_SESSION['global_borrow_requests'][$key]['status'] = 'Good';
+                // Alisin sa listahan ng custodian ngunit ilipat sa history/returned kung kinakailangan
+                // Para tuluyang mawala sa active list ng custodian habang nandoon sa borrower:
+                $_SESSION['global_borrow_requests'][$key]['hidden_for_custodian'] = true;
+            } elseif ($selectedAction === 'Replaced') {
+                $_SESSION['global_borrow_requests'][$key]['status'] = 'Needs Replacement';
+                $_SESSION['global_borrow_requests'][$key]['hidden_for_custodian'] = true;
+            } elseif ($selectedAction === 'Damaged') {
+                $_SESSION['global_borrow_requests'][$key]['status'] = 'Damaged';
+            }
+            break;
+        }
+    }
+    header("Location: borrowing_requests.php");
+    exit;
+}
+
+// Salain ang mga request para sa Custodian (itago ang mga naka-Good o Replaced na)
+$activeRequests = array_filter($_SESSION['global_borrow_requests'], function($r) {
+    return empty($r['hidden_for_custodian']);
+});
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,9 +73,9 @@ $requests = $_SESSION['global_borrow_requests'] ?? [];
                     <div>Status / Actions</div>
                 </div>
 
-                <?php if (!empty($requests)): ?>
+                <?php if (!empty($activeRequests)): ?>
                     <div class="divide-y divide-gray-100">
-                        <?php foreach ($requests as $req): ?>
+                        <?php foreach ($activeRequests as $req): ?>
                             <div class="grid grid-cols-7 px-6 py-4 text-xs text-gray-700 items-center text-center">
                                 <div class="flex justify-center">
                                     <img src="<?php echo htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border border-gray-300" onerror="this.src='https://via.placeholder.com/40'">
@@ -55,12 +87,12 @@ $requests = $_SESSION['global_borrow_requests'] ?? [];
                                 <div><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
                                 <div class="flex flex-col items-center justify-center gap-2">
                                     <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
-                                        <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
+                                        <?php echo htmlspecialchars($req['status'] === 'Pending' ? 'Pending' : $req['status']); ?>
                                     </span>
                                     <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                                        <button onclick="alert('Marked as Good')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</button>
-                                        <button onclick="alert('Marked as Damaged')" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</button>
-                                        <button onclick="alert('Marked as Replaced')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</button>
+                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</a>
+                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</a>
+                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</a>
                                     </div>
                                 </div>
                             </div>

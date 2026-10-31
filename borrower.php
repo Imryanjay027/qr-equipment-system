@@ -1,5 +1,4 @@
 <?php
-<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -15,7 +14,6 @@ $studentName = $_SESSION['user_name'] ?? 'User';
 $courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
-// Kunin nang direktang tinitiyak na umiiral ang file ng profile picture galing sa database o session
 $profilePhoto = 'logo.jpg';
 try {
     $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE email = ? OR id = ?");
@@ -33,7 +31,6 @@ try {
     }
 }
 
-// Kunin ang mga borrowed items ng user
 $stmt = $pdo->prepare("SELECT * FROM requests WHERE (student_id = ? OR student_id = ?) AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
 $stmt->execute([$studentId, $_SESSION['email'] ?? '']);
 $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);

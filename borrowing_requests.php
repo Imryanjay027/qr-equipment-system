@@ -3,11 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$jsonFile = __DIR__ . '/requests.json';
-$requests = [];
-if (file_exists($jsonFile)) {
-    $requests = json_decode(file_get_contents($jsonFile), true) ?? [];
-}
+$requests = $_SESSION['global_borrow_requests'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -2,51 +2,43 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+require_once 'db_connection.php';
 
 $error_message = "";
 
-if (!isset($_SESSION['cloud_users'])) {
-    $_SESSION['cloud_users'] = [
-        [
-            'student_id' => 'admin',
-            'email' => 'admin@mqcqc.edu.ph',
-            'full_name' => 'Ryan Jay Leoligao',
-            'password' => 'admin123',
-            'role' => 'custodian',
-            'course_year' => 'Administrator',
-            'selfie' => 'logo.jpg'
-        ]
-    ];
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $identifier = trim($_POST['identifier']);
-    $password = $_POST['password'];
+    $identifier = trim($_POST['identifier'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-    $found_user = null;
-    foreach ($_SESSION['cloud_users'] as $user) {
-        if ((strcasecmp($user['student_id'], $identifier) === 0 || strcasecmp($user['email'], $identifier) === 0) && $user['password'] === $password) {
-            $found_user = $user;
-            break;
-        }
-    }
-
-    if ($found_user) {
-        // I-set ang session variables kasama ang eksaktong live selfie mula sa rehistro
-        $_SESSION['student_id'] = $found_user['student_id'];
-        $_SESSION['user_name'] = $found_user['full_name'];
-        $_SESSION['user_role'] = $found_user['role'] === 'custodian' ? 'Property Custodian' : 'Borrower';
-        $_SESSION['course_year'] = $found_user['course_year'];
-        $_SESSION['profile_photo'] = !empty($found_user['selfie']) ? $found_user['selfie'] : 'logo.jpg';
-
-        if ($found_user['role'] === 'custodian') {
-            header("Location: custodian_dashboard.php");
-        } else {
-            header("Location: borrower.php");
-        }
-        exit;
+    if (empty($identifier) || empty($password)) {
+        $error_message = "Mangyaring punan ang lahat ng field.";
     } else {
-        $error_message = "Invalid Student/Employee ID, Email, or Password!";
+        try {
+            // Hanapin ang user sa database gamit ang student_id o email
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE student_id = ? OR email = ?");
+            $stmt->execute([$identifier, $identifier]);
+            $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($found_user && password_verify($password, $found_user['password'])) {
+                // I-set ang session variables kasama ang live selfie mula sa database
+                $_SESSION['student_id'] = $found_user['student_id'];
+                $_SESSION['user_name'] = $found_user['name'];
+                $_SESSION['user_role'] = (strtolower($found_user['role']) === 'custodian') ? 'Property Custodian' : 'Borrower';
+                $_SESSION['course_year'] = $found_user['course_year_section'];
+                $_SESSION['profile_photo'] = !empty($found_user['profile_picture']) ? $found_user['profile_picture'] : 'logo.jpg';
+
+                if (strtolower($found_user['role']) === 'custodian') {
+                    header("Location: custodian_dashboard.php");
+                } else {
+                    header("Location: borrower.php");
+                }
+                exit;
+            } else {
+                $error_message = "Invalid Student/Employee ID, Email, or Password!";
+            }
+        } catch (PDOException $e) {
+            $error_message = "Database Error: " . $e->getMessage();
+        }
     }
 }
 ?>

@@ -3,31 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Gamitin ang In-Memory SQLite para walang permission error sa file system
-$pdo = null;
-$dbStatus = "";
-$borrowedRecords = [];
-
-try {
-    // I-share ang in-memory db gamit ang persistent URI kung maaari, o gagamitin muna ang session/array fallback para sigurado
-    $pdo = new PDO("sqlite::memory:");
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    
-    $pdo->exec("CREATE TABLE IF NOT EXISTS borrowing_requests (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id TEXT NOT NULL,
-        equipment_name TEXT NOT NULL,
-        borrow_date TEXT NOT NULL,
-        condition_status TEXT DEFAULT 'Needs Replacement',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-    
-    $dbStatus = "Connected to In-Memory SQLite";
-} catch (\PDOException $e) {
-    $dbStatus = "Error: " . $e->getMessage();
-}
-
 // Session Defaults
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
@@ -42,11 +17,9 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Para masigurong lilitaw agad ang hiniram habang tinetest, gagamitin natin ang Session array kung sakaling in-memory
+// Kunin ang mga hiniram na item mula sa session
 if (!isset($_SESSION['mock_borrowed'])) {
-    $_SESSION['mock_borrowed'] = [
-        ['student_id' => '1', 'equipment_name' => 'Projector', 'borrow_date' => '2026-11-05 10:00:00', 'condition_status' => 'Needs Replacement']
-    ];
+    $_SESSION['mock_borrowed'] = [];
 }
 $borrowedRecords = $_SESSION['mock_borrowed'];
 ?>
@@ -60,18 +33,12 @@ $borrowedRecords = $_SESSION['mock_borrowed'];
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Status Bar -->
-    <div class="bg-emerald-800 text-white text-[11px] px-4 py-2 text-center font-mono">
-        STATUS: Live Dashboard Active | Total Records: <?php echo count($borrowedRecords); ?>
-    </div>
-
     <div class="flex flex-grow">
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-[#00381d] text-white flex flex-col p-6 hidden md:flex">
             <div class="flex flex-col items-center text-center mb-8">
                 <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/64'">
-                <h1 class="text-xs font-bold uppercase tracking-wider">Mary the Queen College</h1>
-                <p class="text-[10px] text-emerald-200">Quezon City</p>
+                <h1 class="text-xs font-bold uppercase tracking-wider">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
             </div>
 
             <nav class="space-y-2 flex-grow">
@@ -172,7 +139,7 @@ $borrowedRecords = $_SESSION['mock_borrowed'];
     </div>
 
     <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
-        QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
+        QR-Based Equipment Monitoring System &copy; 2026 - MARY THE QUEEN COLLEGE OF QUEZON CITY
     </footer>
 
     <script>

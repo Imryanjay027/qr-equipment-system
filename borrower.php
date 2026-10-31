@@ -16,16 +16,7 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Basahin mula sa shared JSON file para mag-sync
-$dbFile = __DIR__ . '/shared_requests.json';
-$borrowedRecords = [];
-if (file_exists($dbFile)) {
-    $requests = json_decode(file_get_contents($dbFile), true) ?? [];
-    // I-filter para sa kasalukuyang student kung kinakailangan, o ipakita lahat
-    $borrowedRecords = array_filter($requests, function($r) use ($studentId) {
-        return ($r['student_id'] ?? '') == $studentId;
-    });
-}
+$borrowedRecords = $_SESSION['global_borrow_requests'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">

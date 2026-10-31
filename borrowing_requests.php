@@ -96,14 +96,15 @@ $activeRequests = array_filter($requests, function($r) {
                                 <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
                                 <div><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
                                 
-                                <div class="flex flex-col items-center justify-center gap-2 py-2 w-full">
+                                <!-- Inayos na flex container para maging maayos ang spacing at alignment ng status at mga action buttons -->
+                                <div class="flex flex-col items-center justify-center gap-2.5 py-2 w-full">
                                     <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
                                         <?php echo htmlspecialchars($req['status'] ?? 'Pending'); ?>
                                     </span>
-                                    <div class="flex items-center justify-center gap-1 w-full flex-wrap">
-                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</a>
-                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</a>
-                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</a>
+                                    <div class="flex items-center justify-center gap-1.5 w-full">
+                                        <a href="borrowing_requests.php?action=Good&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Good</a>
+                                        <a href="borrowing_requests.php?action=Damaged&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Damaged</a>
+                                        <a href="borrowing_requests.php?action=Replaced&id=<?php echo $req['id']; ?>" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-semibold transition shadow-sm">Replaced</a>
                                     </div>
                                 </div>
                             </div>

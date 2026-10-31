@@ -2,7 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require_once 'db.php';
+require_once 'db_connection.php';
 
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';

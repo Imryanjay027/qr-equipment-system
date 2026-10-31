@@ -5,18 +5,29 @@ if (session_status() === PHP_SESSION_NONE) {
 
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
-    $_SESSION['user_name'] = 'Ryan Jay Leoligao';
+    $_SESSION['user_name'] = 'Rjay Cabasag';
     $_SESSION['student_id'] = '1';
     $_SESSION['course_year'] = 'IT - 3rd Year';
 }
 
 $studentId   = $_SESSION['student_id'] ?? '1';
-$studentName = $_SESSION['user_name'] ?? 'Ryan Jay Leoligao';
+$studentName = $_SESSION['user_name'] ?? 'Rjay Cabasag';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-$historyRecords = $_SESSION['mock_borrowed'] ?? [];
+$jsonFile = __DIR__ . '/requests.json';
+$allRequests = [];
+if (file_exists($jsonFile)) {
+    $allRequests = json_decode(file_get_contents($jsonFile), true) ?? [];
+} else {
+    $allRequests = $_SESSION['global_borrow_requests'] ?? [];
+}
+
+$historyRecords = array_filter($allRequests, function($r) use ($studentId) {
+    $status = $r['status'] ?? 'Pending';
+    return (($r['student_id'] ?? '') == $studentId) && ($status === 'Good' || $status === 'Needs Replacement');
+});
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -43,7 +54,7 @@ $historyRecords = $_SESSION['mock_borrowed'] ?? [];
                         Dashboard
                     </a>
                     <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                         Borrow an Item
                     </a>
                     <a href="borrower_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#008040] text-white text-xs font-semibold shadow-sm">
@@ -86,12 +97,12 @@ $historyRecords = $_SESSION['mock_borrowed'] ?? [];
             <div class="space-y-4">
                 <div class="flex gap-2 border-b border-gray-200 pb-2">
                     <a href="borrower.php" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white text-gray-600 hover:bg-gray-100 transition border border-gray-200">My Borrowed Equipment</a>
-                    <button class="px-4 py-2 rounded-xl text-xs font-bold bg-[#008040] text-white shadow-sm">Returned Items / History & Remarks</button>
+                    <!-- Active tab: Kulay Orange (#f97316) gaya ng hiling mo -->
+                    <button class="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 text-white shadow-sm">Returned Items / History & Remarks</button>
                 </div>
 
                 <!-- Table Container -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <!-- Naka-center ang headers gamit ang text-center -->
                     <div class="grid grid-cols-4 bg-[#008040] text-white text-xs font-bold px-6 py-3.5 text-center">
                         <div>Student ID</div>
                         <div>Equipment Name</div>
@@ -102,14 +113,14 @@ $historyRecords = $_SESSION['mock_borrowed'] ?? [];
                     <?php if (!empty($historyRecords)): ?>
                         <div class="divide-y divide-gray-100">
                             <?php foreach ($historyRecords as $row): ?>
-                                <!-- Naka-center ang bawat row data gamit ang text-center at justify-center -->
                                 <div class="grid grid-cols-4 px-6 py-4 text-xs text-gray-700 items-center text-center">
                                     <div class="font-semibold"><?php echo htmlspecialchars($row['student_id'] ?? $studentId); ?></div>
                                     <div><?php echo htmlspecialchars($row['equipment_name'] ?? 'N/A'); ?></div>
                                     <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
                                     <div class="flex justify-center">
-                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-400 text-amber-900 shadow-sm inline-block">
-                                            <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
+                                        <span class="px-3 py-1 rounded-md text-[11px] font-bold 
+                                            <?php echo ($row['status'] ?? '') === 'Good' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'; ?> shadow-sm inline-block">
+                                            <?php echo htmlspecialchars($row['status'] ?? 'Returned'); ?>
                                         </span>
                                     </div>
                                 </div>

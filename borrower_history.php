@@ -3,32 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Connection (Coolify Dynamic Config)
-$host     = getenv('MYSQL_HOST') ?: getenv('DB_HOST') ?: '127.0.0.1';
-$port     = getenv('MYSQL_PORT') ?: getenv('DB_PORT') ?: '3306';
-$db       = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME') ?: 'qr_equipment_db';
-$user     = getenv('MYSQL_USER') ?: getenv('DB_USER') ?: 'root';
-$pass     = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$charset  = 'utf8mb4';
-
-$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
-
-try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (\PDOException $e) {
-    try {
-        $dsnFallback = "mysql:host=127.0.0.1;port=$port;dbname=$db;charset=$charset";
-        $pdo = new PDO($dsnFallback, $user, $pass, $options);
-    } catch (\PDOException $e2) {
-        $db_error = $e2->getMessage();
-    }
-}
-
 // Session Defaults
 if (!isset($_SESSION['user_role'])) {
     $_SESSION['user_role'] = 'Borrower';
@@ -41,21 +15,9 @@ $studentId   = $_SESSION['student_id'] ?? '1';
 $studentName = $_SESSION['user_name'] ?? 'Ryan Jay Leoligao';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
-
-// Kunin ang live selfie photo mula sa session o database kung nakaimbak
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Fetch History & Remarks mula sa database
-$historyRecords = [];
-if (isset($pdo)) {
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM borrowing_requests WHERE student_id = ? ORDER BY id DESC");
-        $stmt->execute([$studentId]);
-        $historyRecords = $stmt->fetchAll();
-    } catch (Exception $e) {
-        $historyRecords = [];
-    }
-}
+$historyRecords = $_SESSION['mock_borrowed'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -72,8 +34,7 @@ if (isset($pdo)) {
         <aside class="w-64 bg-[#00381d] text-white flex flex-col p-6 hidden md:flex">
             <div class="flex flex-col items-center text-center mb-8">
                 <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3" onerror="this.src='https://via.placeholder.com/64'">
-                <h1 class="text-xs font-bold uppercase tracking-wider">Mary the Queen College</h1>
-                <p class="text-[10px] text-emerald-200">Quezon City</p>
+                <h1 class="text-xs font-bold uppercase tracking-wider">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
             </div>
 
             <nav class="space-y-2 flex-grow">
@@ -98,7 +59,6 @@ if (isset($pdo)) {
         <!-- Main Content Area -->
         <main class="flex-grow p-6 lg:p-10 space-y-6">
             
-            <!-- Student Profile & Live Selfie Card -->
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="flex items-center gap-4 w-full">
                     <div class="w-16 h-16 rounded-full border-2 border-emerald-600 overflow-hidden shadow-inner bg-white flex items-center justify-center flex-shrink-0">
@@ -111,7 +71,6 @@ if (isset($pdo)) {
                     </div>
                 </div>
 
-                <!-- QR Code Box na may Click to Zoom -->
                 <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center cursor-pointer group" onclick="openQrModal()">
                     <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-24 h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
                     <span class="text-[10px] text-gray-400 group-hover:text-emerald-700 font-semibold">Click to Zoom</span>
@@ -172,7 +131,7 @@ if (isset($pdo)) {
 
     <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-500 mt-auto">
-        QR-Based Equipment Monitoring System &copy; 2026 - Mary the Queen College of Quezon City
+        QR-Based Equipment Monitoring System &copy; 2026 - MARY THE QUEEN COLLEGE OF QUEZON CITY
     </footer>
 
     <script>

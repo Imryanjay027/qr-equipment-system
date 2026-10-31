@@ -16,14 +16,10 @@ $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-$jsonFile = __DIR__ . '/requests.json';
-$borrowedRecords = [];
-if (file_exists($jsonFile)) {
-    $requests = json_decode(file_get_contents($jsonFile), true) ?? [];
-    $borrowedRecords = array_filter($requests, function($r) use ($studentId) {
-        return ($r['student_id'] ?? '') == $studentId;
-    });
-}
+$allRequests = $_SESSION['global_borrow_requests'] ?? [];
+$borrowedRecords = array_filter($allRequests, function($r) use ($studentId) {
+    return ($r['student_id'] ?? '') == $studentId;
+});
 ?>
 <!DOCTYPE html>
 <html lang="en">

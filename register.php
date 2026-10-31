@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $course_year = trim($_POST['course_year'] ?? '');
     $selfie_base64 = trim($_POST['selfie_base64'] ?? '');
 
+    // I-check kung na-capture ang live selfie
     if (empty($selfie_base64)) {
         $error_message = "Please capture your live selfie before registering!";
     }
@@ -26,11 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($error_message)) {
         try {
-            $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR student_id = ?");
-            $checkStmt->execute([$email, $student_id]);
+            // I-check muna kung ang email ay nakarehistro na sa database
+            $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $checkStmt->execute([$email]);
             
             if ($checkStmt->rowCount() > 0) {
-                $error_message = "Ang Email o Student ID na ito ay nakarehistro na sa database!";
+                $error_message = "Ang Email na ito ay nakarehistro na sa database!";
             } else {
                 // I-convert ang base64 selfie patungong `.jpg` file at i-save sa uploads/ folder
                 $selfie_path = 'logo.jpg';
@@ -45,16 +47,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!is_dir($upload_dir)) {
                         @mkdir($upload_dir, 0777, true);
                     }
-                    $file_name = time() . '_' . preg_replace('/[^a-zA-Z0-9]/', '', $student_id) . '_selfie.jpg';
+                    $file_name = time() . '_selfie.jpg';
                     $selfie_path = 'uploads/' . $file_name;
                     @file_put_contents(__DIR__ . '/' . $selfie_path, $decoded_data);
                 }
 
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-                // I-save kasama ang student_id at profile_picture sa database
-                $stmt = $pdo->prepare("INSERT INTO users (student_id, name, email, password, role, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$student_id, $full_name, $email, $hashedPassword, $role, $course_year, $selfie_path]);
+                // I-save nang diretso sa users table gamit ang mga umiiral na columns
+                $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, course_year_section, profile_picture) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$full_name, $email, $hashedPassword, $role, $course_year, $selfie_path]);
 
                 $success_message = "Account successfully registered! You can now login below.";
             }
@@ -87,6 +89,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="relative z-10 my-auto py-6 max-w-xl mx-auto w-full text-center">
                 <p class="text-xs sm:text-sm md:text-base text-white font-semibold italic mb-6 drop-shadow-md">"Together for a Smarter, Safer and More Efficient Campus"</p>
+                <div class="space-y-3 text-left">
+                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Track Equipment - Seamless borrowing & return logs</span>
+                    </div>
+                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Improve Accountability - Real-time condition monitoring</span>
+                    </div>
+                    <div class="bg-[#005a2b]/90 border border-emerald-400/60 p-3.5 rounded-lg shadow-lg backdrop-blur-sm">
+                        <span class="text-xs sm:text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-300 flex-shrink-0"></span> Build a Smarter Campus - Automated digital verification</span>
+                    </div>
+                </div>
             </div>
 
             <div class="relative z-10 text-[11px] sm:text-xs text-emerald-200 font-medium text-center">Property Custodian & Borrower Portal &copy; 2026</div>
@@ -217,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             captureBtn.classList.remove('hidden');
         });
 
-        function validateForm(e) {
+        function validateForm() {
             if (!selfieBase64Input.value) {
                 alert("Please capture your live selfie before submitting your registration.");
                 return false;

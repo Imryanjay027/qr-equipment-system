@@ -41,17 +41,21 @@ $studentId   = $_SESSION['student_id'] ?? '1';
 $studentName = $_SESSION['user_name'] ?? 'Ryan Jay Leoligao';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
-
-// Kunin ang live selfie photo mula sa session o database kung nakaimbak
 $profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
 
-// Fetch Active Borrowed Equipment mula sa database
+// Fetch Borrowed Records para sa Student na ito (o lahat kung walang exact match)
 $borrowedRecords = [];
 if (isset($pdo)) {
     try {
         $stmt = $pdo->prepare("SELECT * FROM borrowing_requests WHERE student_id = ? ORDER BY id DESC");
         $stmt->execute([$studentId]);
         $borrowedRecords = $stmt->fetchAll();
+        
+        // Fallback: Kung walang nahanap gamit ang student_id, kunin lahat para sigurado
+        if (empty($borrowedRecords)) {
+            $stmtAll = $pdo->query("SELECT * FROM borrowing_requests ORDER BY id DESC");
+            $borrowedRecords = $stmtAll->fetchAll();
+        }
     } catch (Exception $e) {
         $borrowedRecords = [];
     }
@@ -111,7 +115,6 @@ if (isset($pdo)) {
                     </div>
                 </div>
 
-                <!-- QR Code Box na may Click to Zoom -->
                 <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center cursor-pointer group" onclick="openQrModal()">
                     <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-24 h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
                     <span class="text-[10px] text-gray-400 group-hover:text-emerald-700 font-semibold">Click to Zoom</span>

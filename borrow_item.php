@@ -15,7 +15,22 @@ $studentId   = $_SESSION['student_id'] ?? '1';
 $studentName = $_SESSION['user_name'] ?? 'Rjay Cabasag';
 $courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
-$profilePhoto = $_SESSION['profile_photo'] ?? $_SESSION['borrower_photo'] ?? 'logo.jpg';
+
+// Kunin ang mismong live selfie na kinuhanan habang nagrehistro base sa student_id
+$profilePhoto = 'logo.jpg';
+if (isset($_SESSION['cloud_users']) && is_array($_SESSION['cloud_users'])) {
+    foreach ($_SESSION['cloud_users'] as $u) {
+        if (isset($u['student_id']) && strcasecmp($u['student_id'], $studentId) === 0) {
+            if (!empty($u['selfie'])) {
+                $profilePhoto = $u['selfie'];
+            }
+            break;
+        }
+    }
+}
+if ($profilePhoto === 'logo.jpg' && !empty($_SESSION['profile_photo'])) {
+    $profilePhoto = $_SESSION['profile_photo'];
+}
 
 $errorMsg = '';
 
@@ -34,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: borrower.php");
         exit;
     } else {
-        $errorMsg = "Punan ang lahat ng kinakailangang impormasyon.";
+        $errorMsg = "Please fill out all required fields.";
     }
 }
 ?>
@@ -85,14 +100,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <main class="flex-grow p-6 lg:p-10 space-y-6">
             
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div class="flex items-center gap-4 w-full">
-                    <div class="w-16 h-16 rounded-full border-2 border-emerald-600 overflow-hidden shadow-inner bg-white flex items-center justify-center flex-shrink-0">
-                        <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/64'">
+                <div class="flex items-center gap-5 w-full">
+                    <!-- Pinalaki ang profile picture container (w-28 h-28) para maging pareho sa dashboard -->
+                    <div class="w-28 h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
+                        <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='logo.jpg'">
                     </div>
                     <div>
-                        <p class="text-base font-bold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
-                        <p class="text-xs text-gray-500">Student ID: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($studentId); ?></span></p>
-                        <p class="text-xs text-gray-500">Course / Year: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($courseYear); ?></span></p>
+                        <p class="text-lg font-extrabold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Student ID: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($studentId); ?></span></p>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Course / Year: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($courseYear); ?></span></p>
                     </div>
                 </div>
 
@@ -103,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-                <h2 class="text-sm font-bold text-gray-800 border-b pb-2">Mag-request ng Kagamitan (Borrow Equipment)</h2>
+                <h2 class="text-sm font-bold text-gray-800 border-b pb-2">Borrow Equipment Request</h2>
                 
                 <?php if (!empty($errorMsg)): ?>
                     <div class="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium border border-red-200"><?php echo $errorMsg; ?></div>
@@ -112,21 +128,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <form method="POST" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Pangalan ng Kagamitan / Item</label>
-                            <input type="text" name="equipment_name" required placeholder="Hal. Projector, HDMI" class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Equipment Name / Item</label>
+                            <input type="text" name="equipment_name" required placeholder="e.g. Projector, HDMI" class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Petsa ng Pagbabalik (Return Date)</label>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Return Date</label>
                             <input type="date" name="return_date" required class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Oras ng Pagbabalik (Return Time)</label>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Return Time</label>
                             <input type="time" name="return_time" required class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
                         </div>
                     </div>
                     <div class="flex justify-end pt-2">
                         <button type="submit" class="bg-[#008040] hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm">
-                            Isumite ang Request
+                            Submit Request
                         </button>
                     </div>
                 </form>
@@ -139,9 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div id="qrModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4" onclick="closeQrModal()">
         <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full flex flex-col items-center relative" onclick="event.stopPropagation()">
             <h3 class="text-sm font-bold text-gray-800 mb-2">Student QR Code</h3>
-            <p class="text-[11px] text-gray-500 mb-4">Ipakita ito sa Property Custodian para ma-scan.</p>
+            <p class="text-[11px] text-gray-500 mb-4">Show this to the Property Custodian to scan.</p>
             <img src="<?php echo $qrCodeUrl; ?>" alt="Large QR Code" class="w-56 h-56 object-contain border-2 border-emerald-600 rounded-xl p-2 mb-4">
-            <button onclick="closeQrModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-xl text-xs font-semibold transition">Isara (Close)</button>
+            <button onclick="closeQrModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-xl text-xs font-semibold transition">Close</button>
         </div>
     </div>
 

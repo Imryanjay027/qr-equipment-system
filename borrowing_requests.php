@@ -3,7 +3,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$requests = $_SESSION['global_borrow_requests'] ?? [];
+$jsonFile = __DIR__ . '/requests.json';
+$requests = [];
+if (file_exists($jsonFile)) {
+    $requests = json_decode(file_get_contents($jsonFile), true) ?? [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -49,8 +53,8 @@ $requests = $_SESSION['global_borrow_requests'] ?? [];
                                     <img src="<?php echo htmlspecialchars($req['profile_photo'] ?? 'logo.jpg'); ?>" alt="Selfie" class="w-10 h-10 rounded-full object-cover border border-gray-300" onerror="this.src='https://via.placeholder.com/40'">
                                 </div>
                                 <div class="font-semibold"><?php echo htmlspecialchars($req['student_id'] ?? '1'); ?></div>
-                                <div><?php echo htmlspecialchars($req['full_name'] ?? 'Ryan Jay Leoligao'); ?></div>
-                                <div><?php echo htmlspecialchars($req['course_year'] ?? 'BSIT 3rd Year'); ?></div>
+                                <div><?php echo htmlspecialchars($req['full_name'] ?? 'Rjay Cabasag'); ?></div>
+                                <div><?php echo htmlspecialchars($req['course_year'] ?? 'IT - 3rd Year'); ?></div>
                                 <div class="font-medium text-emerald-800"><?php echo htmlspecialchars($req['equipment_name'] ?? 'N/A'); ?></div>
                                 <div><?php echo htmlspecialchars($req['borrow_date'] ?? 'N/A'); ?></div>
                                 <div class="flex flex-col items-center justify-center gap-2">

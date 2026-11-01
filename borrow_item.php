@@ -4,52 +4,53 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once 'db_connection.php';
 
-if (!isset($_SESSION['user_role'])) {
-    $_SESSION['user_role'] = 'Borrower';
-    $_SESSION['user_name'] = 'Rjay Cabasag';
-    $_SESSION['student_id'] = '1';
-    $_SESSION['course_year'] = 'IT - 3rd Year';
+if (!isset($_SESSION['student_id'])) {
+    header("Location: login.php");
+    exit;
 }
 
-$studentId   = $_SESSION['student_id'] ?? '1';
-$studentName = $_SESSION['user_name'] ?? 'Rjay Cabasag';
-$courseYear  = $_SESSION['course_year'] ?? 'IT - 3rd Year';
+$studentId   = $_SESSION['student_id'] ?? '';
+$studentName = $_SESSION['user_name'] ?? 'User';
+$courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
-// Kunin ang mismong live selfie na kinuhanan habang nagrehistro base sa student_id
 $profilePhoto = 'logo.jpg';
-if (isset($_SESSION['cloud_users']) && is_array($_SESSION['cloud_users'])) {
-    foreach ($_SESSION['cloud_users'] as $u) {
-        if (isset($u['student_id']) && strcasecmp($u['student_id'], $studentId) === 0) {
-            if (!empty($u['selfie'])) {
-                $profilePhoto = $u['selfie'];
-            }
-            break;
-        }
+try {
+    $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE email = ? OR id = ?");
+    $stmtPhoto->execute([$_SESSION['email'] ?? '', $studentId]);
+    $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
+    
+    if ($usrData && !empty($usrData['profile_picture']) && $usrData['profile_picture'] !== 'logo.jpg') {
+        $profilePhoto = $usrData['profile_picture'];
+    } elseif (!empty($_SESSION['profile_photo']) && $_SESSION['profile_photo'] !== 'logo.jpg') {
+        $profilePhoto = $_SESSION['profile_photo'];
+    }
+} catch (PDOException $e) {
+    if (!empty($_SESSION['profile_photo'])) {
+        $profilePhoto = $_SESSION['profile_photo'];
     }
 }
-if ($profilePhoto === 'logo.jpg' && !empty($_SESSION['profile_photo'])) {
-    $profilePhoto = $_SESSION['profile_photo'];
-}
 
-$errorMsg = '';
+$success_message = "";
+$error_message = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $equipmentName = trim($_POST['equipment_name'] ?? '');
-    $returnDate    = trim($_POST['return_date'] ?? '');
-    $returnTime    = trim($_POST['return_time'] ?? '');
-    
-    if (!empty($equipmentName) && !empty($returnDate) && !empty($returnTime)) {
-        $returnDueCombined = $returnDate . ' ' . $returnTime;
-        $borrowDateFormatted = date('Y-m-d H:i:s') . ' / ' . $returnDueCombined;
-        
-        $stmt = $pdo->prepare("INSERT INTO requests (student_id, full_name, course_year, equipment_name, borrow_date, status, profile_photo, hidden_for_custodian) VALUES (?, ?, ?, ?, ?, 'Pending', ?, 0)");
-        $stmt->execute([$studentId, $studentName, $courseYear, $equipmentName, $borrowDateFormatted, $profilePhoto]);
-        
-        header("Location: borrower.php");
-        exit;
+    $equipment_name = trim($_POST['equipment_name'] ?? '');
+    $return_date = trim($_POST['return_date'] ?? '');
+    $return_time = trim($_POST['return_time'] ?? '');
+    $borrow_date = date('Y-m-d H:i:s');
+    $due_date = $return_date . ' ' . $return_time;
+
+    if (empty($equipment_name) || empty($return_date) || empty($return_time)) {
+        $error_message = "Mangyaring punan ang lahat ng kinakailangang field.";
     } else {
-        $errorMsg = "Please fill out all required fields.";
+        try {
+            $stmt = $pdo->prepare("INSERT INTO requests (student_id, equipment_name, borrow_date, due_date, status) VALUES (?, ?, ?, ?, 'Pending')");
+            $stmt->execute([$studentId, $equipment_name, $borrow_date, $due_date]);
+            $success_message = "Matagumpay na naisumite ang kahilingan sa paghiram!";
+        } catch (PDOException $e) {
+            $error_message = "Database Error: " . $e->getMessage();
+        }
     }
 }
 ?>
@@ -63,8 +64,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
+    <!-- Mobile Header with Hamburger Menu -->
+    <header class="bg-[#001f12] text-white p-4 flex justify-between items-center md:hidden shadow-md">
+        <div class="flex items-center gap-3">
+            <img src="logo.jpg" alt="Logo" class="w-9 h-9 rounded-full border border-white object-cover bg-white">
+            <span class="text-xs font-bold tracking-wider">MQCQC EMS</span>
+        </div>
+        <button onclick="toggleMobileMenu()" class="p-2 focus:outline-none text-emerald-200 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Mobile Sidebar Drawer -->
+    <div id="mobile-menu" class="fixed inset-0 bg-black/60 z-50 hidden flex">
+        <div class="w-64 bg-[#001f12] text-white flex flex-col justify-between p-6 h-full shadow-2xl relative">
+            <button onclick="toggleMobileMenu()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg font-bold">&times;</button>
+            <div>
+                <div class="flex flex-col items-center text-center mb-8 pt-2">
+                    <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-full border-2 border-white object-cover bg-white mb-3">
+                    <h1 class="text-xs font-bold uppercase tracking-wider text-center leading-tight">MARY THE QUEEN COLLEGE OF QUEZON CITY</h1>
+                </div>
+                <nav class="space-y-2">
+                    <a href="borrower.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">Dashboard</a>
+                    <a href="borrow_item.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#008040] text-white text-xs font-semibold shadow-sm">Borrow an Item</a>
+                    <a href="borrower_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-800/40 text-emerald-100 text-xs font-medium transition">Returned Items / History</a>
+                </nav>
+            </div>
+            <div class="pt-4 border-t border-emerald-900">
+                <a href="logout.php" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-600/20 text-red-400 text-xs font-medium transition">Logout</a>
+            </div>
+        </div>
+        <div class="flex-grow" onclick="toggleMobileMenu()"></div>
+    </div>
+
     <div class="flex flex-grow">
-        <!-- Sidebar Navigation -->
+        <!-- Desktop Sidebar Navigation -->
         <aside class="w-64 bg-[#001f12] text-white flex flex-col justify-between p-6 hidden md:flex">
             <div>
                 <div class="flex flex-col items-center text-center mb-8">
@@ -97,53 +133,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-grow p-6 lg:p-10 space-y-6">
+        <main class="flex-grow p-4 sm:p-6 lg:p-10 space-y-6 overflow-x-auto">
             
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div class="flex items-center gap-5 w-full">
-                    <!-- Pinalaki ang profile picture container (w-28 h-28) para maging pareho sa dashboard -->
-                    <div class="w-28 h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
+            <div class="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-4 sm:gap-5 w-full">
+                    <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
                         <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='logo.jpg'">
                     </div>
                     <div>
-                        <p class="text-lg font-extrabold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
+                        <p class="text-base sm:text-lg font-extrabold text-gray-800"><?php echo htmlspecialchars($studentName); ?></p>
                         <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Student ID: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($studentId); ?></span></p>
                         <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Course / Year: <span class="font-semibold text-gray-700"><?php echo htmlspecialchars($courseYear); ?></span></p>
                     </div>
                 </div>
 
                 <div class="border border-gray-200 p-3 rounded-xl bg-white text-center shadow-sm flex flex-col items-center cursor-pointer group" onclick="openQrModal()">
-                    <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-24 h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
+                    <img src="<?php echo $qrCodeUrl; ?>" alt="Student QR Code" class="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded mb-1 group-hover:scale-105 transition">
                     <span class="text-[10px] text-gray-400 group-hover:text-emerald-700 font-semibold">Click to Zoom</span>
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-                <h2 class="text-sm font-bold text-gray-800 border-b pb-2">Borrow Equipment Request</h2>
-                
-                <?php if (!empty($errorMsg)): ?>
-                    <div class="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium border border-red-200"><?php echo $errorMsg; ?></div>
+            <!-- Borrow Form Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Borrow Equipment Request</h2>
+
+                <?php if (!empty($error_message)): ?>
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-medium"><?php echo htmlspecialchars($error_message); ?></div>
+                <?php endif; ?>
+                <?php if (!empty($success_message)): ?>
+                    <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-medium"><?php echo htmlspecialchars($success_message); ?></div>
                 <?php endif; ?>
 
-                <form method="POST" class="space-y-4">
+                <form action="borrow_item.php" method="POST" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Equipment Name / Item</label>
-                            <input type="text" name="equipment_name" required placeholder="e.g. Projector, HDMI" class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
+                            <input type="text" name="equipment_name" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white" placeholder="e.g. Projector, HDMI">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Return Date</label>
-                            <input type="date" name="return_date" required class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
+                            <input type="date" name="return_date" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Return Time</label>
-                            <input type="time" name="return_time" required class="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-700">
+                            <input type="time" name="return_time" required class="w-full text-sm border border-gray-300 rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-emerald-600 bg-white">
                         </div>
                     </div>
-                    <div class="flex justify-end pt-2">
-                        <button type="submit" class="bg-[#008040] hover:bg-emerald-800 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm">
-                            Submit Request
-                        </button>
+
+                    <!-- Terms & Conditions Section (Translated to English) -->
+                    <div class="bg-slate-50 border border-gray-200 p-4 rounded-xl text-xs text-gray-700 space-y-2 mt-4">
+                        <h3 class="font-bold text-gray-900 uppercase tracking-wide">Terms & Conditions</h3>
+                        <p>By submitting this request, you agree that if the borrowed equipment is damaged, broken, or lost while in your possession, you are strictly required to replace it with the exact same item, model, and brand.</p>
+                        <div class="flex items-center gap-2 pt-2">
+                            <input type="checkbox" id="terms" required class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
+                            <label for="terms" class="font-medium text-gray-800 cursor-pointer">I have read and agree to the Terms & Conditions.</label>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="bg-[#008040] hover:bg-emerald-800 text-white px-6 py-3 rounded-xl text-sm font-semibold transition shadow-md">Submit Request</button>
                     </div>
                 </form>
             </div>
@@ -168,6 +216,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         function openQrModal() { document.getElementById('qrModal').classList.remove('hidden'); }
         function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
     </script>
 </body>
 </html>

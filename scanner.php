@@ -96,6 +96,19 @@ if (!isset($_SESSION['user_role'])) {
                             <p class="text-gray-500 text-[11px]" id="res-dates">Borrow Date / Due: --</p>
                         </div>
                     </div>
+
+                    <!-- Status & Custodian Action Panel -->
+                    <div class="p-4 bg-white border border-gray-200 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <div>
+                            <span class="text-[11px] text-gray-500 font-semibold block mb-1">Status / Remarks:</span>
+                            <span id="res-status-badge" class="px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 shadow-sm inline-block">
+                                Pending
+                            </span>
+                        </div>
+                        <div id="res-action-container" class="flex gap-2">
+                            <!-- Dynamic Action Buttons galing sa JavaScript -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -166,17 +179,65 @@ if (!isset($_SESSION['user_role'])) {
                             if (data.photo) {
                                 document.getElementById('borrower-selfie').src = data.photo;
                             }
+
+                            // Status Badge & Action Buttons rendering
+                            const statusBadge = document.getElementById('res-status-badge');
+                            const actionContainer = document.getElementById('res-action-container');
+                            const currentStatus = data.status || 'Pending';
+
+                            statusBadge.innerText = currentStatus;
+                            statusBadge.className = "px-3 py-1 rounded-md text-[11px] font-bold shadow-sm inline-block " + 
+                                (currentStatus === 'Damaged' ? 'bg-red-100 text-red-800' : 
+                                (currentStatus === 'Waiting for Custodian Approval' ? 'bg-blue-100 text-blue-800' : 
+                                (currentStatus === 'Good' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')));
+
+                            actionContainer.innerHTML = '';
+                            if (currentStatus === 'Waiting for Custodian Approval') {
+                                actionContainer.innerHTML = `<button onclick="updateRequestStatus(${data.id}, 'Good')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-sm">Approve Replacement</button>`;
+                            } else if (currentStatus === 'Pending') {
+                                actionContainer.innerHTML = `
+                                    <button onclick="updateRequestStatus(${data.id}, 'Good')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-sm">Mark as Good</button>
+                                    <button onclick="updateRequestStatus(${data.id}, 'Damaged')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-sm">Mark as Damaged</button>
+                                `;
+                            } else {
+                                actionContainer.innerHTML = `<span class="text-[11px] text-gray-400 italic">No action needed</span>`;
+                            }
+
                         } else {
                             document.getElementById('res-name').innerText = "Name: Borrower not found";
                             document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
                             document.getElementById('res-course').innerText = "Course & Year: --";
                             document.getElementById('res-item').innerText = "Equipment to Borrow: --";
                             document.getElementById('res-dates').innerText = "Borrow Date: --";
+                            document.getElementById('res-status-badge').innerText = "N/A";
+                            document.getElementById('res-action-container').innerHTML = '';
                         }
                     })
                     .catch(err => {
                         console.error('Error fetching borrower details:', err);
                     });
+            };
+
+            // Helper function para sa pag-update ng status via AJAX o redirect
+            window.updateRequestStatus = function(requestId, newStatus) {
+                if (confirm('Are you sure you want to update this status to ' + newStatus + '?')) {
+                    fetch('update_status.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'request_id=' + requestId + '&status=' + newStatus
+                    })
+                    .then(res => res.json())
+                    .then(response => {
+                        if (response.success) {
+                            alert('Status successfully updated to ' + newStatus);
+                            location.reload();
+                        } else {
+                            alert('Failed to update status.');
+                        }
+                    }).catch(err => {
+                        alert('Error updating status.');
+                    });
+                }
             };
 
             const handleScanSuccess = (decodedText) => {

@@ -15,7 +15,6 @@ if (!isset($_SESSION['user_role'])) {
     <title>QR Scanner Portal - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsQR@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
@@ -106,7 +105,7 @@ if (!isset($_SESSION['user_role'])) {
                             </span>
                         </div>
                         <div id="res-action-container" class="flex gap-2">
-                            <!-- Dynamic Action Buttons galing sa JavaScript -->
+                            <!-- Dynamic Action Buttons -->
                         </div>
                     </div>
                 </div>
@@ -180,7 +179,6 @@ if (!isset($_SESSION['user_role'])) {
                                 document.getElementById('borrower-selfie').src = data.photo;
                             }
 
-                            // Status Badge & Action Buttons rendering
                             const statusBadge = document.getElementById('res-status-badge');
                             const actionContainer = document.getElementById('res-action-container');
                             const currentStatus = data.status || 'Pending';
@@ -204,7 +202,6 @@ if (!isset($_SESSION['user_role'])) {
                             }
 
                         } else {
-                            // Kung wala nang active request (ibig sabihin na-mark na bilang Good at nalipat na sa history)
                             document.getElementById('res-name').innerText = "Name: No active pending or damaged items found";
                             document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
                             document.getElementById('res-course').innerText = "Course & Year: --";
@@ -220,7 +217,6 @@ if (!isset($_SESSION['user_role'])) {
                     });
             };
 
-            // Helper function para sa pag-update ng status via AJAX o redirect
             window.updateRequestStatus = function(requestId, newStatus) {
                 if (confirm('Are you sure you want to update this status to ' + newStatus + '?')) {
                     fetch('update_status.php', {
@@ -249,7 +245,6 @@ if (!isset($_SESSION['user_role'])) {
                 document.getElementById('result-content').classList.remove('hidden');
                 document.getElementById('decoded-text-label').innerText = decodedText;
 
-                // Fetch borrower details from the database
                 fetchBorrowerData(decodedText);
 
                 try {
@@ -277,33 +272,19 @@ if (!isset($_SESSION['user_role'])) {
                 });
             });
 
+            // Ginamit ang built-in scanFile ng html5-qrcode para sa file upload
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;
-                const file = e.target.files[0];
-                const reader = new FileReader();
+                const imageFile = e.target.files[0];
 
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const canvasContext = canvas.getContext('2d');
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        canvasContext.drawImage(img, 0, 0, img.width, img.height);
-                        
-                        const imgData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
-                        const code = jsQR(imgData.data, imgData.width, imgData.height);
-
-                        if (code) {
-                            handleScanSuccess(code.data);
-                        } else {
-                            alert("Unable to read QR code from this image.");
-                        }
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
+                html5QrCode.scanFile(imageFile, true)
+                    .then(decodedText => {
+                        handleScanSuccess(decodedText);
+                    })
+                    .catch(err => {
+                        alert("Unable to read QR code from this image. Please make sure the image clearly contains a valid borrower QR code.");
+                    });
             });
         });
     </script>

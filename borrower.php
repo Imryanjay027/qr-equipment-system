@@ -194,7 +194,7 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </div>
                                         <div class="flex justify-center">
                                             <?php if (($row['status'] ?? '') === 'Damaged'): ?>
-                                                <form method="POST" onsubmit="return confirm('Sigurado ka bang naibalik mo na ang kaparehong item at brand para sa replacement?');">
+                                                <form method="POST" onsubmit="return confirm('Are you sure you have returned the exact same item and brand for replacement?');">
                                                     <input type="hidden" name="action" value="request_replacement">
                                                     <input type="hidden" name="request_id" value="<?php echo $row['id']; ?>">
                                                     <button type="submit" class="px-3 py-1 rounded-md text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm">

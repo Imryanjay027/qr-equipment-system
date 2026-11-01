@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($found_user && password_verify($password, $found_user['password'])) {
                 $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id'] ?? $identifier;
+                $_SESSION['user_id'] = $found_user['id'] ?? $found_user['student_id'] ?? $identifier; // keep borrow_item.php aligned with the logged-in user
                 $_SESSION['user_name'] = $found_user['name'] ?? $found_user['full_name'] ?? 'User';
                 $_SESSION['email'] = $found_user['email'] ?? $identifier;
                 $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';

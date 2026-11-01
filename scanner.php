@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role'])) {
     <title>QR Scanner Portal - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsQR@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
@@ -106,7 +106,7 @@ if (!isset($_SESSION['user_role'])) {
                             </span>
                         </div>
                         <div id="res-action-container" class="flex gap-2">
-                            <!-- Dynamic Action Buttons -->
+                            <!-- Dynamic Action Buttons galing sa JavaScript -->
                         </div>
                     </div>
                 </div>
@@ -143,30 +143,43 @@ if (!isset($_SESSION['user_role'])) {
             });
 
             const playBeepSound = () => {
-                beepAudio.currentTime = 0;
-                beepAudio.play().catch(e => {});
-
+                // Unlock/resume audio context inside the same user gesture so browsers allow playback.
                 try {
                     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume().catch(() => {});
+                    }
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
-                    
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-                    
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
-                    
                     osc.start();
-                    osc.stop(audioCtx.currentTime + 0.15);
+                    osc.stop(audioCtx.currentTime + 0.16);
+                } catch (err) {
+                    console.warn('AudioContext beep failed:', err);
+                }
+
+                // Fallback to the bundled asset for browsers that block the oscillator.
+                try {
+                    beepAudio.currentTime = 0;
+                    const p = beepAudio.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => {});
                 } catch (err) {}
             };
 
             const fetchBorrowerData = (qrCodeValue) => {
                 fetch('get_borrower_data.php?qr_code=' + encodeURIComponent(qrCodeValue))
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.text().then(text => {
+                            try { return JSON.parse(text); }
+                            catch (e) { throw new Error('Invalid JSON response: ' + text.slice(0, 120)); }
+                        });
+                    })
                     .then(res => {
                         if (res.success && res.data) {
                             const data = res.data;
@@ -180,6 +193,7 @@ if (!isset($_SESSION['user_role'])) {
                                 document.getElementById('borrower-selfie').src = data.photo;
                             }
 
+                            // Status Badge & Action Buttons rendering
                             const statusBadge = document.getElementById('res-status-badge');
                             const actionContainer = document.getElementById('res-action-container');
                             const currentStatus = data.status || 'Pending';
@@ -203,21 +217,37 @@ if (!isset($_SESSION['user_role'])) {
                             }
 
                         } else {
-                            document.getElementById('res-name').innerText = "Name: No active pending or damaged items found";
+                            document.getElementById('res-name').innerText = "Name: Borrower not found";
                             document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
                             document.getElementById('res-course').innerText = "Course & Year: --";
                             document.getElementById('res-item').innerText = "Equipment to Borrow: --";
                             document.getElementById('res-dates').innerText = "Borrow Date: --";
-                            document.getElementById('res-status-badge').innerText = "Cleared / None";
-                            document.getElementById('res-status-badge').className = "px-3 py-1 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 shadow-sm inline-block";
-                            document.getElementById('res-action-container').innerHTML = '<span class="text-[11px] text-emerald-600 font-medium">Item already marked as Good / Cleared</span>';
+                            document.getElementById('res-status-badge').innerText = "N/A";
+                            document.getElementById('res-action-container').innerHTML = '';
                         }
                     })
                     .catch(err => {
                         console.error('Error fetching borrower details:', err);
+                        try {
+                            // Ensure the scan still shows a useful result even when the backend/database is unavailable.
+                            document.getElementById('result-placeholder').classList.add('hidden');
+                            document.getElementById('result-content').classList.remove('hidden');
+                            document.getElementById('decoded-text-label').innerText = qrCodeValue;
+                            document.getElementById('res-name').innerText = "Name: " + qrCodeValue;
+                            document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
+                            document.getElementById('res-course').innerText = "Course & Year: --";
+                            document.getElementById('res-item').innerText = "Equipment to Borrow: --";
+                            document.getElementById('res-dates').innerText = "Borrow Date / Due: --";
+                            document.getElementById('res-status-badge').innerText = "DB Error";
+                            document.getElementById('res-status-badge').className = "px-3 py-1 rounded-md text-[11px] font-bold shadow-sm inline-block bg-red-100 text-red-800";
+                            document.getElementById('res-action-container').innerHTML = '<span class="text-[11px] text-red-600 italic">Backend unavailable; showing decoded QR only.</span>';
+                        } catch (uiErr) {
+                            console.error('Failed to render fallback scan result:', uiErr);
+                        }
                     });
             };
 
+            // Helper function para sa pag-update ng status via AJAX o redirect
             window.updateRequestStatus = function(requestId, newStatus) {
                 if (confirm('Are you sure you want to update this status to ' + newStatus + '?')) {
                     fetch('update_status.php', {
@@ -246,6 +276,7 @@ if (!isset($_SESSION['user_role'])) {
                 document.getElementById('result-content').classList.remove('hidden');
                 document.getElementById('decoded-text-label').innerText = decodedText;
 
+                // Fetch borrower details from the database
                 fetchBorrowerData(decodedText);
 
                 try {
@@ -273,7 +304,6 @@ if (!isset($_SESSION['user_role'])) {
                 });
             });
 
-            // Ginamit ang jsQR para sa maaasahang pagbasa ng QR image upload sa laptop
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;
@@ -290,12 +320,16 @@ if (!isset($_SESSION['user_role'])) {
                         canvasContext.drawImage(img, 0, 0, img.width, img.height);
                         
                         const imgData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                        if (typeof jsQR !== 'function') {
+                            alert("QR library failed to load. Check internet connection/CDN and refresh.");
+                            return;
+                        }
                         const code = jsQR(imgData.data, imgData.width, imgData.height);
 
-                        if (code) {
+                        if (code && code.data) {
                             handleScanSuccess(code.data);
                         } else {
-                            alert("Unable to read QR code from this image. Please upload a clear QR code image.");
+                            alert("Unable to read QR code from this image. Use a clearer/larger screenshot of the QR.");
                         }
                     };
                     img.src = event.target.result;

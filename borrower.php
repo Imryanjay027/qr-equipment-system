@@ -14,26 +14,61 @@ $studentName = $_SESSION['user_name'] ?? 'User';
 $courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
-// Kunin ang profile picture
+// Kunin ang profile picture (gumana kahit magkaiba ang schema ng users table)
 $profilePhoto = 'logo.jpg';
 try {
-    $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE email = ? OR id = ?");
-    $stmtPhoto->execute([$_SESSION['email'] ?? '', $studentId]);
-    $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
-    
-    if ($usrData && !empty($usrData['profile_picture']) && $usrData['profile_picture'] !== 'logo.jpg') {
-        $profilePhoto = $usrData['profile_picture'];
-    } elseif (!empty($_SESSION['profile_photo']) && $_SESSION['profile_photo'] !== 'logo.jpg') {
-        $profilePhoto = $_SESSION['profile_photo'];
+    $profileColumns = [];
+    try {
+        $profileColumns = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) {
+        $profileColumns = ['profile_picture', 'selfie', 'email', 'id', 'student_id', 'id_number'];
     }
-} catch (PDOException $e) {
-    if (!empty($_SESSION['profile_photo'])) {
-        $profilePhoto = $_SESSION['profile_photo'];
+
+    // Prefer the logged-in email when matching by email, otherwise use the student id.
+    $where = [];
+    $params = [];
+    foreach (['email', 'id', 'student_id', 'id_number', 'user_id'] as $column) {
+        if (!in_array($column, $profileColumns, true)) {
+            continue;
+        }
+        $where[] = "`$column` = ?";
+        if ($column === 'email') {
+            $params[] = (string) ($_SESSION['email'] ?? '');
+        } else {
+            $params[] = (string) $studentId;
+        }
     }
+
+    if ($where) {
+        $stmtPhoto = $pdo->prepare("SELECT * FROM users WHERE (" . implode(' OR ', $where) . ") LIMIT 1");
+        $stmtPhoto->execute($params);
+        $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
+
+        $photoCandidate = null;
+        foreach (['profile_picture', 'selfie', 'profile_pic', 'photo', 'student_selfie'] as $photoColumn) {
+            if (isset($usrData[$photoColumn]) && $usrData[$photoColumn] !== '' && $usrData[$photoColumn] !== null) {
+                $photoCandidate = (string) $usrData[$photoColumn];
+                break;
+            }
+        }
+
+        if ($photoCandidate && $photoCandidate !== 'logo.jpg') {
+            if (strpos($photoCandidate, '/') === false) {
+                $photoCandidate = 'uploads/' . $photoCandidate;
+            }
+            $profilePhoto = $photoCandidate;
+        }
+    }
+} catch (Throwable $e) {
+    // Keep going; session fallback below can still supply the photo.
+}
+
+if ($profilePhoto === 'logo.jpg' && !empty($_SESSION['profile_photo']) && $_SESSION['profile_photo'] !== 'logo.jpg') {
+    $profilePhoto = $_SESSION['profile_photo'];
 }
 
 // Handle action para sa pag-request ng replacement
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request_replacement') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request_replacement') {
     $requestId = $_POST['request_id'] ?? '';
     if (!empty($requestId)) {
         try {
@@ -47,10 +82,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Kunin ang mga active borrowed items, damaged, o waiting for approval ng user
-$stmt = $pdo->prepare("SELECT * FROM requests WHERE student_id = ? AND (status = 'Pending' OR status = 'Damaged' OR status = 'Waiting for Custodian Approval') ORDER BY id DESC");
-$stmt->execute([$studentId]);
-$borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Kunin ang mga active borrowed items mula sa kahit anong candidate borrow table.
+$borrowedRecords = [];
+$borrowTables = ['requests', 'borrow_requests', 'borrowed_equipment'];
+foreach ($borrowTables as $borrowTable) {
+    try {
+        $borrowColumns = $pdo->query("SHOW COLUMNS FROM `$borrowTable`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!$borrowColumns) {
+            continue;
+        }
+
+        $matchesStudent = array_intersect(['student_id', 'user_id', 'id_number', 'id'], $borrowColumns);
+        if (!$matchesStudent) {
+            continue;
+        }
+
+        $studentColumn = in_array('student_id', $borrowColumns, true) ? 'student_id' : array_values($matchesStudent)[0];
+        $selectSql = "SELECT * FROM `$borrowTable` WHERE `$studentColumn` = ? ORDER BY id DESC";
+        $borrowStmt = $pdo->prepare($selectSql);
+        $borrowStmt->execute([in_array($studentColumn, ['id', 'user_id'], true) ? (int) $studentId : $studentId]);
+        foreach ($borrowStmt->fetchAll(PDO::FETCH_ASSOC) as $borrowRow) {
+            // Normalize common column names for the borrower dashboard template.
+            if (!isset($borrowRow['equipment_name'])) {
+                foreach (['item_to_borrow', 'equipment', 'item'] as $equipmentColumn) {
+                    if (isset($borrowRow[$equipmentColumn]) && $borrowRow[$equipmentColumn] !== '') {
+                        $borrowRow['equipment_name'] = $borrowRow[$equipmentColumn];
+                        break;
+                    }
+                }
+            }
+            if (!isset($borrowRow['student_id'])) {
+                foreach (['user_id', 'id_number', 'student_id'] as $studentColumn) {
+                    if (isset($borrowRow[$studentColumn]) && $borrowRow[$studentColumn] !== '') {
+                        $borrowRow['student_id'] = $borrowRow[$studentColumn];
+                        break;
+                    }
+                }
+            }
+            if (!isset($borrowRow['borrow_date'])) {
+                foreach (['borrow_date', 'return_date', 'created_at', 'date_borrowed'] as $dateColumn) {
+                    if (isset($borrowRow[$dateColumn]) && $borrowRow[$dateColumn] !== '') {
+                        $borrowRow['borrow_date'] = $borrowRow[$dateColumn];
+                        if (isset($borrowRow['return_time']) && $borrowRow['return_time'] !== '') {
+                            $borrowRow['borrow_date'] .= ' ' . $borrowRow['return_time'];
+                        }
+                        break;
+                    }
+                }
+            }
+            if (!isset($borrowRow['status'])) {
+                $borrowRow['status'] = 'Pending';
+            }
+            $borrowedRecords[] = $borrowRow;
+        }
+    } catch (Throwable $e) {
+        // Try the next candidate table.
+    }
+}
+
+// Keep the dashboard focused on active borrowed/unresolved items.
+$activeBorrowedRecords = [];
+foreach ($borrowedRecords as $activeRow) {
+    $activeStatus = (string) ($activeRow['status'] ?? 'Pending');
+    if (in_array($activeStatus, ['Pending', 'Damaged', 'Waiting for Custodian Approval'], true)) {
+        $activeBorrowedRecords[] = $activeRow;
+    }
+}
+$borrowedRecords = $activeBorrowedRecords;
 ?>
 <!DOCTYPE html>
 <html lang="en">

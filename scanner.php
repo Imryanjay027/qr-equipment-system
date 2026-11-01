@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role'])) {
     <title>QR Scanner Portal - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsQR@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
@@ -204,13 +204,15 @@ if (!isset($_SESSION['user_role'])) {
                             }
 
                         } else {
-                            document.getElementById('res-name').innerText = "Name: Borrower not found";
+                            // Kung wala nang active request (ibig sabihin na-mark na bilang Good at nalipat na sa history)
+                            document.getElementById('res-name').innerText = "Name: No active pending or damaged items found";
                             document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
                             document.getElementById('res-course').innerText = "Course & Year: --";
                             document.getElementById('res-item').innerText = "Equipment to Borrow: --";
                             document.getElementById('res-dates').innerText = "Borrow Date: --";
-                            document.getElementById('res-status-badge').innerText = "N/A";
-                            document.getElementById('res-action-container').innerHTML = '';
+                            document.getElementById('res-status-badge').innerText = "Cleared / None";
+                            document.getElementById('res-status-badge').className = "px-3 py-1 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 shadow-sm inline-block";
+                            document.getElementById('res-action-container').innerHTML = '<span class="text-[11px] text-emerald-600 font-medium">Item already marked as Good / Cleared</span>';
                         }
                     })
                     .catch(err => {

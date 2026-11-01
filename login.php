@@ -19,15 +19,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($found_user && password_verify($password, $found_user['password'])) {
-                $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id'] ?? $identifier;
-                $_SESSION['user_id'] = $found_user['id'] ?? $found_user['student_id'] ?? $identifier; // keep borrow_item.php aligned with the logged-in user
+                // I-normalize ang user fields kahit magkaiba ang column names ng remote/local DB.
+                $photoColumns = ['profile_picture', 'selfie', 'profile_pic', 'photo', 'student_selfie'];
+                $profilePhoto = 'logo.jpg';
+                foreach ($photoColumns as $photoColumn) {
+                    if (!empty($found_user[$photoColumn]) && $found_user[$photoColumn] !== 'logo.jpg') {
+                        $profilePhoto = (string) $found_user[$photoColumn];
+                        break;
+                    }
+                }
+                if ($profilePhoto !== 'logo.jpg' && strpos($profilePhoto, '/') === false) {
+                    $profilePhoto = 'uploads/' . $profilePhoto;
+                }
+
+                $_SESSION['student_id'] = $found_user['student_id'] ?? $found_user['id_number'] ?? $found_user['id'] ?? $identifier;
+                $_SESSION['user_id'] = $found_user['id'] ?? $found_user['student_id'] ?? $found_user['id_number'] ?? $identifier; // keep borrow_item.php aligned with the logged-in user
                 $_SESSION['user_name'] = $found_user['name'] ?? $found_user['full_name'] ?? 'User';
                 $_SESSION['email'] = $found_user['email'] ?? $identifier;
                 $_SESSION['user_role'] = (strtolower($found_user['role'] ?? '') === 'custodian') ? 'Property Custodian' : 'Borrower';
-                $_SESSION['course_year'] = $found_user['course_year_section'] ?? $found_user['course_year'] ?? '';
-                
-                // Siguraduhing ang profile_picture galing sa database ang nakalagay sa session
-                $_SESSION['profile_photo'] = (!empty($found_user['profile_picture']) && $found_user['profile_picture'] !== 'logo.jpg') ? $found_user['profile_picture'] : 'logo.jpg';
+                $_SESSION['course_year'] = $found_user['course_year_section'] ?? $found_user['course_year'] ?? $found_user['course'] ?? '';
+
+                // Siguraduhing ang profile picture galing sa database ang nakalagay sa session
+                $_SESSION['profile_photo'] = $profilePhoto;
 
                 if (strtolower($found_user['role'] ?? '') === 'custodian') {
                     header("Location: custodian_dashboard.php");

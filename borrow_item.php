@@ -16,19 +16,51 @@ $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" 
 
 $profilePhoto = 'logo.jpg';
 try {
-    $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE email = ? OR id = ?");
-    $stmtPhoto->execute([$_SESSION['email'] ?? '', $studentId]);
-    $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
-    
-    if ($usrData && !empty($usrData['profile_picture']) && $usrData['profile_picture'] !== 'logo.jpg') {
-        $profilePhoto = $usrData['profile_picture'];
-    } elseif (!empty($_SESSION['profile_photo']) && $_SESSION['profile_photo'] !== 'logo.jpg') {
-        $profilePhoto = $_SESSION['profile_photo'];
+    $profileColumns = [];
+    try {
+        $profileColumns = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) {
+        $profileColumns = ['profile_picture'];
     }
-} catch (PDOException $e) {
-    if (!empty($_SESSION['profile_photo'])) {
-        $profilePhoto = $_SESSION['profile_photo'];
+
+    $where = [];
+    $params = [];
+    foreach (['email', 'id', 'student_id', 'id_number', 'user_id'] as $column) {
+        if (!in_array($column, $profileColumns, true)) {
+            continue;
+        }
+        $where[] = "`$column` = ?";
+        if ($column === 'email') {
+            $params[] = (string) ($_SESSION['email'] ?? '');
+        } else {
+            $params[] = (string) $studentId;
+        }
     }
+
+    if ($where) {
+        $stmtPhoto = $pdo->prepare("SELECT * FROM users WHERE (" . implode(' OR ', $where) . ") LIMIT 1");
+        $stmtPhoto->execute($params);
+        $usrData = $stmtPhoto->fetch(PDO::FETCH_ASSOC);
+
+        foreach (['profile_picture', 'selfie', 'profile_pic', 'photo', 'student_selfie'] as $photoColumn) {
+            if (isset($usrData[$photoColumn]) && $usrData[$photoColumn] !== '' && $usrData[$photoColumn] !== null) {
+                $photoCandidate = (string) $usrData[$photoColumn];
+                if ($photoCandidate !== 'logo.jpg') {
+                    if (strpos($photoCandidate, '/') === false) {
+                        $photoCandidate = 'uploads/' . $photoCandidate;
+                    }
+                    $profilePhoto = $photoCandidate;
+                    break;
+                }
+            }
+        }
+    }
+} catch (Throwable $e) {
+    // Keep fallback below if the users table or query fails.
+}
+
+if (($profilePhoto === 'logo.jpg' || empty($profilePhoto)) && !empty($_SESSION['profile_photo']) && $_SESSION['profile_photo'] !== 'logo.jpg') {
+    $profilePhoto = $_SESSION['profile_photo'];
 }
 
 $success_message = "";

@@ -14,6 +14,7 @@ $studentName = $_SESSION['user_name'] ?? 'User';
 $courseYear  = $_SESSION['course_year'] ?? '';
 $qrCodeUrl   = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($studentId);
 
+// Kunin ang profile picture
 $profilePhoto = 'logo.jpg';
 try {
     $stmtPhoto = $pdo->prepare("SELECT profile_picture FROM users WHERE email = ? OR id = ?");
@@ -31,8 +32,24 @@ try {
     }
 }
 
-$stmt = $pdo->prepare("SELECT * FROM requests WHERE (student_id = ? OR student_id = ?) AND (status = 'Pending' OR status = 'Damaged') ORDER BY id DESC");
-$stmt->execute([$studentId, $_SESSION['email'] ?? '']);
+// Handle action para sa pag-request ng replacement
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request_replacement') {
+    $requestId = $_POST['request_id'] ?? '';
+    if (!empty($requestId)) {
+        try {
+            $stmtUpdate = $pdo->prepare("UPDATE requests SET status = 'Waiting for Custodian Approval' WHERE id = ? AND student_id = ?");
+            $stmtUpdate->execute([$requestId, $studentId]);
+            header("Location: borrower.php");
+            exit;
+        } catch (PDOException $e) {
+            // Error handling
+        }
+    }
+}
+
+// Kunin ang mga active borrowed items, damaged, o waiting for approval ng user
+$stmt = $pdo->prepare("SELECT * FROM requests WHERE student_id = ? AND (status = 'Pending' OR status = 'Damaged' OR status = 'Waiting for Custodian Approval') ORDER BY id DESC");
+$stmt->execute([$studentId]);
 $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
@@ -118,7 +135,6 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             <div class="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="flex items-center gap-4 sm:gap-5 w-full">
-                    <!-- Live Selfie Profile Picture -->
                     <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-emerald-600 overflow-hidden shadow-md bg-white flex items-center justify-center flex-shrink-0">
                         <img src="<?php echo htmlspecialchars($profilePhoto); ?>" alt="Live Selfie" class="w-full h-full object-cover" onerror="this.src='logo.jpg'">
                     </div>
@@ -167,14 +183,31 @@ $borrowedRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <div><?php echo htmlspecialchars($row['borrow_date'] ?? 'N/A'); ?></div>
                                         <div class="flex justify-center">
                                             <span class="px-3 py-1 rounded-md text-[11px] font-bold 
-                                                <?php echo ($row['status'] ?? 'Pending') === 'Damaged' ? 'bg-red-100 text-red-800' : 'bg-amber-400 text-amber-900'; ?> shadow-sm inline-block">
-                                                <?php echo htmlspecialchars($row['status'] ?? 'Pending'); ?>
+                                                <?php 
+                                                    $status = $row['status'] ?? 'Pending';
+                                                    if ($status === 'Damaged') echo 'bg-red-100 text-red-800';
+                                                    elseif ($status === 'Waiting for Custodian Approval') echo 'bg-blue-100 text-blue-800';
+                                                    else echo 'bg-amber-400 text-amber-900'; 
+                                                ?> shadow-sm inline-block">
+                                                <?php echo htmlspecialchars($status); ?>
                                             </span>
                                         </div>
                                         <div class="flex justify-center">
-                                            <button onclick="alert('Cancel request feature')" class="px-3 py-1 rounded-md text-[11px] font-semibold text-red-600 border border-red-300 hover:bg-red-50 transition">
-                                                &times; Cancel
-                                            </button>
+                                            <?php if (($row['status'] ?? '') === 'Damaged'): ?>
+                                                <form method="POST" onsubmit="return confirm('Sigurado ka bang naibalik mo na ang kaparehong item at brand para sa replacement?');">
+                                                    <input type="hidden" name="action" value="request_replacement">
+                                                    <input type="hidden" name="request_id" value="<?php echo $row['id']; ?>">
+                                                    <button type="submit" class="px-3 py-1 rounded-md text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm">
+                                                        Mark as Replaced
+                                                    </button>
+                                                </form>
+                                            <?php elseif (($row['status'] ?? '') === 'Waiting for Custodian Approval'): ?>
+                                                <span class="text-[11px] text-gray-500 font-medium italic">Waiting for Approval</span>
+                                            <?php else: ?>
+                                                <button onclick="alert('Cancel request feature')" class="px-3 py-1 rounded-md text-[11px] font-semibold text-red-600 border border-red-300 hover:bg-red-50 transition">
+                                                    &times; Cancel
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>

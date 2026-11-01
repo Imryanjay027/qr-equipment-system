@@ -15,6 +15,7 @@ if (!isset($_SESSION['user_role'])) {
     <title>QR Scanner Portal - MQCQC EMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsQR@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
@@ -272,19 +273,34 @@ if (!isset($_SESSION['user_role'])) {
                 });
             });
 
-            // Ginamit ang built-in scanFile ng html5-qrcode para sa file upload
+            // Ginamit ang jsQR para sa maaasahang pagbasa ng QR image upload sa laptop
             const fileInput = document.getElementById('qr-file-input');
             fileInput.addEventListener('change', e => {
                 if (e.target.files.length === 0) return;
-                const imageFile = e.target.files[0];
+                const file = e.target.files[0];
+                const reader = new FileReader();
 
-                html5QrCode.scanFile(imageFile, true)
-                    .then(decodedText => {
-                        handleScanSuccess(decodedText);
-                    })
-                    .catch(err => {
-                        alert("Unable to read QR code from this image. Please make sure the image clearly contains a valid borrower QR code.");
-                    });
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const canvasContext = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        canvasContext.drawImage(img, 0, 0, img.width, img.height);
+                        
+                        const imgData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imgData.data, imgData.width, imgData.height);
+
+                        if (code) {
+                            handleScanSuccess(code.data);
+                        } else {
+                            alert("Unable to read QR code from this image. Please upload a clear QR code image.");
+                        }
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             });
         });
     </script>

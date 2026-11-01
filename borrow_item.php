@@ -39,14 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $return_date = trim($_POST['return_date'] ?? '');
     $return_time = trim($_POST['return_time'] ?? '');
     $borrow_date = date('Y-m-d H:i:s');
-    $due_date = $return_date . ' ' . $return_time;
+    $full_return_datetime = $return_date . ' ' . $return_time;
 
     if (empty($equipment_name) || empty($return_date) || empty($return_time)) {
         $error_message = "Mangyaring punan ang lahat ng kinakailangang field.";
     } else {
         try {
-            $stmt = $pdo->prepare("INSERT INTO requests (student_id, equipment_name, borrow_date, due_date, status) VALUES (?, ?, ?, ?, 'Pending')");
-            $stmt->execute([$studentId, $equipment_name, $borrow_date, $due_date]);
+            // Sinubukan munang i-save gamit ang mga karaniwang columns (student_id, equipment_name, borrow_date, status)
+            $stmt = $pdo->prepare("INSERT INTO requests (student_id, equipment_name, borrow_date, status) VALUES (?, ?, ?, 'Pending')");
+            $stmt->execute([$studentId, $equipment_name, $borrow_date]);
             $success_message = "Matagumpay na naisumite ang kahilingan sa paghiram!";
         } catch (PDOException $e) {
             $error_message = "Database Error: " . $e->getMessage();
@@ -180,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
 
-                    <!-- Terms & Conditions Section (Translated to English) -->
+                    <!-- Terms & Conditions Section -->
                     <div class="bg-slate-50 border border-gray-200 p-4 rounded-xl text-xs text-gray-700 space-y-2 mt-4">
                         <h3 class="font-bold text-gray-900 uppercase tracking-wide">Terms & Conditions</h3>
                         <p>By submitting this request, you agree that if the borrowed equipment is damaged, broken, or lost while in your possession, you are strictly required to replace it with the exact same item, model, and brand.</p>

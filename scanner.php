@@ -187,7 +187,7 @@ if (!isset($_SESSION['user_role'])) {
                             document.getElementById('res-id').innerText = "Student ID: " + data.student_id;
                             document.getElementById('res-course').innerText = "Course & Year: " + data.course_year;
                             document.getElementById('res-item').innerText = "Equipment to Borrow: " + data.equipment;
-                            document.getElementById('res-dates').innerText = "Borrow Date / Due: " + data.borrow_date;
+                            document.getElementById('res-dates').innerText = "Return Due Date & Time: " + data.borrow_date;
                             
                             if (data.photo) {
                                 document.getElementById('borrower-selfie').src = data.photo;
@@ -221,7 +221,7 @@ if (!isset($_SESSION['user_role'])) {
                             document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
                             document.getElementById('res-course').innerText = "Course & Year: --";
                             document.getElementById('res-item').innerText = "Equipment to Borrow: --";
-                            document.getElementById('res-dates').innerText = "Borrow Date: --";
+                            document.getElementById('res-dates').innerText = "Return Due Date & Time: --";
                             document.getElementById('res-status-badge').innerText = "N/A";
                             document.getElementById('res-action-container').innerHTML = '';
                         }
@@ -237,7 +237,7 @@ if (!isset($_SESSION['user_role'])) {
                             document.getElementById('res-id').innerText = "Student ID: " + qrCodeValue;
                             document.getElementById('res-course').innerText = "Course & Year: --";
                             document.getElementById('res-item').innerText = "Equipment to Borrow: --";
-                            document.getElementById('res-dates').innerText = "Borrow Date / Due: --";
+                            document.getElementById('res-dates').innerText = "Return Due Date & Time: --";
                             document.getElementById('res-status-badge').innerText = "DB Error";
                             document.getElementById('res-status-badge').className = "px-3 py-1 rounded-md text-[11px] font-bold shadow-sm inline-block bg-red-100 text-red-800";
                             document.getElementById('res-action-container').innerHTML = '<span class="text-[11px] text-red-600 italic">Backend unavailable; showing decoded QR only.</span>';
